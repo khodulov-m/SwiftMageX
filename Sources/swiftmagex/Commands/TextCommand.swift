@@ -59,13 +59,62 @@ struct TextCommand: AsyncParsableCommand {
     }
 
     func run() async throws {
-        // TODO(milestone 3): load via CoreImageRasterEngine, build a TextSpec,
-        // overlay, write to the resolved output path, and emit a result via
-        // ResultPrinter (human or JSON).
-        FileHandle.standardError.write(Data(
-            "swiftmagex text is not implemented yet (milestone 3).\n".utf8
-        ))
-        throw ExitCode(1)
+        let printer = ResultPrinter(json: globals.json, verbose: globals.verbose)
+        let inputURL = URL(
+            fileURLWithPath: input,
+            relativeTo: URL(fileURLWithPath: FileManager.default.currentDirectoryPath, isDirectory: true)
+        ).standardizedFileURL
+
+        guard FileManager.default.fileExists(atPath: inputURL.path) else {
+            let err = SwiftMageXError.io("input file not found: \(inputURL.path)")
+            printer.printError(err)
+            throw ExitCode(err.exitCode)
+        }
+
+        let engine = CoreImageRasterEngine()
+        let resolvedFormat = ImageFormat.detect(at: inputURL) ?? .png
+        if ImageFormat.detect(at: inputURL) == nil {
+            printer.diagnostic("source format not writable; defaulting output to png")
+        }
+
+        let spec = TextSpec(
+            text: text,
+            position: position,
+            fontName: font,
+            fontSize: fontSize,
+            color: color,
+            strokeColor: stroke,
+            strokeWidth: strokeWidth
+        )
+
+        do {
+            let image = try engine.load(from: inputURL)
+            let rendered = try engine.overlayText(image, spec)
+            let outputURL = try OutputPath.resolveSingle(
+                target: output,
+                sourceURL: inputURL,
+                format: resolvedFormat
+            )
+            try engine.write(
+                rendered,
+                to: outputURL,
+                format: resolvedFormat,
+                quality: 0.9,
+                metadata: nil
+            )
+            printer.printSuccess(
+                command: "text",
+                outputs: [SuccessOutput(
+                    path: outputURL,
+                    format: resolvedFormat,
+                    width: rendered.width,
+                    height: rendered.height
+                )]
+            )
+        } catch let error as SwiftMageXError {
+            printer.printError(error)
+            throw ExitCode(error.exitCode)
+        }
     }
 }
 

@@ -109,6 +109,104 @@ final class RasterEngineTests: XCTestCase {
         XCTAssertEqual(reloaded.height, 40)
     }
 
+    // MARK: - Text overlay
+
+    func testTextOverlayWritesExpectedDimensions() throws {
+        let engine = CoreImageRasterEngine()
+        let source = RasterImage(cgImage: Self.makeSolidImage(width: 400, height: 200))
+        let spec = TextSpec(
+            text: "Hello",
+            position: .bottom,
+            fontName: nil,
+            fontSize: 24,
+            color: "#FFFFFF",
+            strokeColor: nil,
+            strokeWidth: 0
+        )
+        let result = try engine.overlayText(source, spec)
+        XCTAssertEqual(result.width, 400)
+        XCTAssertEqual(result.height, 200)
+    }
+
+    func testTextOverlayWithStrokeProducesDifferentBytesThanWithoutStroke() throws {
+        let engine = CoreImageRasterEngine()
+        let source = RasterImage(cgImage: Self.makeSolidImage(width: 400, height: 200))
+        let dir = try Self.makeTempDir()
+        defer { try? FileManager.default.removeItem(at: dir) }
+
+        let bare = try engine.overlayText(
+            source,
+            TextSpec(
+                text: "SALE",
+                position: .center,
+                fontName: nil,
+                fontSize: 48,
+                color: "#FFFFFF",
+                strokeColor: nil,
+                strokeWidth: 0
+            )
+        )
+        let stroked = try engine.overlayText(
+            source,
+            TextSpec(
+                text: "SALE",
+                position: .center,
+                fontName: nil,
+                fontSize: 48,
+                color: "#FFFFFF",
+                strokeColor: "#000000",
+                strokeWidth: 4
+            )
+        )
+
+        let bareURL = dir.appendingPathComponent("bare.png")
+        let strokedURL = dir.appendingPathComponent("stroked.png")
+        try engine.write(bare, to: bareURL, format: .png, quality: 1.0, metadata: nil)
+        try engine.write(stroked, to: strokedURL, format: .png, quality: 1.0, metadata: nil)
+
+        let a = try Data(contentsOf: bareURL)
+        let b = try Data(contentsOf: strokedURL)
+        XCTAssertNotEqual(a, b, "expected stroke parameter to influence the rendered bytes")
+    }
+
+    func testInvalidHexColorThrowsInvalidInput() throws {
+        let engine = CoreImageRasterEngine()
+        let source = RasterImage(cgImage: Self.makeSolidImage(width: 100, height: 100))
+        let spec = TextSpec(
+            text: "x",
+            position: .center,
+            fontName: nil,
+            fontSize: 12,
+            color: "#ZZZ",
+            strokeColor: nil,
+            strokeWidth: 0
+        )
+        XCTAssertThrowsError(try engine.overlayText(source, spec)) { error in
+            guard let smx = error as? SwiftMageXError, case .invalidInput = smx else {
+                return XCTFail("Expected SwiftMageXError.invalidInput, got \(error)")
+            }
+        }
+    }
+
+    func testInvalidStrokeHexColorThrowsInvalidInput() throws {
+        let engine = CoreImageRasterEngine()
+        let source = RasterImage(cgImage: Self.makeSolidImage(width: 100, height: 100))
+        let spec = TextSpec(
+            text: "x",
+            position: .center,
+            fontName: nil,
+            fontSize: 12,
+            color: "#FFFFFF",
+            strokeColor: "not-a-hex",
+            strokeWidth: 1
+        )
+        XCTAssertThrowsError(try engine.overlayText(source, spec)) { error in
+            guard let smx = error as? SwiftMageXError, case .invalidInput = smx else {
+                return XCTFail("Expected SwiftMageXError.invalidInput, got \(error)")
+            }
+        }
+    }
+
     // MARK: - I/O failure modes
 
     func testLoadMissingFileThrowsIO() {
