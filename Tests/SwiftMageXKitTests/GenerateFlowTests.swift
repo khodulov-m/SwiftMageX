@@ -20,20 +20,23 @@ final class GenerateFlowTests: XCTestCase {
             Self.makeImage(data: pngBytes, request: request)
         ])
 
-        let urls = try await SwiftMageXOrchestrator.generate(
+        let written = try await SwiftMageXOrchestrator.generate(
             request: request,
             output: dir.path,
             provider: provider
         )
 
-        XCTAssertEqual(urls.count, 3)
-        for url in urls {
-            XCTAssertTrue(url.path.hasPrefix("/"), "Path must be absolute: \(url.path)")
+        XCTAssertEqual(written.count, 3)
+        for image in written {
+            XCTAssertTrue(image.path.path.hasPrefix("/"), "Path must be absolute: \(image.path.path)")
             XCTAssertTrue(
-                FileManager.default.fileExists(atPath: url.path),
-                "File should exist at \(url.path)"
+                FileManager.default.fileExists(atPath: image.path.path),
+                "File should exist at \(image.path.path)"
             )
-            XCTAssertEqual(Self.formatOfFile(at: url), .png)
+            XCTAssertEqual(Self.formatOfFile(at: image.path), .png)
+            XCTAssertEqual(image.format, .png)
+            XCTAssertEqual(image.width, 8)
+            XCTAssertEqual(image.height, 8)
         }
     }
 
@@ -51,14 +54,14 @@ final class GenerateFlowTests: XCTestCase {
             Self.makeImage(data: pngBytes, request: request)
         ])
 
-        let urls = try await SwiftMageXOrchestrator.generate(
+        let written = try await SwiftMageXOrchestrator.generate(
             request: request,
             output: dir.path,
             provider: provider
         )
 
-        let url = try XCTUnwrap(urls.first)
-        let payload = try Self.readEmbeddedMetadata(at: url, format: .png)
+        let image = try XCTUnwrap(written.first)
+        let payload = try Self.readEmbeddedMetadata(at: image.path, format: .png)
 
         XCTAssertEqual(payload["prompt"] as? String, "a mountain at sunset")
         XCTAssertEqual(payload["model"] as? String, request.model)
@@ -80,14 +83,14 @@ final class GenerateFlowTests: XCTestCase {
             images: [Self.makeImage(data: pngBytes, request: request, seed: nil)]
         )
 
-        let urls = try await SwiftMageXOrchestrator.generate(
+        let written = try await SwiftMageXOrchestrator.generate(
             request: request,
             output: dir.path,
             provider: provider
         )
 
-        let url = try XCTUnwrap(urls.first)
-        let payload = try Self.readEmbeddedMetadata(at: url, format: .png)
+        let image = try XCTUnwrap(written.first)
+        let payload = try Self.readEmbeddedMetadata(at: image.path, format: .png)
         // Spec §12: write the seed as recorded intent even when the provider
         // ignored it.
         XCTAssertEqual(payload["seed"] as? String, "9999")

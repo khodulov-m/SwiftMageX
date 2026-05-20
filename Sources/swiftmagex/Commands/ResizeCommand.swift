@@ -75,7 +75,7 @@ struct ResizeCommand: AsyncParsableCommand {
 
         guard FileManager.default.fileExists(atPath: inputURL.path) else {
             let err = SwiftMageXError.io("input file not found: \(inputURL.path)")
-            printer.printError(err)
+            printer.printError(err, command: "resize")
             throw ExitCode(err.exitCode)
         }
 
@@ -105,15 +105,15 @@ struct ResizeCommand: AsyncParsableCommand {
             )
             printer.printSuccess(
                 command: "resize",
-                outputs: [SuccessOutput(
-                    path: outputURL,
+                outputs: [JSONResultEnvelope.Output(
+                    path: outputURL.path,
                     format: resolvedFormat,
                     width: resized.width,
                     height: resized.height
                 )]
             )
         } catch let error as SwiftMageXError {
-            printer.printError(error)
+            printer.printError(error, command: "resize")
             throw ExitCode(error.exitCode)
         }
     }

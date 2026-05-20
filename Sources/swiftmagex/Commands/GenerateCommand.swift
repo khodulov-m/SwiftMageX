@@ -55,12 +55,17 @@ struct GenerateCommand: AsyncParsableCommand {
         let outputTarget = output.isEmpty ? nil : output
 
         do {
-            let urls = try await SwiftMageXOrchestrator.generate(
+            let written = try await SwiftMageXOrchestrator.generate(
                 request: request,
                 output: outputTarget
             )
-            let outputs = urls.map { url in
-                SuccessOutput(path: url, format: .png, width: nil, height: nil)
+            let outputs = written.map { image in
+                JSONResultEnvelope.Output(
+                    path: image.path.path,
+                    format: image.format,
+                    width: image.width,
+                    height: image.height
+                )
             }
             printer.printSuccess(
                 command: "generate",
@@ -69,7 +74,7 @@ struct GenerateCommand: AsyncParsableCommand {
                 model: model
             )
         } catch let error as SwiftMageXError {
-            printer.printError(error)
+            printer.printError(error, command: "generate")
             throw ExitCode(error.exitCode)
         }
     }

@@ -1,108 +1,90 @@
 import Foundation
 import SwiftMageXKit
 
-/// Renders command results to stdout / stderr.
+/// Renders command results to stdout / stderr per spec §12.
 ///
-/// Two output modes per spec §12: human-readable plain text (default) and
-/// a single JSON object under `--json`. Milestone 6 lands the full JSON
-/// schema; today the minimal surface (status + outputs) is in place so the
-/// `--json` flag is not a lie.
+/// Stream routing is fixed by the spec:
+///   - JSON mode: result envelope → stdout, whether success or error, so the
+///     calling agent can read everything from a single stream.
+///   - Plain mode: success → stdout (one path per line), errors → stderr.
+///   - Diagnostics under `--verbose` always go to stderr regardless of mode.
 struct ResultPrinter {
     /// Whether to emit JSON to stdout instead of plain text.
     let json: Bool
     /// Whether to emit diagnostic messages to stderr.
     let verbose: Bool
 
-    /// Creates a printer.
     init(json: Bool, verbose: Bool) {
         self.json = json
         self.verbose = verbose
     }
 
     /// Print a successful result describing the absolute paths produced.
-    ///
-    /// - Parameters:
-    ///   - command: The command name ("generate", "resize", "text").
-    ///   - outputs: Absolute file URLs produced by the command.
-    ///   - provider: Identifier of the provider that produced the result, if any.
-    ///   - model: Model identifier used, if any.
     func printSuccess(
         command: String,
-        outputs: [SuccessOutput],
+        outputs: [JSONResultEnvelope.Output],
         provider: String? = nil,
         model: String? = nil
     ) {
         if json {
-            writeJSON(command: command, outputs: outputs, provider: provider, model: model)
+            let envelope = JSONResultEnvelope.success(
+                command: command,
+                outputs: outputs,
+                provider: provider,
+                model: model
+            )
+            write(envelope: envelope, to: .stdout)
         } else {
-            for o in outputs {
-                print(o.path.path)
+            for output in outputs {
+                writeLine(output.path, to: .stdout)
             }
         }
     }
 
     /// Print an error in the appropriate output mode.
-    func printError(_ error: SwiftMageXError) {
-        // TODO(milestone 6): JSON / text error envelope per spec §12.
-        FileHandle.standardError.write(Data((error.description + "\n").utf8))
+    func printError(_ error: SwiftMageXError, command: String) {
+        if json {
+            let envelope = JSONResultEnvelope.failure(command: command, error: error)
+            write(envelope: envelope, to: .stdout)
+        } else {
+            writeLine(error.description, to: .stderr)
+        }
     }
 
     /// Print a diagnostic line to stderr if `--verbose` is on.
     func diagnostic(_ message: @autoclosure () -> String) {
         guard verbose else { return }
-        FileHandle.standardError.write(Data((message() + "\n").utf8))
+        writeLine(message(), to: .stderr)
     }
 
-    // MARK: - JSON encoding
+    // MARK: - Helpers
 
-    private func writeJSON(
-        command: String,
-        outputs: [SuccessOutput],
-        provider: String?,
-        model: String?
-    ) {
-        var root: [String: Any] = [
-            "status": "ok",
-            "command": command,
-            "outputs": outputs.map { output -> [String: Any] in
-                var entry: [String: Any] = [
-                    "path": output.path.path,
-                    "format": output.format.rawValue,
-                ]
-                if let width = output.width { entry["width"] = width }
-                if let height = output.height { entry["height"] = height }
-                return entry
-            },
-        ]
-        if let provider { root["provider"] = provider }
-        if let model { root["model"] = model }
+    private enum Stream {
+        case stdout
+        case stderr
 
-        do {
-            let data = try JSONSerialization.data(
-                withJSONObject: root,
-                options: [.prettyPrinted, .sortedKeys]
-            )
-            FileHandle.standardOutput.write(data)
-            FileHandle.standardOutput.write(Data("\n".utf8))
-        } catch {
-            // Falling back to text keeps the program useful when JSON encoding
-            // somehow fails — should be unreachable with this input shape.
-            for o in outputs { print(o.path.path) }
+        var handle: FileHandle {
+            switch self {
+            case .stdout: return .standardOutput
+            case .stderr: return .standardError
+            }
         }
     }
-}
 
-/// A single output produced by a command, for use in `printSuccess`.
-struct SuccessOutput {
-    let path: URL
-    let format: ImageFormat
-    let width: Int?
-    let height: Int?
+    private func write(envelope: JSONResultEnvelope, to stream: Stream) {
+        do {
+            let data = try envelope.jsonData()
+            stream.handle.write(data)
+            stream.handle.write(Data("\n".utf8))
+        } catch {
+            // Encoding the envelope should be infallible for the inputs we
+            // construct; if it ever isn't, fall back to a single text line so
+            // the program stays useful rather than silently dropping output.
+            writeLine("error encoding JSON envelope: \(error.localizedDescription)", to: .stderr)
+        }
+    }
 
-    init(path: URL, format: ImageFormat, width: Int? = nil, height: Int? = nil) {
-        self.path = path
-        self.format = format
-        self.width = width
-        self.height = height
+    private func writeLine(_ message: String, to stream: Stream) {
+        stream.handle.write(Data((message + "\n").utf8))
     }
 }

@@ -67,7 +67,7 @@ struct TextCommand: AsyncParsableCommand {
 
         guard FileManager.default.fileExists(atPath: inputURL.path) else {
             let err = SwiftMageXError.io("input file not found: \(inputURL.path)")
-            printer.printError(err)
+            printer.printError(err, command: "text")
             throw ExitCode(err.exitCode)
         }
 
@@ -104,15 +104,15 @@ struct TextCommand: AsyncParsableCommand {
             )
             printer.printSuccess(
                 command: "text",
-                outputs: [SuccessOutput(
-                    path: outputURL,
+                outputs: [JSONResultEnvelope.Output(
+                    path: outputURL.path,
                     format: resolvedFormat,
                     width: rendered.width,
                     height: rendered.height
                 )]
             )
         } catch let error as SwiftMageXError {
-            printer.printError(error)
+            printer.printError(error, command: "text")
             throw ExitCode(error.exitCode)
         }
     }

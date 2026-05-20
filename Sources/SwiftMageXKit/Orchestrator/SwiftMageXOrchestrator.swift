@@ -2,6 +2,25 @@ import CoreGraphics
 import Foundation
 import ImageIO
 
+/// A single image written to disk — what every orchestrator call returns.
+///
+/// Carries enough information for the CLI's JSON output schema (path, format,
+/// dimensions per spec §12) and for the MCP server (milestone 7) to attach
+/// content blocks alongside the path.
+public struct WrittenImage: Sendable, Equatable {
+    public let path: URL
+    public let format: ImageFormat
+    public let width: Int
+    public let height: Int
+
+    public init(path: URL, format: ImageFormat, width: Int, height: Int) {
+        self.path = path
+        self.format = format
+        self.width = width
+        self.height = height
+    }
+}
+
 /// The kit-level entry point shared by the CLI and the MCP server.
 ///
 /// Both frontends are intentionally thin — argument parsing or MCP protocol
@@ -13,8 +32,8 @@ public enum SwiftMageXOrchestrator {
     /// Run a full generation pipeline using the production ``GeminiProvider``
     /// and the process environment for API-key resolution.
     ///
-    /// - Returns: Absolute file URLs of every written image, in the order the
-    ///   provider returned them.
+    /// - Returns: One ``WrittenImage`` per provider output, in the order the
+    ///   provider returned them. Paths are absolute.
     /// - Throws: ``SwiftMageXError/configuration(_:)`` when no API key is set,
     ///   propagating provider / raster / I/O errors otherwise.
     public static func generate(
@@ -24,7 +43,7 @@ public enum SwiftMageXOrchestrator {
         engine: any RasterEngine = CoreImageRasterEngine(),
         timestamp: Date = Date(),
         currentDirectoryPath: String = FileManager.default.currentDirectoryPath
-    ) async throws -> [URL] {
+    ) async throws -> [WrittenImage] {
         guard let apiKey = Configuration.resolvedAPIKey(in: environment) else {
             throw SwiftMageXError.configuration(
                 "missing \(Configuration.EnvironmentKey.primaryAPIKey)"
@@ -51,7 +70,7 @@ public enum SwiftMageXOrchestrator {
         engine: any RasterEngine = CoreImageRasterEngine(),
         timestamp: Date = Date(),
         currentDirectoryPath: String = FileManager.default.currentDirectoryPath
-    ) async throws -> [URL] {
+    ) async throws -> [WrittenImage] {
         let images = try await provider.generate(request)
         guard !images.isEmpty else {
             throw SwiftMageXError.provider("provider returned no images")
@@ -65,7 +84,7 @@ public enum SwiftMageXOrchestrator {
             currentDirectoryPath: currentDirectoryPath
         )
 
-        for (image, url) in zip(images, urls) {
+        return try zip(images, urls).map { (image, url) in
             try writeOne(
                 image: image,
                 to: url,
@@ -74,7 +93,6 @@ public enum SwiftMageXOrchestrator {
                 timestamp: timestamp
             )
         }
-        return urls
     }
 
     // MARK: - Internals
@@ -85,7 +103,7 @@ public enum SwiftMageXOrchestrator {
         request: GenerationRequest,
         engine: any RasterEngine,
         timestamp: Date
-    ) throws {
+    ) throws -> WrittenImage {
         let raster = try decodeProviderImage(image)
         // The seed is recorded as user intent even when the provider did not
         // honor it — see spec §12. `image.seed` may be nil because the
@@ -103,6 +121,12 @@ public enum SwiftMageXOrchestrator {
             format: .png,
             quality: 1.0,
             metadata: metadata
+        )
+        return WrittenImage(
+            path: url,
+            format: .png,
+            width: raster.width,
+            height: raster.height
         )
     }
 

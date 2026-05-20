@@ -51,4 +51,30 @@ extension SwiftMageXError {
         case .raster, .io: return 1
         }
     }
+
+    /// A stable identifier used in the JSON error envelope (spec §12) and in
+    /// MCP tool errors (spec §7). Keep these strings frozen — agents key off
+    /// them when deciding how to react.
+    public var category: String {
+        switch self {
+        case .invalidInput: return "invalid_input"
+        case .provider: return "provider"
+        case .configuration: return "configuration"
+        case .raster: return "raster"
+        case .io: return "io"
+        }
+    }
+
+    /// The human-readable detail attached to this error case. Distinct from
+    /// `description`, which is prefixed with the category for plain-text use.
+    public var message: String {
+        switch self {
+        case .invalidInput(let m),
+             .configuration(let m),
+             .provider(let m),
+             .raster(let m),
+             .io(let m):
+            return m
+        }
+    }
 }
