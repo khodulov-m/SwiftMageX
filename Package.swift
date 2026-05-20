@@ -80,5 +80,17 @@ let package = Package(
                 .product(name: "MCP", package: "swift-sdk"),
             ]
         ),
+
+        // Tests for the CLI frontend's argument-parsing and validation layer.
+        // Run-time behavior is exercised by SwiftMageXKitTests through the
+        // shared orchestrator; this target covers the ArgumentParser surface.
+        .testTarget(
+            name: "swiftmagexTests",
+            dependencies: [
+                "swiftmagex",
+                "SwiftMageXKit",
+                .product(name: "ArgumentParser", package: "swift-argument-parser"),
+            ]
+        ),
     ]
 )
