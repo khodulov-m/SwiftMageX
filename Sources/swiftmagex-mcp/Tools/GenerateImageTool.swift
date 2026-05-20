@@ -1,9 +1,47 @@
 import MCP
+import SwiftMageXKit
 
 /// `generate_image` — mirrors `swiftmagex generate` (spec §6.1, §7).
 enum GenerateImageTool {
     /// MCP tool name.
     static let name = "generate_image"
+
+    /// Typed inputs decoded from the MCP arguments dictionary.
+    struct Input {
+        let prompt: String
+        let size: ImageSize
+        let count: Int
+        let seed: UInt64?
+        let model: String
+        let output: String?
+    }
+
+    /// Default model identifier when the caller does not pass `model`.
+    /// Kept in sync with `GenerateCommand`'s default (spec §8).
+    static let defaultModel = "gemini-2.5-flash-image"
+
+    /// Parses arguments, throwing ``MCPError/invalidParams(_:)`` on schema
+    /// failures (missing keys, wrong types, out-of-range values).
+    static func parse(_ raw: [String: Value]?) throws -> Input {
+        let args = ToolArguments(raw, toolName: name)
+        let prompt = try args.requiredString("prompt")
+        let size = try args.optionalEnum("size", as: ImageSize.self) ?? .square
+        let count = try args.optionalInt("count") ?? 1
+        guard (1...4).contains(count) else {
+            throw MCPError.invalidParams("\(name): 'count' must be between 1 and 4 (got \(count))")
+        }
+        let seed = try args.optionalUInt64("seed")
+        let model = try args.optionalString("model") ?? defaultModel
+        let output = try args.optionalString("output")
+        return Input(
+            prompt: prompt,
+            size: size,
+            count: count,
+            seed: seed,
+            model: model,
+            output: output
+        )
+    }
 
     /// MCP tool descriptor with full input schema.
     static let descriptor = Tool(

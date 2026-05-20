@@ -60,20 +60,15 @@ struct TextCommand: AsyncParsableCommand {
 
     func run() async throws {
         let printer = ResultPrinter(json: globals.json, verbose: globals.verbose)
+
+        // Diagnostic: warn when the source file isn't directly writable (we'll
+        // default to PNG inside the orchestrator).
         let inputURL = URL(
             fileURLWithPath: input,
             relativeTo: URL(fileURLWithPath: FileManager.default.currentDirectoryPath, isDirectory: true)
         ).standardizedFileURL
-
-        guard FileManager.default.fileExists(atPath: inputURL.path) else {
-            let err = SwiftMageXError.io("input file not found: \(inputURL.path)")
-            printer.printError(err, command: "text")
-            throw ExitCode(err.exitCode)
-        }
-
-        let engine = CoreImageRasterEngine()
-        let resolvedFormat = ImageFormat.detect(at: inputURL) ?? .png
-        if ImageFormat.detect(at: inputURL) == nil {
+        if FileManager.default.fileExists(atPath: inputURL.path),
+           ImageFormat.detect(at: inputURL) == nil {
             printer.diagnostic("source format not writable; defaulting output to png")
         }
 
@@ -88,27 +83,18 @@ struct TextCommand: AsyncParsableCommand {
         )
 
         do {
-            let image = try engine.load(from: inputURL)
-            let rendered = try engine.overlayText(image, spec)
-            let outputURL = try OutputPath.resolveSingle(
-                target: output,
-                sourceURL: inputURL,
-                format: resolvedFormat
-            )
-            try engine.write(
-                rendered,
-                to: outputURL,
-                format: resolvedFormat,
-                quality: 0.9,
-                metadata: nil
+            let written = try SwiftMageXOrchestrator.overlayText(
+                input: input,
+                spec: spec,
+                output: output
             )
             printer.printSuccess(
                 command: "text",
                 outputs: [JSONResultEnvelope.Output(
-                    path: outputURL.path,
-                    format: resolvedFormat,
-                    width: rendered.width,
-                    height: rendered.height
+                    path: written.path.path,
+                    format: written.format,
+                    width: written.width,
+                    height: written.height
                 )]
             )
         } catch let error as SwiftMageXError {

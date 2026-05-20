@@ -2,18 +2,18 @@ import Foundation
 import MCP
 import SwiftMageXKit
 
-/// Entry point for `swiftmagex-mcp` — an MCP server over stdio.
+/// Entry point for `swiftmagex-mcp` — an MCP server over stdio (spec §7).
 ///
-/// Spec §7. Boots an MCP `Server`, registers the three tools that mirror the
-/// CLI commands, and waits for the client to close stdin. Tool handlers route
-/// by name and currently return `isError: true` until milestone 7 wires them
-/// to ``SwiftMageXKit``.
+/// Boots an MCP `Server`, registers the three tools that mirror the CLI
+/// commands, and routes each `CallTool` request through ``ToolHandlers``.
+/// The handlers themselves delegate to ``SwiftMageXOrchestrator``, so the MCP
+/// server adds no business logic of its own.
 @main
 struct MCPServerMain {
     static func main() async throws {
         let server = Server(
             name: "swiftmagex-mcp",
-            version: "0.1.0",
+            version: Configuration.toolVersion,
             instructions: """
             SwiftMageX MCP server. Provides three tools mirroring the CLI:
             generate_image, resize_image, overlay_text. Tool results return
@@ -28,18 +28,42 @@ struct MCPServerMain {
         }
 
         await server.withMethodHandler(CallTool.self) { params in
-            // TODO(milestone 7): dispatch to SwiftMageXKit. Inputs are validated
-            // by the per-tool input schemas declared in SwiftMageXTools.
-            switch params.name {
-            case GenerateImageTool.name:
-                return notImplemented(GenerateImageTool.name)
-            case ResizeImageTool.name:
-                return notImplemented(ResizeImageTool.name)
-            case OverlayTextTool.name:
-                return notImplemented(OverlayTextTool.name)
-            default:
+            do {
+                switch params.name {
+                case GenerateImageTool.name:
+                    let provider = try makeGeminiProvider()
+                    return try await ToolHandlers.generate(
+                        arguments: params.arguments,
+                        provider: provider
+                    )
+                case ResizeImageTool.name:
+                    return try ToolHandlers.resize(arguments: params.arguments)
+                case OverlayTextTool.name:
+                    return try ToolHandlers.overlayText(arguments: params.arguments)
+                default:
+                    return CallTool.Result(
+                        content: [.text(
+                            text: "Unknown tool: \(params.name)",
+                            annotations: nil,
+                            _meta: nil
+                        )],
+                        isError: true
+                    )
+                }
+            } catch let error as MCPError {
+                // Schema-level argument problems: bubble up so the SDK can
+                // return a proper JSON-RPC error code.
+                throw error
+            } catch let error as SwiftMageXError {
+                // Defensive — handlers normally catch this themselves and turn
+                // it into `isError: true`. Reach here only if a kit error
+                // escapes the handler boundary.
                 return CallTool.Result(
-                    content: [.text(text: "Unknown tool: \(params.name)", annotations: nil, _meta: nil)],
+                    content: [.text(
+                        text: "[\(error.category)] \(error.message)",
+                        annotations: nil,
+                        _meta: nil
+                    )],
                     isError: true
                 )
             }
@@ -50,15 +74,16 @@ struct MCPServerMain {
         await server.waitUntilCompleted()
     }
 
-    private static func notImplemented(_ toolName: String) -> CallTool.Result {
-        CallTool.Result(
-            content: [.text(
-                text: "\(toolName) is not implemented yet (milestone 7).",
-                annotations: nil,
-                _meta: nil
-            )],
-            isError: true
-        )
+    /// Constructs the production Gemini provider, surfacing a missing API key
+    /// as ``SwiftMageXError/configuration(_:)`` — the same mapping the CLI
+    /// uses, so the calling agent sees a consistent error category (spec §13).
+    private static func makeGeminiProvider() throws -> any ImageProvider {
+        guard let apiKey = Configuration.resolvedAPIKey() else {
+            throw SwiftMageXError.configuration(
+                "missing \(Configuration.EnvironmentKey.primaryAPIKey)"
+            )
+        }
+        return GeminiProvider(apiKey: apiKey)
     }
 }
 

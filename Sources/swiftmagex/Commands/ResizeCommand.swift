@@ -68,48 +68,38 @@ struct ResizeCommand: AsyncParsableCommand {
 
     func run() async throws {
         let printer = ResultPrinter(json: globals.json, verbose: globals.verbose)
-        let inputURL = URL(
-            fileURLWithPath: input,
-            relativeTo: URL(fileURLWithPath: FileManager.default.currentDirectoryPath, isDirectory: true)
-        ).standardizedFileURL
 
-        guard FileManager.default.fileExists(atPath: inputURL.path) else {
-            let err = SwiftMageXError.io("input file not found: \(inputURL.path)")
-            printer.printError(err, command: "resize")
-            throw ExitCode(err.exitCode)
-        }
-
-        let engine = CoreImageRasterEngine()
-        let resolvedFormat = format ?? ImageFormat.detect(at: inputURL) ?? .png
-        if format == nil, let detected = ImageFormat.detect(at: inputURL) {
-            printer.diagnostic("detected source format: \(detected.rawValue)")
-        } else if format == nil {
-            printer.diagnostic("source format not writable; defaulting output to png")
+        // Diagnostic: surface the resolved output format for `--verbose`.
+        // The orchestrator handles the same detection internally; we re-derive
+        // it only to print a friendly hint here.
+        if format == nil {
+            let inputURL = URL(
+                fileURLWithPath: input,
+                relativeTo: URL(fileURLWithPath: FileManager.default.currentDirectoryPath, isDirectory: true)
+            ).standardizedFileURL
+            if let detected = ImageFormat.detect(at: inputURL) {
+                printer.diagnostic("detected source format: \(detected.rawValue)")
+            } else {
+                printer.diagnostic("source format not writable; defaulting output to png")
+            }
         }
 
         do {
-            let image = try engine.load(from: inputURL)
             let spec = ResizeSpec(width: width, height: height, fit: fit)
-            let resized = try engine.resize(image, to: spec)
-            let outputURL = try OutputPath.resolveSingle(
-                target: output,
-                sourceURL: inputURL,
-                format: resolvedFormat
-            )
-            try engine.write(
-                resized,
-                to: outputURL,
-                format: resolvedFormat,
-                quality: quality,
-                metadata: nil
+            let written = try SwiftMageXOrchestrator.resize(
+                input: input,
+                spec: spec,
+                output: output,
+                format: format,
+                quality: quality
             )
             printer.printSuccess(
                 command: "resize",
                 outputs: [JSONResultEnvelope.Output(
-                    path: outputURL.path,
-                    format: resolvedFormat,
-                    width: resized.width,
-                    height: resized.height
+                    path: written.path.path,
+                    format: written.format,
+                    width: written.width,
+                    height: written.height
                 )]
             )
         } catch let error as SwiftMageXError {

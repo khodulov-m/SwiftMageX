@@ -26,8 +26,7 @@ public struct WrittenImage: Sendable, Equatable {
 /// Both frontends are intentionally thin — argument parsing or MCP protocol
 /// only — and dispatch into this enum so the pipeline (provider call →
 /// output-path resolution → metadata embedding → disk write) exists in
-/// exactly one place. Milestone 5 introduces `generate`; milestone 7 adds
-/// `resize` and `overlayText` and migrates the local commands to call here too.
+/// exactly one place.
 public enum SwiftMageXOrchestrator {
     /// Run a full generation pipeline using the production ``GeminiProvider``
     /// and the process environment for API-key resolution.
@@ -95,7 +94,106 @@ public enum SwiftMageXOrchestrator {
         }
     }
 
+    /// Run a single local resize/crop/conversion through the raster engine.
+    ///
+    /// Mirrors `swiftmagex resize` (spec §6.2). `input` is interpreted relative
+    /// to `currentDirectoryPath` when not absolute; `output` may be `nil` (in
+    /// which case the result lands next to the source per spec §6.2).
+    ///
+    /// - Throws: ``SwiftMageXError/io(_:)`` when the input is missing,
+    ///   ``SwiftMageXError/invalidInput(_:)`` for inconsistent spec, and
+    ///   ``SwiftMageXError/raster(_:)`` for pipeline failures.
+    public static func resize(
+        input: String,
+        spec: ResizeSpec,
+        output: String?,
+        format: ImageFormat?,
+        quality: Double,
+        engine: any RasterEngine = CoreImageRasterEngine(),
+        timestamp: Date = Date(),
+        currentDirectoryPath: String = FileManager.default.currentDirectoryPath
+    ) throws -> WrittenImage {
+        let inputURL = absoluteFileURL(input, currentDirectoryPath: currentDirectoryPath)
+        guard FileManager.default.fileExists(atPath: inputURL.path) else {
+            throw SwiftMageXError.io("input file not found: \(inputURL.path)")
+        }
+
+        let resolvedFormat = format ?? ImageFormat.detect(at: inputURL) ?? .png
+        let image = try engine.load(from: inputURL)
+        let resized = try engine.resize(image, to: spec)
+        let outputURL = try OutputPath.resolveSingle(
+            target: output,
+            sourceURL: inputURL,
+            format: resolvedFormat,
+            timestamp: timestamp,
+            currentDirectoryPath: currentDirectoryPath
+        )
+        try engine.write(
+            resized,
+            to: outputURL,
+            format: resolvedFormat,
+            quality: quality,
+            metadata: nil
+        )
+        return WrittenImage(
+            path: outputURL,
+            format: resolvedFormat,
+            width: resized.width,
+            height: resized.height
+        )
+    }
+
+    /// Run a single text overlay through the raster engine.
+    ///
+    /// Mirrors `swiftmagex text` (spec §6.3). Output format follows the source
+    /// file's UTI (PNG by default when the source is unwritable, e.g. HEIC).
+    public static func overlayText(
+        input: String,
+        spec: TextSpec,
+        output: String?,
+        engine: any RasterEngine = CoreImageRasterEngine(),
+        timestamp: Date = Date(),
+        currentDirectoryPath: String = FileManager.default.currentDirectoryPath
+    ) throws -> WrittenImage {
+        let inputURL = absoluteFileURL(input, currentDirectoryPath: currentDirectoryPath)
+        guard FileManager.default.fileExists(atPath: inputURL.path) else {
+            throw SwiftMageXError.io("input file not found: \(inputURL.path)")
+        }
+
+        let resolvedFormat = ImageFormat.detect(at: inputURL) ?? .png
+        let image = try engine.load(from: inputURL)
+        let rendered = try engine.overlayText(image, spec)
+        let outputURL = try OutputPath.resolveSingle(
+            target: output,
+            sourceURL: inputURL,
+            format: resolvedFormat,
+            timestamp: timestamp,
+            currentDirectoryPath: currentDirectoryPath
+        )
+        try engine.write(
+            rendered,
+            to: outputURL,
+            format: resolvedFormat,
+            quality: 0.9,
+            metadata: nil
+        )
+        return WrittenImage(
+            path: outputURL,
+            format: resolvedFormat,
+            width: rendered.width,
+            height: rendered.height
+        )
+    }
+
     // MARK: - Internals
+
+    private static func absoluteFileURL(
+        _ raw: String,
+        currentDirectoryPath: String
+    ) -> URL {
+        let cwd = URL(fileURLWithPath: currentDirectoryPath, isDirectory: true)
+        return URL(fileURLWithPath: raw, relativeTo: cwd).standardizedFileURL
+    }
 
     private static func writeOne(
         image: GeneratedImage,

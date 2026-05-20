@@ -69,5 +69,16 @@ let package = Package(
             name: "SwiftMageXKitTests",
             dependencies: ["SwiftMageXKit"]
         ),
+
+        // Tests for the MCP server's tool dispatch layer. Drives each tool
+        // handler in-process; does not boot a transport.
+        .testTarget(
+            name: "swiftmagexMCPTests",
+            dependencies: [
+                "swiftmagex-mcp",
+                "SwiftMageXKit",
+                .product(name: "MCP", package: "swift-sdk"),
+            ]
+        ),
     ]
 )
