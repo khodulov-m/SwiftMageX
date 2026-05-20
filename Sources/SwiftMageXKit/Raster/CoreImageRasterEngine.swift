@@ -239,8 +239,6 @@ public struct CoreImageRasterEngine: RasterEngine {
             properties[kCGImageDestinationLossyCompressionQuality] = quality
         }
 
-        // Metadata embedding lands in milestone 5; the parameter is accepted
-        // today so the surface is stable.
         if let metadata = metadata {
             mergeMetadata(metadata, into: &properties, format: format)
         }
@@ -398,27 +396,50 @@ public struct CoreImageRasterEngine: RasterEngine {
         }
     }
 
+    /// Pack the structured metadata into a single JSON object — the same shape
+    /// for both formats so a reader can parse it without caring whether it's
+    /// PNG or JPEG.
+    ///
+    /// ImageIO only surfaces a fixed set of documented keys back through
+    /// `kCGImagePropertyPNGDictionary` on read; arbitrary custom keys are
+    /// silently dropped. So the canonical home is a standard text slot
+    /// (`kCGImagePropertyPNGDescription` for PNG, `kCGImagePropertyExifUserComment`
+    /// for JPEG) with a JSON payload that re-parses cleanly.
     private func mergeMetadata(
         _ metadata: ImageMetadata,
         into properties: inout [CFString: Any],
         format: ImageFormat
     ) {
-        // Milestone 5 owns the full embedding; today the call site stays stable
-        // and PNGs gain a best-effort tEXt dictionary.
-        guard format == .png else { return }
-        var png: [CFString: Any] = (properties[kCGImagePropertyPNGDictionary] as? [CFString: Any]) ?? [:]
-        if let prompt = metadata.prompt {
-            png["Prompt" as CFString] = prompt
+        let timestamp = ISO8601DateFormatter().string(from: metadata.timestamp)
+        var payload: [String: Any] = [
+            "timestamp": timestamp,
+            "toolVersion": metadata.toolVersion,
+        ]
+        if let prompt = metadata.prompt { payload["prompt"] = prompt }
+        if let model = metadata.model { payload["model"] = model }
+        if let seed = metadata.seed { payload["seed"] = String(seed) }
+        guard let json = try? JSONSerialization.data(withJSONObject: payload, options: [.sortedKeys]),
+              let blob = String(data: json, encoding: .utf8) else {
+            return
         }
-        if let model = metadata.model {
-            png["Model" as CFString] = model
+        let software = "swiftmagex/\(metadata.toolVersion)"
+
+        switch format {
+        case .png:
+            var png: [CFString: Any] = (properties[kCGImagePropertyPNGDictionary] as? [CFString: Any]) ?? [:]
+            png[kCGImagePropertyPNGDescription] = blob
+            png[kCGImagePropertyPNGSoftware] = software
+            properties[kCGImagePropertyPNGDictionary] = png
+
+        case .jpeg:
+            var exif: [CFString: Any] = (properties[kCGImagePropertyExifDictionary] as? [CFString: Any]) ?? [:]
+            exif[kCGImagePropertyExifUserComment] = blob
+            properties[kCGImagePropertyExifDictionary] = exif
+
+            var tiff: [CFString: Any] = (properties[kCGImagePropertyTIFFDictionary] as? [CFString: Any]) ?? [:]
+            tiff[kCGImagePropertyTIFFSoftware] = software
+            properties[kCGImagePropertyTIFFDictionary] = tiff
         }
-        if let seed = metadata.seed {
-            png["Seed" as CFString] = String(seed)
-        }
-        png["Timestamp" as CFString] = ISO8601DateFormatter().string(from: metadata.timestamp)
-        png["ToolVersion" as CFString] = metadata.toolVersion
-        properties[kCGImagePropertyPNGDictionary] = png
     }
 }
 

@@ -44,14 +44,34 @@ struct GenerateCommand: AsyncParsableCommand {
     }
 
     func run() async throws {
-        // TODO(milestone 5): build a GenerationRequest, resolve the API key via
-        // Configuration, call GeminiProvider.generate, then write each result
-        // via CoreImageRasterEngine with embedded ImageMetadata. Honor
-        // globals.json / globals.verbose via ResultPrinter.
-        FileHandle.standardError.write(Data(
-            "swiftmagex generate is not implemented yet (milestone 5).\n".utf8
-        ))
-        throw ExitCode(1)
+        let printer = ResultPrinter(json: globals.json, verbose: globals.verbose)
+        let request = GenerationRequest(
+            prompt: prompt,
+            size: size,
+            count: count,
+            seed: seed,
+            model: model
+        )
+        let outputTarget = output.isEmpty ? nil : output
+
+        do {
+            let urls = try await SwiftMageXOrchestrator.generate(
+                request: request,
+                output: outputTarget
+            )
+            let outputs = urls.map { url in
+                SuccessOutput(path: url, format: .png, width: nil, height: nil)
+            }
+            printer.printSuccess(
+                command: "generate",
+                outputs: outputs,
+                provider: "gemini",
+                model: model
+            )
+        } catch let error as SwiftMageXError {
+            printer.printError(error)
+            throw ExitCode(error.exitCode)
+        }
     }
 }
 
