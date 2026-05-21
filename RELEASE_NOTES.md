@@ -1,4 +1,32 @@
-# SwiftMageX v0.1.0
+# SwiftMageX
+
+## Post-0.1.0 — Image model switching
+
+Added a second provider so `--model` (and the MCP `model` argument) can target
+both Google AI image families with one binary:
+
+- New `ImagenProvider` speaks the Imagen `:predict` shape; the existing
+  `GeminiProvider` keeps speaking `:generateContent`.
+- New `ModelCatalog` is the single source of truth for built-in model IDs and
+  family routing; `SwiftMageXOrchestrator.makeProvider(for:apiKey:)` dispatches
+  on it. Unknown IDs fall back to the `imagen-`/`gemini-` prefix.
+- Built-in model list:
+  - Gemini: `gemini-2.5-flash-image` (default), `gemini-3-pro-image-preview`,
+    `gemini-3.1-flash-image-preview`.
+  - Imagen: `imagen-4.0-generate-001`, `imagen-4.0-fast-generate-001`,
+    `imagen-4.0-ultra-generate-001`.
+- MCP `generate_image` schema gained an `enum` of supported models so clients
+  can render a dropdown. CLI `--model` help lists the same set.
+- Imagen multi-image is one `:predict` call with `sampleCount: count` (Gemini
+  still fans out N parallel calls). `imagen-*-ultra-*` caps `sampleCount` at 1
+  server-side — overrun surfaces as the standard `[provider]` error.
+- Same `SWIFTMAGEX_GEMINI_API_KEY` / `GEMINI_API_KEY` works for both families;
+  same 429 backoff (1 s → 16 s, ×5) and same exit codes apply.
+
+This is a divergence from spec §8 (originally Gemini-only) — the spec stays
+frozen as the 0.1 blueprint; see CLAUDE.md for the updated provider section.
+
+# v0.1.0
 
 First release of the 0.1 MVP — three CLI commands, one Gemini provider, and an
 MCP server that exposes the same capabilities to AI agents. macOS arm64 only.

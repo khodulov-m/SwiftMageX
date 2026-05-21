@@ -31,9 +31,9 @@ Frontends own *only* their interface concern (argparsing/output, or MCP protocol
 
 `generate` uses both `ImageProvider` (network) and `RasterEngine` (write file + embed metadata). `resize` and `text` use only `RasterEngine`.
 
-### Protocols are abstractions for testability, not for plurality (yet)
+### Protocols are abstractions for testability — keep additions concrete
 
-In 0.1 each protocol has exactly **one** implementation (`GeminiProvider`, `CoreImageRasterEngine`). The protocols exist so command logic can be exercised against `MockImageProvider` / `MockHTTPClient` without burning Gemini quota. Don't add speculative second implementations; the spec defers Ollama/ComfyUI to 0.2.
+`RasterEngine` still has exactly one implementation (`CoreImageRasterEngine`). `ImageProvider` now has two: `GeminiProvider` (`:generateContent`) and `ImagenProvider` (`:predict`). Both Google AI shapes share host + auth + retry policy but differ enough in request/response that a single class would be all branches. Routing between them lives in `ModelCatalog` (model id → family) and `SwiftMageXOrchestrator.makeProvider(for:apiKey:)` — add a new model id to the catalog, not a new provider, unless the wire shape genuinely differs. The protocols still exist primarily for testability against `MockImageProvider` / `MockHTTPClient`; the spec defers Ollama/ComfyUI to 0.2.
 
 ### Dependency budget is a hard rule
 
@@ -54,11 +54,24 @@ These are easy to get subtly wrong if you're modifying the code. Cross-check aga
 - **429 retry policy**: up to 5 retries, exponential backoff starting at 1 s, doubling. After exhaustion → exit code 3. (§13)
 - **Exit codes**: 0 success, 1 unexpected, 2 invalid input, 3 provider/API, 4 config (missing key). MCP tool errors must map to the same semantic categories. (§13)
 - **`--count` cap**: 1–4. (§6.1, §17)
-- **Default model**: `gemini-2.5-flash-image` (stable). `gemini-3.1-flash-image-preview` is reachable via `--model` but is preview-quality. (§8)
+- **Default model**: `gemini-2.5-flash-image` (stable). Built-in alternates listed in `ModelCatalog.all` — Gemini family (`gemini-3-pro-image-preview`, `gemini-3.1-flash-image-preview`) and Imagen family (`imagen-4.0-generate-001`, `imagen-4.0-fast-generate-001`, `imagen-4.0-ultra-generate-001`). Unknown ids route by `imagen-`/`gemini-` prefix. (§8, post-0.1)
 
-## Gemini API specifics
+## Google AI image API specifics
 
-- Endpoint: `POST https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent`
-- Auth header: `x-goog-api-key`
-- Response: image is base64 in `candidates[].content.parts[].inlineData` — decode to `Data` inside `GeminiProvider`.
-- All Gemini-shaped code stays inside `GeminiProvider` so API changes are local. Don't leak Gemini types out of `Providers/`.
+Both providers hit `generativelanguage.googleapis.com` with the same `x-goog-api-key` header and the same 429 backoff (1 s → 16 s, ×5). What differs is the per-call shape — keep each shape isolated inside its provider so API changes stay local.
+
+### Gemini family (`GeminiProvider`)
+
+- Endpoint: `POST /v1beta/models/{model}:generateContent`
+- Request: `contents: [{role:"user", parts:[{text}]}], generationConfig: { responseModalities: ["IMAGE"] }`
+- Response: base64 image in `candidates[].content.parts[].inlineData` — decode to `Data` inside `GeminiProvider`.
+- Multi-image: `--count > 1` is N parallel calls (the API takes one image per call).
+
+### Imagen family (`ImagenProvider`)
+
+- Endpoint: `POST /v1beta/models/{model}:predict`
+- Request: `instances: [{prompt}], parameters: { sampleCount, aspectRatio }`. `aspectRatio` is `"1:1"` / `"9:16"` / `"16:9"` derived from `ImageSize`.
+- Response: base64 images in `predictions[].bytesBase64Encoded` (one prediction per `sampleCount`).
+- Multi-image: a single `:predict` call with `sampleCount: count`. `imagen-*-ultra-*` caps `sampleCount` at 1 server-side; overrun surfaces as HTTP 400 mapped to `[provider]`.
+
+Don't leak Gemini- or Imagen-shaped types out of `Providers/`; the orchestrator and frontends only see `GenerationRequest` / `GeneratedImage`.

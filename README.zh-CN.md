@@ -3,7 +3,7 @@
 [English](README.md) · [Español](README.es.md) · [Français](README.fr.md) · [Deutsch](README.de.md) · [简体中文](README.zh-CN.md) · [日本語](README.ja.md) · [한국어](README.ko.md) · [Português (BR)](README.pt-BR.md) · [Italiano](README.it.md) · [Русский](README.ru.md)
 
 仅 macOS 的图像生成与处理 CLI。SwiftMageX 是一个*编排器*:调用
-Gemini API 进行图像生成,并使用 CoreImage / CoreText / ImageIO 完成
+Google AI 图像 API(Gemini 或 Imagen)进行图像生成,并使用 CoreImage / CoreText / ImageIO 完成
 本地光栅操作(缩放、文字叠加),全部封装在一个仅有两个外部依赖的小
 Swift 包中。同一个核心库还驱动一个 Model Context Protocol 服务器
 (`swiftmagex-mcp`),让 AI 代理可以把这些能力当作工具来调用。
@@ -15,9 +15,9 @@ Swift 包中。同一个核心库还驱动一个 Model Context Protocol 服务�
 
 - 运行在 Apple silicon(arm64)上的 macOS 14+
 - Swift 6.0+ 工具链(Xcode 16+)——仅在从源码构建时需要
-- 用于 `generate` 命令的 Gemini API 密钥,写入
-  `SWIFTMAGEX_GEMINI_API_KEY`(或 `GEMINI_API_KEY`)。`resize` 与
-  `text` 不需要密钥。
+- 用于 `generate` 命令的 Google AI API 密钥,写入
+  `SWIFTMAGEX_GEMINI_API_KEY`(或 `GEMINI_API_KEY`)——同一个密钥
+  适用于 Gemini 和 Imagen 模型。`resize` 与 `text` 不需要密钥。
 
 ## 安装
 
@@ -87,7 +87,7 @@ export GEMINI_API_KEY="…"
 `--json` 输出和 MCP 工具返回的路径**始终是绝对路径**——调用方代理
 无需知道当前工作目录。
 
-### `swiftmagex generate` — 通过 Gemini 文生图
+### `swiftmagex generate` — 通过 Gemini 或 Imagen 文生图
 
 ```
 swiftmagex generate <prompt> [选项]
@@ -100,7 +100,7 @@ swiftmagex generate <prompt> [选项]
 | `-s`、`--size <square\|portrait\|landscape>` | `square` | 比例提示,实际分辨率取决于模型。 |
 | `-n`、`--count <1–4>` | `1` | 变体数量,每个变体一次独立请求。 |
 | `--seed <uint64>` | — | 即便提供商忽略,也会写入元数据。 |
-| `--model <id>` | `gemini-2.5-flash-image` | 预览质量可使用 `gemini-3.1-flash-image-preview`。 |
+| `--model <id>` | `gemini-2.5-flash-image` | 内置:Gemini 系列(`gemini-2.5-flash-image`、`gemini-3-pro-image-preview`、`gemini-3.1-flash-image-preview`)与 Imagen 系列(`imagen-4.0-generate-001`、`imagen-4.0-fast-generate-001`、`imagen-4.0-ultra-generate-001`)。未知 ID 按 `imagen-`/`gemini-` 前缀路由。 |
 
 ```sh
 # 输出单张到当前目录
@@ -282,7 +282,8 @@ claude mcp add -s user swiftmagex /usr/local/bin/swiftmagex-mcp \
 
 ## 范围与状态
 
-这是 0.1 MVP——三个命令、一个提供商(Gemini)、一个 MCP 服务器。
+这是 0.1 MVP——三个命令、两个 Google AI 图像提供商(Gemini 与
+Imagen)、一个 MCP 服务器。
 超出该边界的内容均推迟,详见规范
 [§2 Scope of version 0.1](SwiftMageX-MVP-0.1-spec.md#2-scope-of-version-01)
 (edit / inpainting、本地提供商、Homebrew 分发、配置文件、

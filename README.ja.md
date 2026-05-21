@@ -3,7 +3,7 @@
 [English](README.md) · [Español](README.es.md) · [Français](README.fr.md) · [Deutsch](README.de.md) · [简体中文](README.zh-CN.md) · [日本語](README.ja.md) · [한국어](README.ko.md) · [Português (BR)](README.pt-BR.md) · [Italiano](README.it.md) · [Русский](README.ru.md)
 
 macOS 専用の画像生成・処理 CLI。SwiftMageX は*オーケストレータ*で
-あり、生成は Gemini API を呼び出し、ローカルなラスター処理(リ
+あり、生成は Google AI 画像 API(Gemini または Imagen)を呼び出し、ローカルなラスター処理(リ
 サイズ、テキスト合成)は CoreImage / CoreText / ImageIO で実行し
 ます。すべてが外部依存ちょうど 2 つの小さな Swift パッケージに収
 まっています。同じコアライブラリが Model Context Protocol サーバ
@@ -18,9 +18,10 @@ macOS 専用の画像生成・処理 CLI。SwiftMageX は*オーケストレー�
 - Apple silicon(arm64)上の macOS 14+
 - Swift 6.0+ ツールチェーン(Xcode 16+) — ソースからビルドする
   ときのみ必要
-- `generate` コマンド用の Gemini API キーを
+- `generate` コマンド用の Google AI API キーを
   `SWIFTMAGEX_GEMINI_API_KEY`(または `GEMINI_API_KEY`)に設定。
-  `resize` と `text` にキーは不要です。
+  Gemini と Imagen の両方の生成に使えます。`resize` と `text` に
+  キーは不要です。
 
 ## インストール
 
@@ -93,7 +94,7 @@ export GEMINI_API_KEY="…"
 **絶対パス**です。エージェントは作業ディレクトリを知らなくて構い
 ません。
 
-### `swiftmagex generate` — Gemini によるテキストから画像
+### `swiftmagex generate` — Gemini または Imagen によるテキストから画像
 
 ```
 swiftmagex generate <prompt> [オプション]
@@ -106,7 +107,7 @@ swiftmagex generate <prompt> [オプション]
 | `-s`、`--size <square\|portrait\|landscape>` | `square` | アスペクト比のヒント。実際の解像度はモデル次第。 |
 | `-n`、`--count <1–4>` | `1` | バリアント数。各バリアントは別リクエスト。 |
 | `--seed <uint64>` | — | プロバイダが無視してもメタデータに記録します。 |
-| `--model <id>` | `gemini-2.5-flash-image` | プレビュー品質は `gemini-3.1-flash-image-preview`。 |
+| `--model <id>` | `gemini-2.5-flash-image` | 組み込み: Gemini ファミリ(`gemini-2.5-flash-image`、`gemini-3-pro-image-preview`、`gemini-3.1-flash-image-preview`)と Imagen ファミリ(`imagen-4.0-generate-001`、`imagen-4.0-fast-generate-001`、`imagen-4.0-ultra-generate-001`)。未知の ID は `imagen-` / `gemini-` プレフィックスでルーティングされます。 |
 
 ```sh
 # 1 枚を現在のディレクトリに出力
@@ -294,8 +295,8 @@ claude mcp add -s user swiftmagex /usr/local/bin/swiftmagex-mcp \
 
 ## スコープと状態
 
-これは 0.1 MVP — 3 つのコマンド、1 つのプロバイダ(Gemini)、
-1 つの MCP サーバです。それ以外はすべて延期されています。スコープ
+これは 0.1 MVP — 3 つのコマンド、2 つの Google AI 画像プロバイダ
+(Gemini と Imagen)、1 つの MCP サーバです。それ以外はすべて延期されています。スコープ
 外の項目一覧は仕様
 [§2 Scope of version 0.1](SwiftMageX-MVP-0.1-spec.md#2-scope-of-version-01)
 を参照(edit / インペイント、ローカルプロバイダ、Homebrew 配布、

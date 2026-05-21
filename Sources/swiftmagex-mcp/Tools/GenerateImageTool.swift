@@ -18,7 +18,7 @@ enum GenerateImageTool {
 
     /// Default model identifier when the caller does not pass `model`.
     /// Kept in sync with `GenerateCommand`'s default (spec §8).
-    static let defaultModel = "gemini-2.5-flash-image"
+    static let defaultModel = ModelCatalog.defaultModelID
 
     /// Parses arguments, throwing ``MCPError/invalidParams(_:)`` on schema
     /// failures (missing keys, wrong types, out-of-range values).
@@ -46,7 +46,7 @@ enum GenerateImageTool {
     /// MCP tool descriptor with full input schema.
     static let descriptor = Tool(
         name: name,
-        description: "Generate an image from a text prompt using the Gemini API. Returns absolute paths and the image content.",
+        description: "Generate an image from a text prompt using a Google AI image model (Gemini or Imagen). Returns absolute paths and the image content.",
         inputSchema: .object([
             "type": .string("object"),
             "properties": .object([
@@ -72,7 +72,8 @@ enum GenerateImageTool {
                 ]),
                 "model": .object([
                     "type": .string("string"),
-                    "description": .string("Gemini model identifier. Defaults to gemini-2.5-flash-image."),
+                    "enum": .array(ModelCatalog.all.map { .string($0.id) }),
+                    "description": .string("Image model identifier. Defaults to \(defaultModel). Gemini (`gemini-*`) and Imagen (`imagen-*`) families are routed automatically."),
                 ]),
                 "output": .object([
                     "type": .string("string"),

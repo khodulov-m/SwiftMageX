@@ -29,8 +29,14 @@ struct GenerateCommand: AsyncParsableCommand {
     @Option(name: .long, help: "Seed for reproducibility. Support is provider-dependent.")
     var seed: UInt64?
 
-    @Option(name: .long, help: "Gemini model identifier.")
-    var model: String = "gemini-2.5-flash-image"
+    @Option(
+        name: .long,
+        help: ArgumentHelp(
+            "Image model identifier. Built-in: \(ModelCatalog.all.map(\.id).joined(separator: ", ")). Unknown IDs route by `imagen-`/`gemini-` prefix.",
+            valueName: "model"
+        )
+    )
+    var model: String = ModelCatalog.defaultModelID
 
     @OptionGroup var globals: GlobalOptions
 
@@ -70,7 +76,7 @@ struct GenerateCommand: AsyncParsableCommand {
             printer.printSuccess(
                 command: "generate",
                 outputs: outputs,
-                provider: "gemini",
+                provider: ModelCatalog.family(for: model).rawValue,
                 model: model
             )
         } catch let error as SwiftMageXError {

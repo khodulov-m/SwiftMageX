@@ -48,7 +48,7 @@ public enum SwiftMageXOrchestrator {
                 "missing \(Configuration.EnvironmentKey.primaryAPIKey)"
             )
         }
-        let provider = GeminiProvider(apiKey: apiKey)
+        let provider = makeProvider(for: request.model, apiKey: apiKey)
         return try await generate(
             request: request,
             output: output,
@@ -183,6 +183,18 @@ public enum SwiftMageXOrchestrator {
             width: rendered.width,
             height: rendered.height
         )
+    }
+
+    /// Constructs the right provider for `model` using ``ModelCatalog`` to
+    /// pick between Gemini's `:generateContent` shape and Imagen's `:predict`.
+    /// Exposed so the MCP frontend can share the same routing.
+    public static func makeProvider(for model: String, apiKey: String) -> any ImageProvider {
+        switch ModelCatalog.family(for: model) {
+        case .gemini:
+            return GeminiProvider(apiKey: apiKey)
+        case .imagen:
+            return ImagenProvider(apiKey: apiKey)
+        }
     }
 
     // MARK: - Internals

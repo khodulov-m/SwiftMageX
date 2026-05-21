@@ -3,7 +3,7 @@
 [English](README.md) · [Español](README.es.md) · [Français](README.fr.md) · [Deutsch](README.de.md) · [简体中文](README.zh-CN.md) · [日本語](README.ja.md) · [한국어](README.ko.md) · [Português (BR)](README.pt-BR.md) · [Italiano](README.it.md) · [Русский](README.ru.md)
 
 CLI für Bildgenerierung und Bildverarbeitung — nur für macOS. SwiftMageX
-ist ein *Orchestrator*: er ruft die Gemini-API zur Generierung auf und
+ist ein *Orchestrator*: er ruft die Google-AI-Bild-API (Gemini oder Imagen) zur Generierung auf und
 führt lokale Rasteroperationen (Resize, Text-Overlay) mit CoreImage /
 CoreText / ImageIO durch — alles aus einem kleinen Swift-Paket mit
 genau zwei externen Abhängigkeiten. Dieselbe Kernbibliothek bedient
@@ -17,9 +17,10 @@ was in v0.1.0 ausgeliefert wurde, steht in `RELEASE_NOTES.md`.
 
 - macOS 14+ auf Apple silicon (arm64)
 - Swift-6.0+-Toolchain (Xcode 16+) — nur für den Bau aus den Quellen
-- Ein Gemini-API-Key in `SWIFTMAGEX_GEMINI_API_KEY` (oder
-  `GEMINI_API_KEY`) für den `generate`-Befehl. `resize` und `text`
-  benötigen keinen Key.
+- Ein Google-AI-API-Key in `SWIFTMAGEX_GEMINI_API_KEY` (oder
+  `GEMINI_API_KEY`) für den `generate`-Befehl — funktioniert für
+  Gemini- und Imagen-Modelle. `resize` und `text` benötigen keinen
+  Key.
 
 ## Installation
 
@@ -93,7 +94,7 @@ Ausgabepfade sind in `--json`-Ausgabe und in MCP-Tool-Ergebnissen
 immer **absolut** — Agenten müssen das Arbeitsverzeichnis nicht
 kennen.
 
-### `swiftmagex generate` — Text-zu-Bild via Gemini
+### `swiftmagex generate` — Text-zu-Bild via Gemini oder Imagen
 
 ```
 swiftmagex generate <prompt> [optionen]
@@ -106,7 +107,7 @@ swiftmagex generate <prompt> [optionen]
 | `-s`, `--size <square\|portrait\|landscape>` | `square` | Seitenverhältnis-Hinweis. Tatsächliche Auflösung hängt vom Modell ab. |
 | `-n`, `--count <1–4>` | `1` | Anzahl Varianten. Jede Variante ist eine eigene Anfrage. |
 | `--seed <uint64>` | — | Wird in Metadaten festgehalten, auch wenn der Provider den Seed ignoriert. |
-| `--model <id>` | `gemini-2.5-flash-image` | `gemini-3.1-flash-image-preview` für Preview-Qualität. |
+| `--model <id>` | `gemini-2.5-flash-image` | Eingebaut: Gemini-Familie (`gemini-2.5-flash-image`, `gemini-3-pro-image-preview`, `gemini-3.1-flash-image-preview`) und Imagen-Familie (`imagen-4.0-generate-001`, `imagen-4.0-fast-generate-001`, `imagen-4.0-ultra-generate-001`). Unbekannte IDs werden per `imagen-`/`gemini-`-Präfix geroutet. |
 
 ```sh
 # Einzelnes Bild ins aktuelle Verzeichnis
@@ -293,8 +294,8 @@ er landet nicht im allgemeinen Environment des Clients.
 
 ## Umfang und Status
 
-Dies ist das 0.1 MVP — drei Befehle, ein Provider (Gemini), ein
-MCP-Server. Alles außerhalb dieser Grenze ist aufgeschoben; die
+Dies ist das 0.1 MVP — drei Befehle, zwei Google-AI-Bild-Provider
+(Gemini und Imagen), ein MCP-Server. Alles außerhalb dieser Grenze ist aufgeschoben; die
 vollständige Out-of-Scope-Liste findet sich in spec
 [§2 Scope of version 0.1](SwiftMageX-MVP-0.1-spec.md#2-scope-of-version-01)
 (edit / Inpainting, lokale Provider, Homebrew-Distribution,

@@ -3,7 +3,7 @@
 [English](README.md) · [Español](README.es.md) · [Français](README.fr.md) · [Deutsch](README.de.md) · [简体中文](README.zh-CN.md) · [日本語](README.ja.md) · [한국어](README.ko.md) · [Português (BR)](README.pt-BR.md) · [Italiano](README.it.md) · [Русский](README.ru.md)
 
 macOS 전용 이미지 생성/처리 CLI. SwiftMageX는 *오케스트레이터*로,
-이미지 생성은 Gemini API에 위임하고 리사이즈와 텍스트 오버레이
+이미지 생성은 Google AI 이미지 API(Gemini 또는 Imagen)에 위임하고 리사이즈와 텍스트 오버레이
 같은 로컬 래스터 작업은 CoreImage / CoreText / ImageIO로 처리합
 니다. 모든 것이 외부 의존성이 정확히 두 개뿐인 작은 Swift 패키지
 안에 들어 있습니다. 같은 코어 라이브러리가 Model Context
@@ -17,9 +17,10 @@ Protocol 서버(`swiftmagex-mcp`)를 구동하므로, AI 에이전트도 동일
 
 - Apple silicon(arm64)에서 동작하는 macOS 14+
 - Swift 6.0+ 툴체인(Xcode 16+) — 소스 빌드 시에만 필요
-- `generate` 명령에 사용할 Gemini API 키를
+- `generate` 명령에 사용할 Google AI API 키를
   `SWIFTMAGEX_GEMINI_API_KEY`(또는 `GEMINI_API_KEY`)에 설정.
-  `resize`와 `text`는 키가 필요 없습니다.
+  Gemini와 Imagen 모델 모두에 사용됩니다. `resize`와 `text`는 키가
+  필요 없습니다.
 
 ## 설치
 
@@ -91,7 +92,7 @@ export GEMINI_API_KEY="…"
 `--json` 출력과 MCP 도구 결과의 출력 경로는 항상 **절대 경로**
 입니다. 에이전트가 작업 디렉터리를 알 필요가 없습니다.
 
-### `swiftmagex generate` — Gemini로 텍스트→이미지
+### `swiftmagex generate` — Gemini 또는 Imagen으로 텍스트→이미지
 
 ```
 swiftmagex generate <prompt> [옵션]
@@ -104,7 +105,7 @@ swiftmagex generate <prompt> [옵션]
 | `-s`, `--size <square\|portrait\|landscape>` | `square` | 비율 힌트. 실제 해상도는 모델에 따라 달라집니다. |
 | `-n`, `--count <1–4>` | `1` | 변형 개수. 각 변형은 개별 요청. |
 | `--seed <uint64>` | — | 공급자가 무시해도 메타데이터에 기록됩니다. |
-| `--model <id>` | `gemini-2.5-flash-image` | 프리뷰 품질은 `gemini-3.1-flash-image-preview`. |
+| `--model <id>` | `gemini-2.5-flash-image` | 내장: Gemini 계열(`gemini-2.5-flash-image`, `gemini-3-pro-image-preview`, `gemini-3.1-flash-image-preview`)과 Imagen 계열(`imagen-4.0-generate-001`, `imagen-4.0-fast-generate-001`, `imagen-4.0-ultra-generate-001`). 알 수 없는 ID는 `imagen-` / `gemini-` 접두사로 라우팅됩니다. |
 
 ```sh
 # 현재 디렉터리에 1장
@@ -288,8 +289,8 @@ claude mcp add -s user swiftmagex /usr/local/bin/swiftmagex-mcp \
 
 ## 범위와 상태
 
-이번은 0.1 MVP — 세 가지 명령, 한 공급자(Gemini), 한 MCP 서버입
-니다. 그 경계 밖은 모두 미루어졌으며 전체 제외 항목은 스펙
+이번은 0.1 MVP — 세 가지 명령, 두 개의 Google AI 이미지 공급자
+(Gemini와 Imagen), 한 MCP 서버입니다. 그 경계 밖은 모두 미루어졌으며 전체 제외 항목은 스펙
 [§2 Scope of version 0.1](SwiftMageX-MVP-0.1-spec.md#2-scope-of-version-01)
 을 참조하세요(edit / 인페인팅, 로컬 공급자, Homebrew 배포,
 구성 파일, Keychain 등).

@@ -3,11 +3,12 @@
 [English](README.md) · [Español](README.es.md) · [Français](README.fr.md) · [Deutsch](README.de.md) · [简体中文](README.zh-CN.md) · [日本語](README.ja.md) · [한국어](README.ko.md) · [Português (BR)](README.pt-BR.md) · [Italiano](README.it.md) · [Русский](README.ru.md)
 
 A macOS-only image generation and processing CLI. SwiftMageX is an
-*orchestrator* — it calls the Gemini API for generation and performs local
-raster operations (resize, text overlay) with CoreImage / CoreText / ImageIO,
-all from a small Swift package with exactly two external dependencies. The
-same core library backs a Model Context Protocol server (`swiftmagex-mcp`) so
-AI agents can use the same capabilities as tools.
+*orchestrator* — it calls the Google AI image API (Gemini or Imagen) for
+generation and performs local raster operations (resize, text overlay) with
+CoreImage / CoreText / ImageIO, all from a small Swift package with exactly
+two external dependencies. The same core library backs a Model Context
+Protocol server (`swiftmagex-mcp`) so AI agents can use the same capabilities
+as tools.
 
 See `SwiftMageX-MVP-0.1-spec.md` for the authoritative specification and
 `RELEASE_NOTES.md` for what shipped in v0.1.0.
@@ -16,8 +17,9 @@ See `SwiftMageX-MVP-0.1-spec.md` for the authoritative specification and
 
 - macOS 14+ on Apple silicon (arm64)
 - Swift 6.0+ toolchain (Xcode 16+) — only required to build from source
-- A Gemini API key in `SWIFTMAGEX_GEMINI_API_KEY` (or `GEMINI_API_KEY`) for
-  the `generate` command. `resize` and `text` need no key.
+- A Google AI API key in `SWIFTMAGEX_GEMINI_API_KEY` (or `GEMINI_API_KEY`)
+  for the `generate` command — used for both Gemini and Imagen models.
+  `resize` and `text` need no key.
 
 ## Installation
 
@@ -88,7 +90,7 @@ Three subcommands, all sharing the same global flags:
 Output file paths are always **absolute** in `--json` output and in MCP tool
 results — agents don't need to know the working directory.
 
-### `swiftmagex generate` — text-to-image via Gemini
+### `swiftmagex generate` — text-to-image via Gemini or Imagen
 
 ```
 swiftmagex generate <prompt> [options]
@@ -101,7 +103,7 @@ swiftmagex generate <prompt> [options]
 | `-s`, `--size <square\|portrait\|landscape>` | `square` | Aspect-ratio hint. Actual resolution depends on the model. |
 | `-n`, `--count <1–4>` | `1` | Number of variants. Each variant is a separate request. |
 | `--seed <uint64>` | — | Recorded in metadata even when the provider ignores it. |
-| `--model <id>` | `gemini-2.5-flash-image` | Use `gemini-3.1-flash-image-preview` for preview-quality. |
+| `--model <id>` | `gemini-2.5-flash-image` | Built-ins: Gemini family (`gemini-2.5-flash-image`, `gemini-3-pro-image-preview`, `gemini-3.1-flash-image-preview`) and Imagen family (`imagen-4.0-generate-001`, `imagen-4.0-fast-generate-001`, `imagen-4.0-ultra-generate-001`). Unknown IDs route by `imagen-`/`gemini-` prefix. |
 
 ```sh
 # Single image to the current directory
@@ -284,8 +286,9 @@ disk in the client's general environment.
 
 ## Scope and status
 
-This is the 0.1 MVP — three commands, one provider (Gemini), one MCP server.
-Anything outside that boundary is deferred; see spec
+This is the 0.1 MVP — three commands, two Google AI image providers
+(Gemini and Imagen), one MCP server. Anything outside that boundary is
+deferred; see spec
 [§2 Scope of version 0.1](SwiftMageX-MVP-0.1-spec.md#2-scope-of-version-01)
 for the full out-of-scope list (edit / inpainting, local providers, Homebrew
 distribution, config file, Keychain, …).

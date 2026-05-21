@@ -3,7 +3,7 @@
 [English](README.md) · [Español](README.es.md) · [Français](README.fr.md) · [Deutsch](README.de.md) · [简体中文](README.zh-CN.md) · [日本語](README.ja.md) · [한국어](README.ko.md) · [Português (BR)](README.pt-BR.md) · [Italiano](README.it.md) · [Русский](README.ru.md)
 
 CLI для генерации и обработки изображений, только под macOS. SwiftMageX —
-*оркестратор*: он обращается к Gemini API для генерации и выполняет
+*оркестратор*: он обращается к API изображений Google AI (Gemini или Imagen) для генерации и выполняет
 локальные растровые операции (resize, наложение текста) через
 CoreImage / CoreText / ImageIO. Это компактный Swift-пакет ровно с двумя
 внешними зависимостями. Та же базовая библиотека используется в сервере
@@ -17,9 +17,9 @@ Model Context Protocol (`swiftmagex-mcp`), благодаря чему AI-аге
 
 - macOS 14+ на Apple silicon (arm64)
 - Swift 6.0+ (Xcode 16+) — нужен только для сборки из исходников
-- API-ключ Gemini в переменной `SWIFTMAGEX_GEMINI_API_KEY`
-  (или `GEMINI_API_KEY`) для команды `generate`. Для `resize` и `text`
-  ключ не требуется.
+- API-ключ Google AI в переменной `SWIFTMAGEX_GEMINI_API_KEY`
+  (или `GEMINI_API_KEY`) для команды `generate` — подходит и для
+  Gemini, и для Imagen. Для `resize` и `text` ключ не требуется.
 
 ## Установка
 
@@ -90,7 +90,7 @@ export GEMINI_API_KEY="…"
 Пути в `--json`-выводе и в результатах MCP-инструментов всегда
 **абсолютные** — агенту не нужно знать текущую рабочую директорию.
 
-### `swiftmagex generate` — генерация по тексту через Gemini
+### `swiftmagex generate` — генерация по тексту через Gemini или Imagen
 
 ```
 swiftmagex generate <prompt> [options]
@@ -103,7 +103,7 @@ swiftmagex generate <prompt> [options]
 | `-s`, `--size <square\|portrait\|landscape>` | `square` | Подсказка по соотношению сторон. Итоговое разрешение зависит от модели. |
 | `-n`, `--count <1–4>` | `1` | Число вариантов. Каждый — отдельный запрос. |
 | `--seed <uint64>` | — | Записывается в метаданные, даже если провайдер его игнорирует. |
-| `--model <id>` | `gemini-2.5-flash-image` | `gemini-3.1-flash-image-preview` — для предварительного качества. |
+| `--model <id>` | `gemini-2.5-flash-image` | Встроенные: семейство Gemini (`gemini-2.5-flash-image`, `gemini-3-pro-image-preview`, `gemini-3.1-flash-image-preview`) и семейство Imagen (`imagen-4.0-generate-001`, `imagen-4.0-fast-generate-001`, `imagen-4.0-ultra-generate-001`). Неизвестные ID маршрутизируются по префиксу `imagen-`/`gemini-`. |
 
 ```sh
 # Одно изображение в текущую директорию
@@ -288,7 +288,8 @@ claude mcp add -s user swiftmagex /usr/local/bin/swiftmagex-mcp \
 
 ## Область и статус
 
-Это 0.1 MVP — три команды, один провайдер (Gemini), один MCP-сервер. Всё,
+Это 0.1 MVP — три команды, два провайдера изображений Google AI
+(Gemini и Imagen), один MCP-сервер. Всё,
 что за этой границей, отложено; полный список вне области см. в
 спецификации
 [§2 Scope of version 0.1](SwiftMageX-MVP-0.1-spec.md#2-scope-of-version-01)
