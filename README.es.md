@@ -119,6 +119,16 @@ swiftmagex generate "mountain landscape at dawn" -n 4 -s landscape -o ./out --js
 swiftmagex generate "minimalist app icon, fox head" --seed 42 -o icon.png
 ```
 
+Ejemplo — la llamada siguiente generó la imagen mostrada abajo (PNG 1024×1024
+con `gemini-2.5-flash-image`):
+
+```sh
+swiftmagex generate "A simple red apple on a white background, test image" \
+  -o apple.png
+```
+
+<img src="docs/images/example-generate-apple.png" alt="Manzana roja generada sobre fondo blanco" width="320" />
+
 Cada PNG de salida lleva el prompt, modelo, seed, timestamp y versión de
 la herramienta en chunks `tEXt` (los JPEG usan el campo EXIF `UserComment`).
 

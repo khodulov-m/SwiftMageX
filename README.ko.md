@@ -117,6 +117,16 @@ swiftmagex generate "mountain landscape at dawn" -n 4 -s landscape -o ./out --js
 swiftmagex generate "minimalist app icon, fox head" --seed 42 -o icon.png
 ```
 
+예시 — 아래 호출로 다음 이미지를 생성했습니다(`gemini-2.5-flash-image`로
+생성한 1024×1024 PNG):
+
+```sh
+swiftmagex generate "A simple red apple on a white background, test image" \
+  -o apple.png
+```
+
+<img src="docs/images/example-generate-apple.png" alt="흰 배경의 빨간 사과 (생성된 이미지)" width="320" />
+
 각 출력 PNG는 `tEXt` 청크에 prompt, 모델, seed, 타임스탬프,
 도구 버전을 담습니다(JPEG는 EXIF `UserComment` 필드 사용).
 

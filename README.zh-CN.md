@@ -113,6 +113,16 @@ swiftmagex generate "mountain landscape at dawn" -n 4 -s landscape -o ./out --js
 swiftmagex generate "minimalist app icon, fox head" --seed 42 -o icon.png
 ```
 
+示例 — 下面的调用生成了下方的图片(由 `gemini-2.5-flash-image` 输出的
+1024×1024 PNG):
+
+```sh
+swiftmagex generate "A simple red apple on a white background, test image" \
+  -o apple.png
+```
+
+<img src="docs/images/example-generate-apple.png" alt="白色背景上的红色苹果(生成图像)" width="320" />
+
 每个输出的 PNG 会在 `tEXt` 块中携带 prompt、模型、seed、时间戳和
 工具版本;JPEG 写入 EXIF 的 `UserComment` 字段。
 

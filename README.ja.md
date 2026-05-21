@@ -119,6 +119,16 @@ swiftmagex generate "mountain landscape at dawn" -n 4 -s landscape -o ./out --js
 swiftmagex generate "minimalist app icon, fox head" --seed 42 -o icon.png
 ```
 
+例 — 以下のコマンドで下の画像を生成しました(`gemini-2.5-flash-image`
+による 1024×1024 PNG):
+
+```sh
+swiftmagex generate "A simple red apple on a white background, test image" \
+  -o apple.png
+```
+
+<img src="docs/images/example-generate-apple.png" alt="白い背景の赤いリンゴ(生成画像)" width="320" />
+
 各 PNG の出力には、`tEXt` チャンクとして prompt、モデル、seed、
 タイムスタンプ、ツールバージョンが埋め込まれます(JPEG は EXIF の
 `UserComment` フィールドを使用)。
