@@ -224,9 +224,31 @@ JSON-ошибка под `--json` тоже пишется в stdout — чтоб
 дополнительно возвращает байты изображения как MCP `image`-контент, чтобы
 вызывающая модель могла увидеть, что получилось.
 
-### Подключение MCP-клиента (Claude Desktop)
+### Подключение Claude Code
 
-Добавьте запись в конфиг MCP вашего клиента. Для Claude Desktop это
+Claude Code регистрирует MCP-серверы через `claude mcp add`. Внутри
+репозитория, где должен быть доступен SwiftMageX, выполните:
+
+```sh
+claude mcp add swiftmagex /usr/local/bin/swiftmagex-mcp \
+  -e SWIFTMAGEX_GEMINI_API_KEY=your-key-here
+```
+
+Чтобы сервер был доступен во всех сессиях Claude Code на этой машине,
+используйте user-скоуп:
+
+```sh
+claude mcp add -s user swiftmagex /usr/local/bin/swiftmagex-mcp \
+  -e SWIFTMAGEX_GEMINI_API_KEY=your-key-here
+```
+
+Посмотреть зарегистрированные серверы — `claude mcp list` или
+`claude mcp get swiftmagex`; удалить — `claude mcp remove swiftmagex`.
+Транспорт по умолчанию — stdio, флаг `--transport` указывать не нужно.
+
+### Подключение Claude Desktop
+
+Добавьте запись в
 `~/Library/Application Support/Claude/claude_desktop_config.json`:
 
 ```json

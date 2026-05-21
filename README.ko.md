@@ -225,10 +225,31 @@ nil 필드는 완전히 생략됩니다(`null` 자리표시 없음).
 `generate_image`는 추가로 이미지 바이트를 MCP `image` 콘텐츠로
 함께 반환하여 호출 모델이 결과물을 직접 확인할 수 있습니다.
 
-### MCP 클라이언트 구성(Claude Desktop)
+### Claude Code 구성
 
-클라이언트의 MCP 설정에 항목을 추가합니다. Claude Desktop의 경로는
-`~/Library/Application Support/Claude/claude_desktop_config.json`:
+Claude Code는 `claude mcp add`로 MCP 서버를 등록합니다. SwiftMageX를
+사용할 저장소 안에서 실행하세요:
+
+```sh
+claude mcp add swiftmagex /usr/local/bin/swiftmagex-mcp \
+  -e SWIFTMAGEX_GEMINI_API_KEY=your-key-here
+```
+
+이 머신의 모든 Claude Code 세션에서 쓰려면 user 스코프를 사용합니다:
+
+```sh
+claude mcp add -s user swiftmagex /usr/local/bin/swiftmagex-mcp \
+  -e SWIFTMAGEX_GEMINI_API_KEY=your-key-here
+```
+
+등록 상태는 `claude mcp list` 또는 `claude mcp get swiftmagex`로 확인하고,
+`claude mcp remove swiftmagex`로 제거합니다. 기본 전송은 stdio이므로
+`--transport` 플래그는 필요 없습니다.
+
+### Claude Desktop 구성
+
+`~/Library/Application Support/Claude/claude_desktop_config.json`
+에 항목을 추가합니다:
 
 ```json
 {

@@ -227,10 +227,31 @@ agente no necesite saber el directorio de trabajo del servidor.
 `generate_image` además devuelve los bytes de la imagen como contenido
 MCP `image` para que el modelo invocante pueda ver lo que se produjo.
 
-### Configurar un cliente MCP (Claude Desktop)
+### Configurar Claude Code
 
-Añade una entrada a la configuración MCP de tu cliente. Para Claude
-Desktop está en
+Claude Code registra servidores MCP mediante `claude mcp add`. Dentro del
+repo donde quieras tener SwiftMageX disponible, ejecuta:
+
+```sh
+claude mcp add swiftmagex /usr/local/bin/swiftmagex-mcp \
+  -e SWIFTMAGEX_GEMINI_API_KEY=your-key-here
+```
+
+Para que esté disponible en cada sesión de Claude Code en esta máquina,
+usa el scope de usuario:
+
+```sh
+claude mcp add -s user swiftmagex /usr/local/bin/swiftmagex-mcp \
+  -e SWIFTMAGEX_GEMINI_API_KEY=your-key-here
+```
+
+Revisa lo registrado con `claude mcp list` o `claude mcp get swiftmagex`,
+y elimínalo con `claude mcp remove swiftmagex`. El transporte por defecto
+es stdio — no hace falta el flag `--transport`.
+
+### Configurar Claude Desktop
+
+Añade una entrada a
 `~/Library/Application Support/Claude/claude_desktop_config.json`:
 
 ```json

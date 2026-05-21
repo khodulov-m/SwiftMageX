@@ -230,11 +230,32 @@ swiftmagex text cover.png --text "SALE" --position center --font-size 96 --strok
 `image` コンテンツとして返し、呼び出し側モデルが出力結果を直接確
 認できます。
 
-### MCP クライアントを設定する(Claude Desktop)
+### Claude Code を設定する
 
-クライアントの MCP 設定にエントリを追加します。Claude Desktop の
-場合は
-`~/Library/Application Support/Claude/claude_desktop_config.json`:
+Claude Code は `claude mcp add` で MCP サーバを登録します。SwiftMageX
+を使いたいリポジトリの中で実行してください:
+
+```sh
+claude mcp add swiftmagex /usr/local/bin/swiftmagex-mcp \
+  -e SWIFTMAGEX_GEMINI_API_KEY=your-key-here
+```
+
+このマシン上のすべての Claude Code セッションで利用したい場合は
+ユーザースコープを使います:
+
+```sh
+claude mcp add -s user swiftmagex /usr/local/bin/swiftmagex-mcp \
+  -e SWIFTMAGEX_GEMINI_API_KEY=your-key-here
+```
+
+登録済みの確認は `claude mcp list` か `claude mcp get swiftmagex`、
+削除は `claude mcp remove swiftmagex`。既定のトランスポートは stdio
+なので `--transport` フラグは不要です。
+
+### Claude Desktop を設定する
+
+`~/Library/Application Support/Claude/claude_desktop_config.json`
+にエントリを追加します:
 
 ```json
 {

@@ -218,10 +218,32 @@ swiftmagex text cover.png --text "SALE" --position center --font-size 96 --strok
 `generate_image` 还会以 MCP `image` 内容形式返回图像字节,便于调用
 模型直接检视产物。
 
-### 配置 MCP 客户端(Claude Desktop)
+### 配置 Claude Code
 
-在客户端的 MCP 配置中添加条目。Claude Desktop 的配置在
-`~/Library/Application Support/Claude/claude_desktop_config.json`:
+Claude Code 通过 `claude mcp add` 注册 MCP 服务器。在希望使用
+SwiftMageX 的仓库内执行:
+
+```sh
+claude mcp add swiftmagex /usr/local/bin/swiftmagex-mcp \
+  -e SWIFTMAGEX_GEMINI_API_KEY=your-key-here
+```
+
+若希望本机所有 Claude Code 会话都能使用,改用用户级 scope:
+
+```sh
+claude mcp add -s user swiftmagex /usr/local/bin/swiftmagex-mcp \
+  -e SWIFTMAGEX_GEMINI_API_KEY=your-key-here
+```
+
+用 `claude mcp list` 或 `claude mcp get swiftmagex` 查看已注册项,
+用 `claude mcp remove swiftmagex` 移除。默认传输是 stdio,无需
+`--transport` 标志。
+
+### 配置 Claude Desktop
+
+在
+`~/Library/Application Support/Claude/claude_desktop_config.json`
+中添加条目:
 
 ```json
 {
