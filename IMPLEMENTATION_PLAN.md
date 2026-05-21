@@ -1,5 +1,25 @@
 # SwiftMageX — Implementation Plan (post-skeleton)
 
+> **Status: complete.** All nine milestones below shipped. The 0.1 MVP is
+> feature-complete, the test suite is green, and v0.1.0 release notes live in
+> `RELEASE_NOTES.md`. This document is preserved as a historical record of how
+> the codebase was assembled — new work should reference the spec
+> (`SwiftMageX-MVP-0.1-spec.md`) and `CLAUDE.md`, not this plan.
+>
+> Delivered milestones (one commit each):
+>
+> | Milestone | Commit | Title |
+> |---|---|---|
+> | 1 | `af0bbd9` | project skeleton |
+> | 2 | `44373a9` | resize and raster engine |
+> | 3 | `219f59f` | text overlay |
+> | 4 | `5b60bb7` | provider layer + GeminiProvider |
+> | 5 | `abf47f1` | generate command end-to-end |
+> | 6 | `58fc938` | --json envelope and exit codes |
+> | 7 | `80afd0d` | MCP server tool dispatch |
+> | 8 | `4d5e8e5` | CLI tests, README polish, check.sh |
+> | 9 | `849cb5f` | release prep — RELEASE_NOTES.md |
+
 This document is the agent-facing companion to `SwiftMageX-MVP-0.1-spec.md`. The
 spec is the **what**; this is the **how**, sequenced into milestones that each
 end with a green build and a verifiable artifact.

@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project status
 
-SwiftMageX is an image generation/processing CLI (macOS-only). At time of writing the repo contains `Package.swift` and `SwiftMageX-MVP-0.1-spec.md` — **no `Sources/` yet**. The spec is the authoritative blueprint for what to build; consult it before designing anything (`SwiftMageX-MVP-0.1-spec.md`). Diverging from the spec needs an explicit reason.
+SwiftMageX is an image generation/processing CLI (macOS-only). The 0.1 MVP is **feature-complete** — all nine milestones in `IMPLEMENTATION_PLAN.md` have shipped, the test suite is green, and `RELEASE_NOTES.md` maps each delivered capability to its spec section. The spec (`SwiftMageX-MVP-0.1-spec.md`) is still the authoritative blueprint; consult it before designing anything, and any divergence needs an explicit reason. `IMPLEMENTATION_PLAN.md` is now historical — useful for context on how the codebase was built, not for new work.
 
 ## Build / test / run
 
@@ -43,9 +43,9 @@ In 0.1 each protocol has exactly **one** implementation (`GeminiProvider`, `Core
 
 `swift-tools-version: 6.0` enables strict concurrency by default. The Kit's data models (`GenerationRequest`, `GeneratedImage`, `ImageSize`, `ImageFormat`, `ProviderCapabilities`) are declared `Sendable` in the spec; both protocols (`ImageProvider`, `RasterEngine`) require `Sendable` conformance. New types crossing async boundaries must be `Sendable` too.
 
-## Behavior contracts that aren't in the code yet
+## Behavior contracts to preserve
 
-These are easy to get subtly wrong; check the spec section in parentheses before implementing.
+These are easy to get subtly wrong if you're modifying the code. Cross-check against the cited spec section before touching anything in the relevant area.
 
 - **Output paths are always absolute** in `--json` output and in MCP tool results — the calling agent doesn't know the cwd. (§7, §12)
 - **File naming** when output is a directory: `swiftmagex_{timestamp}_{index}.{ext}`. With `--count > 1` and a specific filename, an index is appended. (§12)
