@@ -246,6 +246,32 @@ final class RasterEngineTests: XCTestCase {
         }
     }
 
+    // MARK: - Remove background
+
+    func testRemoveBackgroundCutoutCarriesAlphaOrReportsNoSubject() throws {
+        let engine = CoreImageRasterEngine()
+        let source = RasterImage(cgImage: Self.makeBlobImage(width: 200, height: 200))
+
+        // Vision's segmentation model is trained on photos; a synthetic blob may
+        // or may not register as salient. Both outcomes are valid for a generated
+        // fixture, so accept either a real cutout or a no-subject raster error —
+        // the point is that the pipeline runs and maps failures correctly.
+        do {
+            let result = try engine.removeBackground(source)
+            XCTAssertEqual(result.width, 200)
+            XCTAssertEqual(result.height, 200)
+            let alpha = result.cgImage.alphaInfo
+            XCTAssertFalse(
+                alpha == .none || alpha == .noneSkipFirst || alpha == .noneSkipLast,
+                "a background cutout must carry an alpha channel, got \(alpha.rawValue)"
+            )
+        } catch let error as SwiftMageXError {
+            guard case .raster = error else {
+                throw error
+            }
+        }
+    }
+
     // MARK: - Device framing
 
     func testDetectScreenRectFindsEnclosedHole() throws {
@@ -349,6 +375,17 @@ final class RasterEngineTests: XCTestCase {
         ) { error in
             guard let smx = error as? SwiftMageXError, case .invalidInput = smx else {
                 return XCTFail("Expected SwiftMageXError.invalidInput, got \(error)")
+            }
+        }
+    }
+
+    func testRemoveBackgroundMissingFileThrowsIO() {
+        let missing = "/tmp/swiftmagex-tests-does-not-exist-\(UUID().uuidString).png"
+        XCTAssertThrowsError(
+            try SwiftMageXOrchestrator.removeBackground(input: missing, output: nil)
+        ) { error in
+            guard let smx = error as? SwiftMageXError, case .io = smx else {
+                return XCTFail("Expected SwiftMageXError.io, got \(error)")
             }
         }
     }
@@ -549,6 +586,34 @@ final class RasterEngineTests: XCTestCase {
         let p = data.bindMemory(to: UInt8.self, capacity: rowBytes * height)
         let i = y * rowBytes + x * 4
         return (p[i], p[i + 1], p[i + 2], p[i + 3])
+    }
+
+    /// A filled colored ellipse on a contrasting background — a crude stand-in
+    /// for a salient subject, used by the remove-background test.
+    private static func makeBlobImage(width: Int, height: Int) -> CGImage {
+        let colorSpace = CGColorSpaceCreateDeviceRGB()
+        let context = CGContext(
+            data: nil,
+            width: width,
+            height: height,
+            bitsPerComponent: 8,
+            bytesPerRow: 0,
+            space: colorSpace,
+            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
+        )!
+        // Dark background.
+        context.setFillColor(CGColor(red: 0.1, green: 0.1, blue: 0.12, alpha: 1))
+        context.fill(CGRect(x: 0, y: 0, width: width, height: height))
+        // Bright centered ellipse.
+        context.setFillColor(CGColor(red: 0.95, green: 0.4, blue: 0.2, alpha: 1))
+        let inset = CGFloat(min(width, height)) * 0.2
+        context.fillEllipse(in: CGRect(
+            x: inset,
+            y: inset,
+            width: CGFloat(width) - 2 * inset,
+            height: CGFloat(height) - 2 * inset
+        ))
+        return context.makeImage()!
     }
 
     private static func makeTempDir() throws -> URL {

@@ -4,8 +4,8 @@ import SwiftMageXKit
 
 /// Entry point for `swiftmagex-mcp` — an MCP server over stdio (spec §7).
 ///
-/// Boots an MCP `Server`, registers the three tools that mirror the CLI
-/// commands, and routes each `CallTool` request through ``ToolHandlers``.
+/// Boots an MCP `Server`, registers the tools that mirror the CLI commands,
+/// and routes each `CallTool` request through ``ToolHandlers``.
 /// The handlers themselves delegate to ``SwiftMageXOrchestrator``, so the MCP
 /// server adds no business logic of its own.
 @main
@@ -15,11 +15,11 @@ struct MCPServerMain {
             name: "swiftmagex-mcp",
             version: Configuration.toolVersion,
             instructions: """
-            SwiftMageX MCP server. Provides five tools mirroring the CLI:
-            generate_image, resize_image, overlay_text, composite_images, and
-            appstore_screenshots. Tool results return absolute file paths
-            because the calling agent does not know the server's working
-            directory.
+            SwiftMageX MCP server. Provides six tools mirroring the CLI:
+            generate_image, resize_image, overlay_text, composite_images,
+            appstore_screenshots, and remove_background. Tool results return
+            absolute file paths because the calling agent does not know the
+            server's working directory.
             """,
             capabilities: .init(tools: .init(listChanged: false))
         )
@@ -45,6 +45,8 @@ struct MCPServerMain {
                     return try ToolHandlers.composite(arguments: params.arguments)
                 case AppStoreScreenshotsTool.name:
                     return try ToolHandlers.appStore(arguments: params.arguments)
+                case RemoveBackgroundTool.name:
+                    return try ToolHandlers.removeBackground(arguments: params.arguments)
                 default:
                     return CallTool.Result(
                         content: [.text(
@@ -101,7 +103,7 @@ struct MCPServerMain {
     }
 }
 
-/// Convenience registry of the three tools this server exposes.
+/// Convenience registry of the tools this server exposes.
 enum SwiftMageXTools {
     static let all: [Tool] = [
         GenerateImageTool.descriptor,
@@ -109,5 +111,6 @@ enum SwiftMageXTools {
         OverlayTextTool.descriptor,
         CompositeImagesTool.descriptor,
         AppStoreScreenshotsTool.descriptor,
+        RemoveBackgroundTool.descriptor,
     ]
 }

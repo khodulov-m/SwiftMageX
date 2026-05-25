@@ -3,8 +3,8 @@
 [English](README.md) · [Español](README.es.md) · [Français](README.fr.md) · [Deutsch](README.de.md) · [简体中文](README.zh-CN.md) · [日本語](README.ja.md) · [한국어](README.ko.md) · [Português (BR)](README.pt-BR.md) · [Italiano](README.it.md) · [Русский](README.ru.md)
 
 仅 macOS 的图像生成与处理 CLI。SwiftMageX 是一个*编排器*:调用
-Google AI 图像 API(Gemini 或 Imagen)进行图像生成,并使用 CoreImage / CoreText / ImageIO 完成
-本地光栅操作(缩放、文字叠加),全部封装在一个仅有两个外部依赖的小
+Google AI 图像 API(Gemini 或 Imagen)进行图像生成,并使用 CoreImage / CoreText / ImageIO / Vision 完成
+本地光栅操作(缩放、文字叠加、合成、App Store 截图、抠图去背),全部封装在一个仅有两个外部依赖的小
 Swift 包中。同一个核心库还驱动一个 Model Context Protocol 服务器
 (`swiftmagex-mcp`),让 AI 代理可以把这些能力当作工具来调用。
 
@@ -17,7 +17,7 @@ Swift 包中。同一个核心库还驱动一个 Model Context Protocol 服务�
 - Swift 6.0+ 工具链(Xcode 16+)——仅在从源码构建时需要
 - 用于 `generate` 命令的 Google AI API 密钥,写入
   `SWIFTMAGEX_GEMINI_API_KEY`(或 `GEMINI_API_KEY`)——同一个密钥
-  适用于 Gemini 和 Imagen 模型。`resize` 与 `text` 不需要密钥。
+  适用于 Gemini 和 Imagen 模型。`resize`、`text`、`composite`、`appstore` 与 `remove-bg` 不需要密钥。
 
 ## 安装
 
@@ -75,7 +75,7 @@ export GEMINI_API_KEY="…"
 
 ## 快速手册
 
-五个子命令共享同一组全局标志:
+六个子命令共享同一组全局标志:
 
 | 全局标志 | 作用 |
 |---|---|
@@ -232,6 +232,31 @@ swiftmagex appstore shot.png --background bg.png --frame iphone.png --device all
 外框由**用户自备**——任何带透明屏幕镂空的 PNG 均可;屏幕区域会从其透明通道
 中识别(或用 `--screen-rect` 指定)。
 
+### `swiftmagex remove-bg` — 本地抠图去背
+
+使用 Vision 的设备端分割,抠出显著前景主体并置于透明背景上——无需 AI
+API、无需密钥、零配额消耗。结果始终带有 alpha 通道,因此以 PNG 写出
+(非 `.png` 的 `--output` 扩展名会被纠正为 `.png`)。
+
+```
+swiftmagex remove-bg <input> [选项]
+```
+
+| 选项 | 默认值 | 备注 |
+|---|---|---|
+| `<input>` | — | PNG、JPEG、HEIC 或 WebP。 |
+| `-o`、`--output <路径>` | 与源同目录 | 始终以 PNG 写出。 |
+
+```sh
+# 抠出主体并置于透明背景
+swiftmagex remove-bg photo.jpg -o cutout.png
+
+# 默认输出到源文件旁的 PNG
+swiftmagex remove-bg product.heic
+```
+
+若未检测到显著的前景主体,命令将以光栅错误失败(退出码 1)。
+
 ### JSON 输出格式
 
 所有命令在 `--json` 下输出同一信封,键按字母排序,nil 字段完全省略
@@ -251,7 +276,7 @@ swiftmagex appstore shot.png --background bg.png --frame iphone.png --device all
 }
 ```
 
-错误(`resize` 与 `text` 省略 `provider` / `model`):
+错误(`resize`、`text` 与 `remove-bg` 省略 `provider` / `model`):
 
 ```json
 {
@@ -278,8 +303,8 @@ swiftmagex appstore shot.png --background bg.png --frame iphone.png --device all
 
 ## MCP 服务器
 
-`swiftmagex-mcp` 通过 stdio 暴露五个工具:`generate_image`、
-`resize_image`、`overlay_text`、`composite_images`、`appstore_screenshots`。工具参数与 CLI 标志保持一致(snake_case 键名,如 `font_size`、`screen_rect`、`devices`);返回的
+`swiftmagex-mcp` 通过 stdio 暴露六个工具:`generate_image`、
+`resize_image`、`overlay_text`、`composite_images`、`appstore_screenshots`、`remove_background`。工具参数与 CLI 标志保持一致(snake_case 键名,如 `font_size`、`screen_rect`、`devices`);返回的
 文件路径都是绝对路径,调用方代理无需知道服务器的工作目录。
 `generate_image` 还会以 MCP `image` 内容形式返回图像字节,便于调用
 模型直接检视产物。
@@ -333,13 +358,15 @@ claude mcp add -s user swiftmagex /usr/local/bin/swiftmagex-mcp \
 |---|---|---|
 | `Configuration error: missing SWIFTMAGEX_GEMINI_API_KEY`(退出码 4) | 运行 `generate` 或调用 `generate_image` 时环境里没有 API 密钥。 | 导出 `SWIFTMAGEX_GEMINI_API_KEY`(或备用 `GEMINI_API_KEY`);MCP 场景下加进客户端的 `env` 块,见上文。 |
 | `Provider error: quota exhausted after 5 retries`(退出码 3) | Gemini 在 1 s → 16 s 的退避窗口内每次都返回 `429`。 | 等待配额恢复、切换项目或稍后重试。退避节奏是固定的,见规范 §13。 |
-| `I/O error: input file not found: /…/foo.png`(退出码 1) | 传给 `resize` / `text`(或 `resize_image` / `overlay_text`)的路径不存在或不可读。 | 使用绝对路径,检查权限,确认格式属于 PNG / JPEG / HEIC / WebP(写入仅支持 PNG / JPEG)。 |
+| `I/O error: input file not found: /…/foo.png`(退出码 1) | 传给本地命令(`resize` / `text` / `composite` / `appstore` / `remove-bg`,或其 MCP 工具)的路径不存在或不可读。 | 使用绝对路径,检查权限,确认格式属于 PNG / JPEG / HEIC / WebP(写入仅支持 PNG / JPEG)。 |
 | `"swiftmagex" cannot be opened because the developer cannot be verified` | 已下载的二进制被 Gatekeeper 隔离。 | `xattr -d com.apple.quarantine /usr/local/bin/swiftmagex`(`swiftmagex-mcp` 同理)。 |
 
 ## 范围与状态
 
 这是 0.1 MVP——三个命令、两个 Google AI 图像提供商(Gemini 与
-Imagen)、一个 MCP 服务器。
+Imagen)、一个 MCP 服务器,外加 0.1 之后新增的三个本地命令
+`composite`、`appstore`、`remove-bg`(图像合成、App Store Connect 截图、
+基于 Vision 的抠图去背)。
 超出该边界的内容均推迟,详见规范
 [§2 Scope of version 0.1](SwiftMageX-MVP-0.1-spec.md#2-scope-of-version-01)
 (edit / inpainting、本地提供商、Homebrew 分发、配置文件、

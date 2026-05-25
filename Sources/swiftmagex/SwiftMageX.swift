@@ -2,7 +2,8 @@ import ArgumentParser
 
 /// The `swiftmagex` CLI entry point.
 ///
-/// Routes into one of three subcommands per spec §6. All actual work lives in
+/// Routes into one of the subcommands per spec §6 (`composite`, `appstore`, and
+/// `remove-bg` are post-0.1 local additions). All actual work lives in
 /// `SwiftMageXKit`; this target is a thin frontend that parses arguments and
 /// prints results.
 @main
@@ -17,6 +18,7 @@ struct SwiftMageX: AsyncParsableCommand {
             TextCommand.self,
             CompositeCommand.self,
             AppStoreCommand.self,
+            RemoveBackgroundCommand.self,
         ]
     )
 }

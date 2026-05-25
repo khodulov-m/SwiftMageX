@@ -3,9 +3,9 @@
 [English](README.md) · [Español](README.es.md) · [Français](README.fr.md) · [Deutsch](README.de.md) · [简体中文](README.zh-CN.md) · [日本語](README.ja.md) · [한국어](README.ko.md) · [Português (BR)](README.pt-BR.md) · [Italiano](README.it.md) · [Русский](README.ru.md)
 
 macOS 전용 이미지 생성/처리 CLI. SwiftMageX는 *오케스트레이터*로,
-이미지 생성은 Google AI 이미지 API(Gemini 또는 Imagen)에 위임하고 리사이즈와 텍스트 오버레이
-같은 로컬 래스터 작업은 CoreImage / CoreText / ImageIO로 처리합
-니다. 모든 것이 외부 의존성이 정확히 두 개뿐인 작은 Swift 패키지
+이미지 생성은 Google AI 이미지 API(Gemini 또는 Imagen)에 위임하고 리사이즈, 텍스트 오버레이,
+합성, App Store 스크린샷, 배경 제거 같은 로컬 래스터 작업은 CoreImage / CoreText / ImageIO /
+Vision으로 처리합니다. 모든 것이 외부 의존성이 정확히 두 개뿐인 작은 Swift 패키지
 안에 들어 있습니다. 같은 코어 라이브러리가 Model Context
 Protocol 서버(`swiftmagex-mcp`)를 구동하므로, AI 에이전트도 동일
 기능을 도구로 호출할 수 있습니다.
@@ -19,8 +19,8 @@ Protocol 서버(`swiftmagex-mcp`)를 구동하므로, AI 에이전트도 동일
 - Swift 6.0+ 툴체인(Xcode 16+) — 소스 빌드 시에만 필요
 - `generate` 명령에 사용할 Google AI API 키를
   `SWIFTMAGEX_GEMINI_API_KEY`(또는 `GEMINI_API_KEY`)에 설정.
-  Gemini와 Imagen 모델 모두에 사용됩니다. `resize`와 `text`는 키가
-  필요 없습니다.
+  Gemini와 Imagen 모델 모두에 사용됩니다. `resize`, `text`,
+  `composite`, `appstore`, `remove-bg`는 키가 필요 없습니다.
 
 ## 설치
 
@@ -80,7 +80,7 @@ export GEMINI_API_KEY="…"
 
 ## 빠른 매뉴얼
 
-다섯 개의 서브커맨드가 동일한 글로벌 플래그를 공유합니다:
+여섯 개의 서브커맨드가 동일한 글로벌 플래그를 공유합니다:
 
 | 글로벌 플래그 | 효과 |
 |---|---|
@@ -238,6 +238,33 @@ swiftmagex appstore shot.png --background bg.png --frame iphone.png --device all
 프레임은 **사용자가 제공**합니다. 화면 부분이 투명한 PNG라면 무엇이든 동작하며,
 화면 영역은 알파 채널에서 찾습니다(또는 `--screen-rect`로 지정).
 
+### `swiftmagex remove-bg` — 로컬 배경 제거
+
+Vision의 온디바이스 분할을 사용해 두드러진 전경 피사체를 잘라내어
+투명 배경 위에 남깁니다. AI API도 키도 필요 없고, 쿼터 소비가 전혀
+없습니다. 결과는 항상 알파 채널을 가지므로 PNG로 기록됩니다(`.png`가
+아닌 `--output` 확장자는 `.png`로 보정됩니다).
+
+```
+swiftmagex remove-bg <input> [옵션]
+```
+
+| 옵션 | 기본값 | 비고 |
+|---|---|---|
+| `<input>` | — | PNG, JPEG, HEIC, WebP. |
+| `-o`, `--output <경로>` | 소스의 형제 파일 | 항상 PNG로 기록. |
+
+```sh
+# 피사체를 잘라내어 투명 배경으로
+swiftmagex remove-bg photo.jpg -o cutout.png
+
+# 기본은 소스 옆에 PNG로 출력
+swiftmagex remove-bg product.heic
+```
+
+두드러진 전경 피사체가 감지되지 않으면 명령은 래스터 오류로
+실패합니다(종료 코드 1).
+
 ### JSON 출력 스키마
 
 모든 명령은 `--json`에서 동일한 봉투를 출력합니다. 키는 정렬되며
@@ -257,7 +284,7 @@ nil 필드는 완전히 생략됩니다(`null` 자리표시 없음).
 }
 ```
 
-오류(`resize`와 `text`는 `provider` / `model` 생략):
+오류(`resize`, `text`, `remove-bg`는 `provider` / `model` 생략):
 
 ```json
 {
@@ -286,8 +313,8 @@ nil 필드는 완전히 생략됩니다(`null` 자리표시 없음).
 
 ## MCP 서버
 
-`swiftmagex-mcp`는 stdio로 다섯 가지 도구
-(`generate_image`, `resize_image`, `overlay_text`, `composite_images`, `appstore_screenshots`)를 노출합니다.
+`swiftmagex-mcp`는 stdio로 여섯 가지 도구
+(`generate_image`, `resize_image`, `overlay_text`, `composite_images`, `appstore_screenshots`, `remove_background`)를 노출합니다.
 도구 인자는 CLI 플래그와 동일하며(snake_case 키, 예: `font_size`, `screen_rect`, `devices`), 결과는 절대 경로를 반환해 호
 출 에이전트가 서버의 작업 디렉터리를 알 필요가 없습니다.
 `generate_image`는 추가로 이미지 바이트를 MCP `image` 콘텐츠로
@@ -341,13 +368,15 @@ claude mcp add -s user swiftmagex /usr/local/bin/swiftmagex-mcp \
 |---|---|---|
 | `Configuration error: missing SWIFTMAGEX_GEMINI_API_KEY`(종료 코드 4) | `generate` 실행 또는 `generate_image` 호출 시 환경에 API 키가 없음. | `SWIFTMAGEX_GEMINI_API_KEY`(또는 대체 `GEMINI_API_KEY`)를 export. MCP라면 위 예시처럼 클라이언트 `env` 블록에 추가. |
 | `Provider error: quota exhausted after 5 retries`(종료 코드 3) | 백오프 윈도우(1 s → 16 s) 동안 매번 Gemini가 `429`를 반환. | 쿼터 회복을 기다리거나 프로젝트를 전환, 또는 나중에 재시도. 백오프 스케줄은 고정(스펙 §13). |
-| `I/O error: input file not found: /…/foo.png`(종료 코드 1) | `resize` / `text`(또는 `resize_image` / `overlay_text`)에 전달한 경로가 존재하지 않거나 읽을 수 없음. | 절대 경로를 사용하고 권한을 확인하며 형식이 PNG / JPEG / HEIC / WebP인지 확인(쓰기는 PNG / JPEG만). |
+| `I/O error: input file not found: /…/foo.png`(종료 코드 1) | 로컬 명령(`resize` / `text` / `composite` / `appstore` / `remove-bg`, 또는 해당 MCP 도구)에 전달한 경로가 존재하지 않거나 읽을 수 없음. | 절대 경로를 사용하고 권한을 확인하며 형식이 PNG / JPEG / HEIC / WebP인지 확인(쓰기는 PNG / JPEG만). |
 | `"swiftmagex" cannot be opened because the developer cannot be verified` | 다운로드한 바이너리에 Gatekeeper 격리 적용. | `xattr -d com.apple.quarantine /usr/local/bin/swiftmagex`(`swiftmagex-mcp`도 동일). |
 
 ## 범위와 상태
 
 이번은 0.1 MVP — 세 가지 명령, 두 개의 Google AI 이미지 공급자
-(Gemini와 Imagen), 한 MCP 서버입니다. 그 경계 밖은 모두 미루어졌으며 전체 제외 항목은 스펙
+(Gemini와 Imagen), 한 MCP 서버이며, 여기에 0.1 이후 추가된 세 가지
+로컬 명령 `composite`, `appstore`, `remove-bg`(합성, App Store Connect
+스크린샷, Vision 기반 배경 제거)가 더해졌습니다. 그 경계 밖은 모두 미루어졌으며 전체 제외 항목은 스펙
 [§2 Scope of version 0.1](SwiftMageX-MVP-0.1-spec.md#2-scope-of-version-01)
 을 참조하세요(edit / 인페인팅, 로컬 공급자, Homebrew 배포,
 구성 파일, Keychain 등).

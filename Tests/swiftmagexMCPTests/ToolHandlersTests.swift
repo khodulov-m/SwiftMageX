@@ -297,9 +297,35 @@ final class ToolHandlersTests: XCTestCase {
         }
     }
 
+    // MARK: - remove_background
+
+    func testRemoveBackgroundToolMissingInputReturnsInvalidParams() {
+        do {
+            _ = try ToolHandlers.removeBackground(arguments: [:])
+            XCTFail("expected MCPError.invalidParams for missing 'input'")
+        } catch let error as MCPError {
+            guard case .invalidParams(let detail) = error else {
+                return XCTFail("expected .invalidParams, got \(error)")
+            }
+            XCTAssertTrue((detail ?? "").contains("input"), "error should mention 'input': \(detail ?? "")")
+        } catch {
+            XCTFail("unexpected error type: \(error)")
+        }
+    }
+
+    func testRemoveBackgroundToolMissingFileMapsToIOError() throws {
+        let arguments: [String: Value] = [
+            "input": .string("/tmp/does-not-exist-\(UUID().uuidString).png"),
+        ]
+        let result = try ToolHandlers.removeBackground(arguments: arguments)
+        XCTAssertEqual(result.isError, true)
+        let text = try XCTUnwrap(result.firstText)
+        XCTAssertTrue(text.contains("[io]"), "expected io category in error text: \(text)")
+    }
+
     // MARK: - Registry
 
-    func testToolRegistryExposesAllFiveNames() {
+    func testToolRegistryExposesAllToolNames() {
         let names = Set(SwiftMageXTools.all.map(\.name))
         XCTAssertEqual(names, [
             GenerateImageTool.name,
@@ -307,6 +333,7 @@ final class ToolHandlersTests: XCTestCase {
             OverlayTextTool.name,
             CompositeImagesTool.name,
             AppStoreScreenshotsTool.name,
+            RemoveBackgroundTool.name,
         ])
     }
 

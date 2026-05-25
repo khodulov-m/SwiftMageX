@@ -37,6 +37,13 @@ public protocol RasterEngine: Sendable {
         _ spec: DeviceFrameSpec
     ) throws -> RasterImage
 
+    /// Segment the salient foreground subject and return it on a transparent
+    /// background. Local, on-device; consumes no provider quota.
+    ///
+    /// The result always carries an alpha channel, so callers must write it in
+    /// a format that preserves transparency (PNG).
+    func removeBackground(_ image: RasterImage) throws -> RasterImage
+
     /// Write `image` to `url` in the chosen `format`, embedding optional `metadata`.
     func write(
         _ image: RasterImage,
