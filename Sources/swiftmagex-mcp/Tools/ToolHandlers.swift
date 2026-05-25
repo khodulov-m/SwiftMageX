@@ -161,6 +161,25 @@ enum ToolHandlers {
         }
     }
 
+    // MARK: - remove_background
+
+    static func removeBackground(arguments: [String: Value]?) throws -> CallTool.Result {
+        let input = try RemoveBackgroundTool.parse(arguments)
+
+        do {
+            let written = try SwiftMageXOrchestrator.removeBackground(
+                input: input.input,
+                output: input.output
+            )
+            return CallTool.Result(
+                content: [.text(text: summaryText(for: [written]), annotations: nil, _meta: nil)],
+                isError: false
+            )
+        } catch let error as SwiftMageXError {
+            return errorResult(error)
+        }
+    }
+
     // MARK: - Helpers
 
     /// Builds the human-readable summary that accompanies every tool result.

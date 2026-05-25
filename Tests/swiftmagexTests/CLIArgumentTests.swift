@@ -201,10 +201,22 @@ final class CLIArgumentTests: XCTestCase {
         )
     }
 
+    // MARK: - remove-bg
+
+    func testRemoveBackgroundRequiresInput() {
+        XCTAssertThrowsError(try RemoveBackgroundCommand.parse([]))
+    }
+
+    func testRemoveBackgroundParsesInputAndOutput() throws {
+        let cmd = try RemoveBackgroundCommand.parse(["photo.jpg", "-o", "cutout.png"])
+        XCTAssertEqual(cmd.input, "photo.jpg")
+        XCTAssertEqual(cmd.output, "cutout.png")
+    }
+
     // MARK: - root
 
     func testRootRegistersAllSubcommands() {
         let names = SwiftMageX.configuration.subcommands.map { $0.configuration.commandName }
-        XCTAssertEqual(Set(names), ["generate", "resize", "text", "composite", "appstore"])
+        XCTAssertEqual(Set(names), ["generate", "resize", "text", "composite", "appstore", "remove-bg"])
     }
 }

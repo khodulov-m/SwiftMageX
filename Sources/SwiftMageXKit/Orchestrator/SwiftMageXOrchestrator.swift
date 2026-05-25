@@ -329,6 +329,61 @@ public enum SwiftMageXOrchestrator {
         }
     }
 
+    /// Remove an image's background locally with Vision, leaving the salient
+    /// foreground subject on transparency.
+    ///
+    /// No AI provider and no API key — segmentation is on-device. The output is
+    /// always PNG because the cutout carries an alpha channel; a non-`.png`
+    /// `output` extension is coerced to `.png` so the file name matches its
+    /// content. `input` is interpreted relative to `currentDirectoryPath` when
+    /// not absolute.
+    ///
+    /// - Throws: ``SwiftMageXError/io(_:)`` when the input is missing and
+    ///   ``SwiftMageXError/raster(_:)`` when no subject is found or the pipeline
+    ///   fails.
+    public static func removeBackground(
+        input: String,
+        output: String?,
+        engine: any RasterEngine = CoreImageRasterEngine(),
+        timestamp: Date = Date(),
+        currentDirectoryPath: String = FileManager.default.currentDirectoryPath
+    ) throws -> WrittenImage {
+        let inputURL = absoluteFileURL(input, currentDirectoryPath: currentDirectoryPath)
+        guard FileManager.default.fileExists(atPath: inputURL.path) else {
+            throw SwiftMageXError.io("input file not found: \(inputURL.path)")
+        }
+
+        let image = try engine.load(from: inputURL)
+        let cutout = try engine.removeBackground(image)
+
+        let resolved = try OutputPath.resolveSingle(
+            target: output,
+            sourceURL: inputURL,
+            format: .png,
+            timestamp: timestamp,
+            currentDirectoryPath: currentDirectoryPath
+        )
+        // Transparency requires PNG; force the extension so an explicit
+        // `--output cutout.jpg` doesn't end up with PNG bytes in a .jpg file.
+        let outputURL = resolved.pathExtension.lowercased() == ImageFormat.png.fileExtension
+            ? resolved
+            : resolved.deletingPathExtension().appendingPathExtension(ImageFormat.png.fileExtension)
+
+        try engine.write(
+            cutout,
+            to: outputURL,
+            format: .png,
+            quality: 1.0,
+            metadata: nil
+        )
+        return WrittenImage(
+            path: outputURL,
+            format: .png,
+            width: cutout.width,
+            height: cutout.height
+        )
+    }
+
     /// Constructs the right provider for `model` using ``ModelCatalog`` to
     /// pick between Gemini's `:generateContent` shape and Imagen's `:predict`.
     /// Exposed so the MCP frontend can share the same routing.

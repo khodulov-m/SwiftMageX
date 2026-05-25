@@ -4,8 +4,8 @@
 
 CLI для генерации и обработки изображений, только под macOS. SwiftMageX —
 *оркестратор*: он обращается к API изображений Google AI (Gemini или Imagen) для генерации и выполняет
-локальные растровые операции (resize, наложение текста) через
-CoreImage / CoreText / ImageIO. Это компактный Swift-пакет ровно с двумя
+локальные растровые операции (resize, наложение текста, композиция,
+скриншоты для App Store, удаление фона) через CoreImage / CoreText / ImageIO / Vision. Это компактный Swift-пакет ровно с двумя
 внешними зависимостями. Та же базовая библиотека используется в сервере
 Model Context Protocol (`swiftmagex-mcp`), благодаря чему AI-агенты могут
 вызывать те же возможности в виде инструментов.
@@ -19,7 +19,7 @@ Model Context Protocol (`swiftmagex-mcp`), благодаря чему AI-аге
 - Swift 6.0+ (Xcode 16+) — нужен только для сборки из исходников
 - API-ключ Google AI в переменной `SWIFTMAGEX_GEMINI_API_KEY`
   (или `GEMINI_API_KEY`) для команды `generate` — подходит и для
-  Gemini, и для Imagen. Для `resize` и `text` ключ не требуется.
+  Gemini, и для Imagen. Для `resize`, `text`, `composite`, `appstore` и `remove-bg` ключ не требуется.
 
 ## Установка
 
@@ -78,7 +78,7 @@ export GEMINI_API_KEY="…"
 
 ## Краткий мануал
 
-Пять подкоманд; глобальные флаги общие:
+Шесть подкоманд; глобальные флаги общие:
 
 | Флаг | Эффект |
 |---|---|
@@ -237,6 +237,34 @@ swiftmagex appstore shot.png --background bg.png --frame iphone.png --device all
 под экран; область экрана находится по его альфа-каналу (или задайте её через
 `--screen-rect`).
 
+### `swiftmagex remove-bg` — локальное удаление фона
+
+Вырезает заметный объект переднего плана и оставляет его на прозрачном
+фоне, используя сегментацию Vision на устройстве — без AI API, без ключа,
+с нулевым расходом квоты. Результат всегда имеет альфа-канал, поэтому
+записывается в PNG (расширение `--output`, отличное от `.png`,
+приводится к `.png`).
+
+```
+swiftmagex remove-bg <input> [options]
+```
+
+| Опция | По умолчанию | Примечания |
+|---|---|---|
+| `<input>` | — | PNG, JPEG, HEIC или WebP. |
+| `-o`, `--output <path>` | рядом с исходником | Всегда записывается в PNG. |
+
+```sh
+# Вырезать объект на прозрачный фон
+swiftmagex remove-bg photo.jpg -o cutout.png
+
+# По умолчанию — PNG рядом с исходником
+swiftmagex remove-bg product.heic
+```
+
+Если заметный объект переднего плана не обнаружен, команда завершается
+с растровой ошибкой (exit 1).
+
 ### Схема JSON-вывода
 
 Любая команда под `--json` выдаёт один и тот же конверт. Ключи
@@ -256,7 +284,7 @@ swiftmagex appstore shot.png --background bg.png --frame iphone.png --device all
 }
 ```
 
-Ошибка (`resize` и `text` не выдают `provider` / `model`):
+Ошибка (`resize`, `text` и `remove-bg` не выдают `provider` / `model`):
 
 ```json
 {
@@ -285,9 +313,9 @@ JSON-ошибка под `--json` тоже пишется в stdout — чтоб
 
 ## MCP-сервер
 
-`swiftmagex-mcp` предоставляет пять инструментов — `generate_image`,
-`resize_image`, `overlay_text`, `composite_images` и `appstore_screenshots`
-— через stdio. Аргументы инструментов
+`swiftmagex-mcp` предоставляет шесть инструментов — `generate_image`,
+`resize_image`, `overlay_text`, `composite_images`, `appstore_screenshots`
+и `remove_background` — через stdio. Аргументы инструментов
 повторяют флаги CLI (ключи в snake_case, напр. `font_size`, `screen_rect`,
 `devices`); в результатах возвращаются абсолютные пути, так что
 агенту не нужно знать рабочую директорию сервера. `generate_image`
@@ -343,13 +371,15 @@ claude mcp add -s user swiftmagex /usr/local/bin/swiftmagex-mcp \
 |---|---|---|
 | `Configuration error: missing SWIFTMAGEX_GEMINI_API_KEY` (exit 4) | В окружении нет API-ключа при запуске `generate` / вызове `generate_image`. | Экспортируйте `SWIFTMAGEX_GEMINI_API_KEY` (или запасной `GEMINI_API_KEY`); для MCP — добавьте ключ в блок `env` клиента, как показано выше. |
 | `Provider error: quota exhausted after 5 retries` (exit 3) | Gemini возвращал `429` на всех попытках в окне backoff'а (1 с → 16 с). | Дождитесь пополнения квоты, переключите проект или попробуйте позже. Расписание backoff'а зафиксировано; см. спецификацию §13. |
-| `I/O error: input file not found: /…/foo.png` (exit 1) | Путь, переданный в `resize` / `text` (или `resize_image` / `overlay_text`), не существует или нечитаем. | Передайте абсолютный путь, проверьте права, убедитесь, что формат — один из PNG / JPEG / HEIC / WebP (запись только в PNG / JPEG). |
+| `I/O error: input file not found: /…/foo.png` (exit 1) | Путь, переданный в локальную команду (`resize` / `text` / `composite` / `appstore` / `remove-bg` или их MCP-инструменты), не существует или нечитаем. | Передайте абсолютный путь, проверьте права, убедитесь, что формат — один из PNG / JPEG / HEIC / WebP (запись только в PNG / JPEG). |
 | `"swiftmagex" cannot be opened because the developer cannot be verified` | Gatekeeper поставил карантин на скачанный бинарник. | `xattr -d com.apple.quarantine /usr/local/bin/swiftmagex` (и то же для `swiftmagex-mcp`). |
 
 ## Область и статус
 
 Это 0.1 MVP — три команды, два провайдера изображений Google AI
-(Gemini и Imagen), один MCP-сервер. Всё,
+(Gemini и Imagen), один MCP-сервер — плюс три локальных дополнения после
+0.1: `composite`, `appstore` и `remove-bg` (композиция, скриншоты для App
+Store Connect и удаление фона на базе Vision). Всё,
 что за этой границей, отложено; полный список вне области см. в
 спецификации
 [§2 Scope of version 0.1](SwiftMageX-MVP-0.1-spec.md#2-scope-of-version-01)

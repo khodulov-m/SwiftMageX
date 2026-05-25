@@ -4,6 +4,7 @@ import CoreText
 import Foundation
 import ImageIO
 import UniformTypeIdentifiers
+import Vision
 
 /// CoreImage / CoreText / ImageIO implementation of ``RasterEngine``.
 ///
@@ -345,6 +346,55 @@ public struct CoreImageRasterEngine: RasterEngine {
 
         guard let output = context.makeImage() else {
             throw SwiftMageXError.raster("device framing failed")
+        }
+        return RasterImage(cgImage: output)
+    }
+
+    // MARK: - Remove background
+
+    public func removeBackground(_ image: RasterImage) throws -> RasterImage {
+        let source = image.cgImage
+        guard source.width > 0, source.height > 0 else {
+            throw SwiftMageXError.raster("source image has zero dimensions")
+        }
+
+        // Vision's foreground-instance segmentation (macOS 14+) runs the
+        // built-in on-device model — no network, no provider quota.
+        let request = VNGenerateForegroundInstanceMaskRequest()
+        let handler = VNImageRequestHandler(cgImage: source, options: [:])
+        do {
+            try handler.perform([request])
+        } catch {
+            throw SwiftMageXError.raster("foreground segmentation failed: \(error.localizedDescription)")
+        }
+
+        // No observation, or an observation with no instances, means the model
+        // found nothing salient to keep — surface that as a raster failure
+        // rather than writing a fully transparent image.
+        guard let observation = request.results?.first,
+              !observation.allInstances.isEmpty else {
+            throw SwiftMageXError.raster("no foreground subject detected")
+        }
+
+        let masked: CVPixelBuffer
+        do {
+            // Composite every detected instance over transparency, at the
+            // source resolution (not cropped to the subject's bounding box).
+            masked = try observation.generateMaskedImage(
+                ofInstances: observation.allInstances,
+                from: handler,
+                croppedToInstancesExtent: false
+            )
+        } catch {
+            throw SwiftMageXError.raster("mask compositing failed: \(error.localizedDescription)")
+        }
+
+        // The masked buffer is BGRA with a populated alpha channel; render it
+        // back to a CGImage so the rest of the pipeline is format-agnostic.
+        let ciImage = CIImage(cvPixelBuffer: masked)
+        let context = CIContext(options: nil)
+        guard let output = context.createCGImage(ciImage, from: ciImage.extent) else {
+            throw SwiftMageXError.raster("could not render masked image")
         }
         return RasterImage(cgImage: output)
     }
