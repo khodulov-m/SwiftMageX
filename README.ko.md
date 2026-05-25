@@ -80,7 +80,7 @@ export GEMINI_API_KEY="…"
 
 ## 빠른 매뉴얼
 
-세 개의 서브커맨드가 동일한 글로벌 플래그를 공유합니다:
+다섯 개의 서브커맨드가 동일한 글로벌 플래그를 공유합니다:
 
 | 글로벌 플래그 | 효과 |
 |---|---|
@@ -181,6 +181,63 @@ swiftmagex text screenshot.png --text "Download on the App Store" --position bot
 swiftmagex text cover.png --text "SALE" --position center --font-size 96 --stroke "#000000"
 ```
 
+### `swiftmagex composite` — 한 이미지를 다른 이미지 위에 합성
+
+```
+swiftmagex composite <배경> --overlay <전경> [옵션]
+```
+
+| 옵션 | 기본값 | 비고 |
+|---|---|---|
+| `<배경>` | — | 캔버스 이미지. |
+| `--overlay <경로>` | — | 필수. 위에 올릴 전경(알파 반영). |
+| `--position` | `center` | `text`와 동일한 7개 앵커. |
+| `--scale <비율>` | `1.0` | 배경 대비 전경 크기 비율. 가로세로비 유지. |
+| `--offset-x`, `--offset-y <px>` | `0` | 앵커에서의 이동량(양수 = 오른쪽 / 아래). |
+| `--opacity <0.0–1.0>` | `1.0` | 전경 합성 불투명도. |
+| `-o`, `--output <경로>` | 배경 옆 | |
+| `--format <png\|jpeg>`, `--quality` | 배경과 동일 / `0.9` | |
+
+```sh
+swiftmagex composite bg.png --overlay logo.png --position top-right --scale 0.2 -o hero.png
+```
+
+### `swiftmagex appstore` — App Store Connect 스크린샷
+
+스크린샷을 디바이스 프레임에 끼우고 배경에 맞게 스케일한 뒤, 선택적 캡션을
+얹어 결과를 하나 이상의 App Store Connect iPhone 픽셀 크기로 출력합니다 —
+한 번의 실행으로 일괄 처리합니다.
+
+```
+swiftmagex appstore <스크린샷> --background <배경> [옵션]
+```
+
+| 옵션 | 기본값 | 비고 |
+|---|---|---|
+| `<스크린샷>` | — | 프레임에 끼울 캡처된 스크린샷. |
+| `--background <경로>` | — | 필수. 디바이스 뒤를 채움(cover). |
+| `--frame <경로>` | — | 화면 부분이 투명한 iPhone 프레임 PNG. 생략하면 프레임 합성을 건너뜀. |
+| `--screen-rect <x,y,w,h>` | 자동 감지 | 프레임 안에서 스크린샷이 놓일 위치. 생략 시 프레임의 알파에서 감지. |
+| `--device <id>` | `iphone-6.9` | 반복 가능. `iphone-6.9`(1290×2796), `iphone-6.5`(1242×2688), `iphone-5.5`(1242×2208), 또는 `all` 중 하나. |
+| `--orientation <portrait\|landscape>` | `portrait` | 디바이스 치수를 교체. |
+| `--scale <비율>` | `0.85` | 캔버스 대비 프레임 적용된 디바이스 크기 비율. |
+| `--position`, `--offset-x`, `--offset-y` | `center`, `0`, `0` | 배경 위 디바이스 위치. |
+| `--caption <문자열>` | — | 선택적 캡션 텍스트. |
+| `--caption-position`, `--font`, `--font-size`, `--color`, `--stroke`, `--stroke-width` | `bottom`, 시스템, `96`, `#FFFFFF`, —, `0` | 캡션 스타일(`text`와 동일한 엔진). |
+| `-o`, `--output <디렉터리>` | `./` | 출력 **디렉터리**. 파일명은 `appstore_{device}_{w}x{h}.png`. |
+
+```sh
+# 필수 크기 하나, 프레임 + 캡션
+swiftmagex appstore shot.png --background bg.png --frame iphone.png \
+  --caption "Plan your week" --stroke "#000000" --stroke-width 6
+
+# 카탈로그의 모든 iPhone 크기를 한 번에
+swiftmagex appstore shot.png --background bg.png --frame iphone.png --device all -o ./shots
+```
+
+프레임은 **사용자가 제공**합니다. 화면 부분이 투명한 PNG라면 무엇이든 동작하며,
+화면 영역은 알파 채널에서 찾습니다(또는 `--screen-rect`로 지정).
+
 ### JSON 출력 스키마
 
 모든 명령은 `--json`에서 동일한 봉투를 출력합니다. 키는 정렬되며
@@ -229,9 +286,9 @@ nil 필드는 완전히 생략됩니다(`null` 자리표시 없음).
 
 ## MCP 서버
 
-`swiftmagex-mcp`는 stdio로 세 가지 도구
-(`generate_image`, `resize_image`, `overlay_text`)를 노출합니다.
-도구 인자는 CLI 플래그와 동일하며, 결과는 절대 경로를 반환해 호
+`swiftmagex-mcp`는 stdio로 다섯 가지 도구
+(`generate_image`, `resize_image`, `overlay_text`, `composite_images`, `appstore_screenshots`)를 노출합니다.
+도구 인자는 CLI 플래그와 동일하며(snake_case 키, 예: `font_size`, `screen_rect`, `devices`), 결과는 절대 경로를 반환해 호
 출 에이전트가 서버의 작업 디렉터리를 알 필요가 없습니다.
 `generate_image`는 추가로 이미지 바이트를 MCP `image` 콘텐츠로
 함께 반환하여 호출 모델이 결과물을 직접 확인할 수 있습니다.

@@ -81,7 +81,7 @@ export GEMINI_API_KEY="…"
 
 ## クイックマニュアル
 
-3 つのサブコマンドはいずれも同じグローバルフラグを共有します:
+5 つのサブコマンドはいずれも同じグローバルフラグを共有します:
 
 | グローバルフラグ | 効果 |
 |---|---|
@@ -184,6 +184,63 @@ swiftmagex text screenshot.png --text "Download on the App Store" --position bot
 swiftmagex text cover.png --text "SALE" --position center --font-size 96 --stroke "#000000"
 ```
 
+### `swiftmagex composite` — 画像を別の画像に合成
+
+```
+swiftmagex composite <背景> --overlay <前景> [オプション]
+```
+
+| オプション | デフォルト | 備考 |
+|---|---|---|
+| `<背景>` | — | キャンバスとなる画像。 |
+| `--overlay <パス>` | — | 必須。上に重ねる前景(アルファを尊重)。 |
+| `--position` | `center` | `text` と同じ 7 つのアンカー。 |
+| `--scale <比率>` | `1.0` | 背景に対する前景のサイズ比。アスペクト比は保持。 |
+| `--offset-x`, `--offset-y <px>` | `0` | アンカーからのずらし量(正 = 右 / 下)。 |
+| `--opacity <0.0–1.0>` | `1.0` | 前景の合成不透明度。 |
+| `-o`, `--output <パス>` | 背景の隣 | |
+| `--format <png\|jpeg>`, `--quality` | 背景に合わせる / `0.9` | |
+
+```sh
+swiftmagex composite bg.png --overlay logo.png --position top-right --scale 0.2 -o hero.png
+```
+
+### `swiftmagex appstore` — App Store Connect 用スクリーンショット
+
+スクリーンショットをデバイスフレームにはめ込み、背景に合わせて拡縮し、任意の
+キャプションを重ね、結果を 1 つ以上の App Store Connect の iPhone ピクセル
+サイズで書き出します — 1 回の実行でまとめて処理します。
+
+```
+swiftmagex appstore <スクリーンショット> --background <背景> [オプション]
+```
+
+| オプション | デフォルト | 備考 |
+|---|---|---|
+| `<スクリーンショット>` | — | フレームにはめ込む撮影済みスクリーンショット。 |
+| `--background <パス>` | — | 必須。デバイスの背後を埋める(cover)。 |
+| `--frame <パス>` | — | 画面部分が透明な iPhone フレーム PNG。省略するとフレーム合成をスキップ。 |
+| `--screen-rect <x,y,w,h>` | 自動検出 | フレーム内でスクリーンショットを置く位置。省略時はフレームのアルファから検出。 |
+| `--device <id>` | `iphone-6.9` | 繰り返し可。`iphone-6.9`(1290×2796)、`iphone-6.5`(1242×2688)、`iphone-5.5`(1242×2208)、または `all` のいずれか。 |
+| `--orientation <portrait\|landscape>` | `portrait` | デバイスの寸法を入れ替える。 |
+| `--scale <比率>` | `0.85` | キャンバスに対するフレーム済みデバイスのサイズ比。 |
+| `--position`, `--offset-x`, `--offset-y` | `center`, `0`, `0` | 背景上でのデバイスの配置。 |
+| `--caption <文字列>` | — | 任意のキャプションテキスト。 |
+| `--caption-position`, `--font`, `--font-size`, `--color`, `--stroke`, `--stroke-width` | `bottom`, システム, `96`, `#FFFFFF`, —, `0` | キャプションのスタイル(`text` と同じエンジン)。 |
+| `-o`, `--output <ディレクトリ>` | `./` | 出力**ディレクトリ**。ファイル名は `appstore_{device}_{w}x{h}.png`。 |
+
+```sh
+# 必須サイズ 1 つ、フレーム + キャプション付き
+swiftmagex appstore shot.png --background bg.png --frame iphone.png \
+  --caption "Plan your week" --stroke "#000000" --stroke-width 6
+
+# カタログの全 iPhone サイズを一度に
+swiftmagex appstore shot.png --background bg.png --frame iphone.png --device all -o ./shots
+```
+
+フレームは**ユーザーが用意**します。画面部分が透明な PNG なら何でも使えます。
+画面領域はアルファチャンネルから検出されます(または `--screen-rect` で指定)。
+
 ### JSON 出力スキーマ
 
 `--json` ですべてのコマンドが同じエンベロープを返します。キーは
@@ -233,9 +290,9 @@ swiftmagex text cover.png --text "SALE" --position center --font-size 96 --strok
 
 ## MCP サーバ
 
-`swiftmagex-mcp` は stdio 上で 3 つのツール
-(`generate_image`、`resize_image`、`overlay_text`)を提供します。
-引数は CLI フラグと対応しており、結果は絶対パスを返すので、呼び出
+`swiftmagex-mcp` は stdio 上で 5 つのツール
+(`generate_image`、`resize_image`、`overlay_text`、`composite_images`、`appstore_screenshots`)を提供します。
+引数は CLI フラグと対応しており(snake_case のキー、例: `font_size`、`screen_rect`、`devices`)、結果は絶対パスを返すので、呼び出
 し側エージェントはサーバの作業ディレクトリを知る必要がありません。
 `generate_image` は加えて、生成された画像のバイト列を MCP の
 `image` コンテンツとして返し、呼び出し側モデルが出力結果を直接確

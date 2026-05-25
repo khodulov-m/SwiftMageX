@@ -81,7 +81,7 @@ nicht unter `--verbose` und nicht in Output-Datei-Metadaten.
 
 ## Schnelles Handbuch
 
-Drei Unterbefehle, alle teilen sich dieselben globalen Flags:
+Fünf Unterbefehle, alle teilen sich dieselben globalen Flags:
 
 | Globales Flag | Wirkung |
 |---|---|
@@ -183,6 +183,64 @@ swiftmagex text screenshot.png --text "Download on the App Store" --position bot
 swiftmagex text cover.png --text "SALE" --position center --font-size 96 --stroke "#000000"
 ```
 
+### `swiftmagex composite` — ein Bild auf ein anderes legen
+
+```
+swiftmagex composite <hintergrund> --overlay <vordergrund> [optionen]
+```
+
+| Option | Standard | Hinweise |
+|---|---|---|
+| `<hintergrund>` | — | Das Leinwand-Bild. |
+| `--overlay <pfad>` | — | Erforderlich. Vordergrund, der oben aufgelegt wird (Alpha wird beachtet). |
+| `--position` | `center` | Dieselben sieben Anker wie bei `text`. |
+| `--scale <bruch>` | `1.0` | Vordergrundgröße als Bruchteil des Hintergrunds; Seitenverhältnis bleibt erhalten. |
+| `--offset-x`, `--offset-y <px>` | `0` | Verschiebung vom Anker (positiv = rechts / unten). |
+| `--opacity <0.0–1.0>` | `1.0` | Deckkraft des Vordergrunds. |
+| `-o`, `--output <pfad>` | neben dem Hintergrund | |
+| `--format <png\|jpeg>`, `--quality` | wie Hintergrund / `0.9` | |
+
+```sh
+swiftmagex composite bg.png --overlay logo.png --position top-right --scale 0.2 -o hero.png
+```
+
+### `swiftmagex appstore` — App-Store-Connect-Screenshots
+
+Rahmt einen Screenshot in einen Geräterahmen, skaliert ihn auf einen Hintergrund,
+legt eine optionale Bildunterschrift darüber und schreibt das Ergebnis in einer
+oder mehreren App-Store-Connect-iPhone-Pixelgrößen — gebündelt in einem Durchlauf.
+
+```
+swiftmagex appstore <screenshot> --background <bg> [optionen]
+```
+
+| Option | Standard | Hinweise |
+|---|---|---|
+| `<screenshot>` | — | Der aufgenommene Screenshot, der in den Rahmen gesetzt wird. |
+| `--background <pfad>` | — | Erforderlich. Hinter dem Gerät gefüllt (cover). |
+| `--frame <pfad>` | — | iPhone-Rahmen-PNG mit transparentem Bildschirm-Ausschnitt. Weglassen, um das Einrahmen zu überspringen. |
+| `--screen-rect <x,y,w,h>` | automatisch | Wo der Screenshot im Rahmen sitzt. Wird ohne Angabe aus dem Alpha des Rahmens erkannt. |
+| `--device <id>` | `iphone-6.9` | Wiederholbar. Eines von `iphone-6.9` (1290×2796), `iphone-6.5` (1242×2688), `iphone-5.5` (1242×2208) oder `all`. |
+| `--orientation <portrait\|landscape>` | `portrait` | Tauscht die Gerätemaße. |
+| `--scale <bruch>` | `0.85` | Größe des gerahmten Geräts als Bruchteil der Leinwand. |
+| `--position`, `--offset-x`, `--offset-y` | `center`, `0`, `0` | Wo das Gerät auf dem Hintergrund sitzt. |
+| `--caption <string>` | — | Optionaler Untertitel-Text. |
+| `--caption-position`, `--font`, `--font-size`, `--color`, `--stroke`, `--stroke-width` | `bottom`, System, `96`, `#FFFFFF`, —, `0` | Untertitel-Styling (gleiche Engine wie `text`). |
+| `-o`, `--output <verz>` | `./` | Ausgabe-**Verzeichnis**; Dateien heißen `appstore_{device}_{w}x{h}.png`. |
+
+```sh
+# Eine erforderliche Größe, gerahmt + mit Untertitel
+swiftmagex appstore shot.png --background bg.png --frame iphone.png \
+  --caption "Plan your week" --stroke "#000000" --stroke-width 6
+
+# Alle katalogisierten iPhone-Größen auf einmal
+swiftmagex appstore shot.png --background bg.png --frame iphone.png --device all -o ./shots
+```
+
+Der Rahmen wird **vom Benutzer bereitgestellt** — jede PNG mit transparentem
+Bildschirm-Loch funktioniert; der Bildschirmbereich wird aus dem Alpha-Kanal
+erkannt (oder mit `--screen-rect` festgelegt).
+
 ### JSON-Ausgabe-Schema
 
 Jeder Befehl emittiert unter `--json` dieselbe Hülle. Schlüssel sind
@@ -231,9 +289,11 @@ damit ein Agent alles an einer Stelle parsen kann.
 
 ## MCP-Server
 
-`swiftmagex-mcp` stellt drei Tools — `generate_image`,
-`resize_image`, `overlay_text` — über stdio bereit. Tool-Argumente
-spiegeln die CLI-Flags wider; Ergebnisse melden absolute Dateipfade,
+`swiftmagex-mcp` stellt fünf Tools — `generate_image`,
+`resize_image`, `overlay_text`, `composite_images` und
+`appstore_screenshots` — über stdio bereit. Tool-Argumente
+spiegeln die CLI-Flags wider (snake_case-Schlüssel, z. B. `font_size`,
+`screen_rect`, `devices`); Ergebnisse melden absolute Dateipfade,
 damit der aufrufende Agent das Arbeitsverzeichnis des Servers nicht
 kennen muss. `generate_image` liefert zusätzlich die Bildbytes als
 MCP-`image`-Inhalt, damit das aufrufende Modell das Resultat
