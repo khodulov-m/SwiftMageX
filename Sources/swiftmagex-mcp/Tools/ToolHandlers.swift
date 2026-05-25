@@ -105,6 +105,62 @@ enum ToolHandlers {
         }
     }
 
+    // MARK: - composite_images
+
+    static func composite(arguments: [String: Value]?) throws -> CallTool.Result {
+        let input = try CompositeImagesTool.parse(arguments)
+
+        do {
+            let spec = CompositeSpec(
+                position: input.position,
+                scale: input.scale,
+                offsetX: input.offsetX,
+                offsetY: input.offsetY,
+                opacity: input.opacity
+            )
+            let written = try SwiftMageXOrchestrator.composite(
+                input: input.input,
+                overlay: input.overlay,
+                spec: spec,
+                output: input.output,
+                format: input.format,
+                quality: input.quality
+            )
+            return CallTool.Result(
+                content: [.text(text: summaryText(for: [written]), annotations: nil, _meta: nil)],
+                isError: false
+            )
+        } catch let error as SwiftMageXError {
+            return errorResult(error)
+        }
+    }
+
+    // MARK: - appstore_screenshots
+
+    static func appStore(arguments: [String: Value]?) throws -> CallTool.Result {
+        let input = try AppStoreScreenshotsTool.parse(arguments)
+
+        do {
+            let written = try SwiftMageXOrchestrator.prepareAppStoreScreenshots(
+                screenshot: input.screenshot,
+                background: input.background,
+                frame: input.frame,
+                frameSpec: input.frameSpec,
+                caption: input.caption,
+                devices: input.devices,
+                placement: input.placement,
+                orientation: input.orientation,
+                output: input.output
+            )
+            return CallTool.Result(
+                content: [.text(text: summaryText(for: written), annotations: nil, _meta: nil)],
+                isError: false
+            )
+        } catch let error as SwiftMageXError {
+            return errorResult(error)
+        }
+    }
+
     // MARK: - Helpers
 
     /// Builds the human-readable summary that accompanies every tool result.

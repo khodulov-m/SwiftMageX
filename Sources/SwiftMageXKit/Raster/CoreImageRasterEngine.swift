@@ -197,6 +197,158 @@ public struct CoreImageRasterEngine: RasterEngine {
         return RasterImage(cgImage: output)
     }
 
+    // MARK: - Composite
+
+    public func composite(
+        _ foreground: RasterImage,
+        onto background: RasterImage,
+        _ spec: CompositeSpec
+    ) throws -> RasterImage {
+        let bgW = background.width
+        let bgH = background.height
+        guard bgW > 0, bgH > 0 else {
+            throw SwiftMageXError.raster("background image has zero dimensions")
+        }
+        let fgW = foreground.width
+        let fgH = foreground.height
+        guard fgW > 0, fgH > 0 else {
+            throw SwiftMageXError.raster("foreground image has zero dimensions")
+        }
+        guard spec.scale > 0 else {
+            throw SwiftMageXError.invalidInput("composite scale must be positive (got \(spec.scale))")
+        }
+
+        // Contain-fit the foreground into a box of `scale × background`,
+        // preserving aspect ratio.
+        let box = min(
+            Double(bgW) * spec.scale / Double(fgW),
+            Double(bgH) * spec.scale / Double(fgH)
+        )
+        let drawW = max(1, Int((Double(fgW) * box).rounded()))
+        let drawH = max(1, Int((Double(fgH) * box).rounded()))
+
+        // Anchor with no safe-zone padding, then apply the pixel nudges.
+        // CoreGraphics is y-up, so a positive `offsetY` (down) subtracts.
+        let origin = Self.frameOrigin(
+            position: spec.position,
+            imageWidth: CGFloat(bgW),
+            imageHeight: CGFloat(bgH),
+            textWidth: CGFloat(drawW),
+            textHeight: CGFloat(drawH),
+            padX: 0,
+            padY: 0
+        )
+        let drawRect = CGRect(
+            x: origin.x + CGFloat(spec.offsetX),
+            y: origin.y - CGFloat(spec.offsetY),
+            width: CGFloat(drawW),
+            height: CGFloat(drawH)
+        )
+
+        let colorSpace = CGColorSpaceCreateDeviceRGB()
+        guard let context = CGContext(
+            data: nil,
+            width: bgW,
+            height: bgH,
+            bitsPerComponent: 8,
+            bytesPerRow: 0,
+            space: colorSpace,
+            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
+        ) else {
+            throw SwiftMageXError.raster("unable to create bitmap context")
+        }
+        context.interpolationQuality = .high
+        context.draw(
+            background.cgImage,
+            in: CGRect(x: 0, y: 0, width: bgW, height: bgH)
+        )
+        context.setAlpha(CGFloat(max(0, min(1, spec.opacity))))
+        context.draw(foreground.cgImage, in: drawRect)
+        context.setAlpha(1)
+
+        guard let output = context.makeImage() else {
+            throw SwiftMageXError.raster("composite rendering failed")
+        }
+        return RasterImage(cgImage: output)
+    }
+
+    // MARK: - Device framing
+
+    public func frameScreenshot(
+        _ screenshot: RasterImage,
+        in frame: RasterImage,
+        _ spec: DeviceFrameSpec
+    ) throws -> RasterImage {
+        let frameW = frame.width
+        let frameH = frame.height
+        guard frameW > 0, frameH > 0 else {
+            throw SwiftMageXError.raster("frame image has zero dimensions")
+        }
+
+        let rect: DeviceFrameSpec.ScreenRect
+        if let explicit = spec.screenRect {
+            rect = explicit
+        } else if let detected = Self.detectScreenRect(
+            in: frame.cgImage,
+            alphaThreshold: spec.alphaThreshold
+        ) {
+            rect = detected
+        } else {
+            throw SwiftMageXError.invalidInput(
+                "frame has no enclosed transparent screen area; pass an explicit screen rect"
+            )
+        }
+
+        guard rect.width > 0, rect.height > 0,
+              rect.x >= 0, rect.y >= 0,
+              rect.x + rect.width <= frameW,
+              rect.y + rect.height <= frameH else {
+            throw SwiftMageXError.invalidInput(
+                "screen rect \(rect.x),\(rect.y),\(rect.width),\(rect.height) lies outside the \(frameW)x\(frameH) frame"
+            )
+        }
+
+        // Scale the screenshot into the screen rect (cover by default).
+        let scaled = try resize(
+            screenshot,
+            to: ResizeSpec(width: rect.width, height: rect.height, fit: spec.screenFit)
+        )
+
+        let colorSpace = CGColorSpaceCreateDeviceRGB()
+        guard let context = CGContext(
+            data: nil,
+            width: frameW,
+            height: frameH,
+            bitsPerComponent: 8,
+            bytesPerRow: 0,
+            space: colorSpace,
+            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
+        ) else {
+            throw SwiftMageXError.raster("unable to create bitmap context")
+        }
+        context.interpolationQuality = .high
+
+        // Place the screenshot under the bezel. The screen rect is top-left
+        // origin; convert to CoreGraphics' bottom-up space. `.contain` may
+        // yield an image smaller than the rect, so center it inside the rect.
+        let drawW = scaled.width
+        let drawH = scaled.height
+        let cgX = CGFloat(rect.x) + (CGFloat(rect.width) - CGFloat(drawW)) / 2
+        let cgY = CGFloat(frameH - rect.y - rect.height)
+            + (CGFloat(rect.height) - CGFloat(drawH)) / 2
+        context.draw(
+            scaled.cgImage,
+            in: CGRect(x: cgX, y: cgY, width: CGFloat(drawW), height: CGFloat(drawH))
+        )
+        // Bezel on top — its opaque area masks the screenshot's corners.
+        context.draw(frame.cgImage, in: CGRect(x: 0, y: 0, width: frameW, height: frameH))
+
+        guard let output = context.makeImage() else {
+            throw SwiftMageXError.raster("device framing failed")
+        }
+        return RasterImage(cgImage: output)
+    }
+
     // MARK: - Write
 
     public func write(
@@ -394,6 +546,92 @@ public struct CoreImageRasterEngine: RasterEngine {
         case .bottomLeft: return CGPoint(x: xLeft, y: yBottom)
         case .bottomRight: return CGPoint(x: xRight, y: yBottom)
         }
+    }
+
+    /// Finds the enclosed transparent screen cutout in a device-frame image.
+    ///
+    /// The frame's *outer* transparency (around the device body) reaches the
+    /// image border, while the screen hole is fully surrounded by opaque bezel.
+    /// We flood-fill transparent pixels inward from the border to tag them as
+    /// "outside", then take the bounding box of the transparent pixels that
+    /// remain — that box is the screen rect (top-left origin). Returns `nil`
+    /// when no enclosed transparent region exists.
+    static func detectScreenRect(
+        in image: CGImage,
+        alphaThreshold: Int
+    ) -> DeviceFrameSpec.ScreenRect? {
+        let width = image.width
+        let height = image.height
+        guard width > 0, height > 0 else { return nil }
+
+        let colorSpace = CGColorSpaceCreateDeviceRGB()
+        guard let context = CGContext(
+            data: nil,
+            width: width,
+            height: height,
+            bitsPerComponent: 8,
+            bytesPerRow: 0,
+            space: colorSpace,
+            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
+        ) else { return nil }
+        context.draw(image, in: CGRect(x: 0, y: 0, width: width, height: height))
+        guard let data = context.data else { return nil }
+
+        // Memory row 0 is the top scanline; alpha is the last byte of each RGBA
+        // pixel (premultipliedLast).
+        let rowBytes = context.bytesPerRow
+        let pixels = data.bindMemory(to: UInt8.self, capacity: rowBytes * height)
+        let threshold = UInt8(max(0, min(255, alphaThreshold)))
+        @inline(__always) func isTransparent(_ x: Int, _ y: Int) -> Bool {
+            pixels[y * rowBytes + x * 4 + 3] < threshold
+        }
+
+        // Tag border-connected transparent pixels ("outside") via 4-neighbor
+        // flood fill with an explicit stack.
+        var outside = [Bool](repeating: false, count: width * height)
+        var stack: [Int] = []
+        @inline(__always) func push(_ x: Int, _ y: Int) {
+            let idx = y * width + x
+            if !outside[idx] && isTransparent(x, y) {
+                outside[idx] = true
+                stack.append(idx)
+            }
+        }
+        for x in 0..<width {
+            push(x, 0)
+            push(x, height - 1)
+        }
+        for y in 0..<height {
+            push(0, y)
+            push(width - 1, y)
+        }
+        while let idx = stack.popLast() {
+            let x = idx % width
+            let y = idx / width
+            if x > 0 { push(x - 1, y) }
+            if x < width - 1 { push(x + 1, y) }
+            if y > 0 { push(x, y - 1) }
+            if y < height - 1 { push(x, y + 1) }
+        }
+
+        // Bounding box of enclosed (transparent but not outside) pixels.
+        var minX = width, minY = height, maxX = -1, maxY = -1
+        for y in 0..<height {
+            let rowBase = y * width
+            for x in 0..<width where isTransparent(x, y) && !outside[rowBase + x] {
+                if x < minX { minX = x }
+                if x > maxX { maxX = x }
+                if y < minY { minY = y }
+                if y > maxY { maxY = y }
+            }
+        }
+        guard maxX >= minX, maxY >= minY else { return nil }
+        return DeviceFrameSpec.ScreenRect(
+            x: minX,
+            y: minY,
+            width: maxX - minX + 1,
+            height: maxY - minY + 1
+        )
     }
 
     /// Pack the structured metadata into a single JSON object — the same shape

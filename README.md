@@ -179,6 +179,63 @@ swiftmagex text screenshot.png --text "Download on the App Store" --position bot
 swiftmagex text cover.png --text "SALE" --position center --font-size 96 --stroke "#000000"
 ```
 
+### `swiftmagex composite` — paste one image onto another
+
+```
+swiftmagex composite <background> --overlay <foreground> [options]
+```
+
+| Option | Default | Notes |
+|---|---|---|
+| `<background>` | — | The canvas image. |
+| `--overlay <path>` | — | Required. Foreground pasted on top (alpha respected). |
+| `--position` | `center` | Same seven anchors as `text`. |
+| `--scale <fraction>` | `1.0` | Foreground size as a fraction of the background; aspect ratio preserved. |
+| `--offset-x`, `--offset-y <px>` | `0` | Nudge from the anchor (positive = right / down). |
+| `--opacity <0.0–1.0>` | `1.0` | Foreground blend opacity. |
+| `-o`, `--output <path>` | sibling of background | |
+| `--format <png\|jpeg>`, `--quality` | matches background / `0.9` | |
+
+```sh
+swiftmagex composite bg.png --overlay logo.png --position top-right --scale 0.2 -o hero.png
+```
+
+### `swiftmagex appstore` — App Store Connect screenshots
+
+Frames a screenshot inside a device bezel, scales it onto a background, overlays
+an optional caption, and writes the result at one or more App Store Connect
+iPhone pixel sizes — batched in a single run.
+
+```
+swiftmagex appstore <screenshot> --background <bg> [options]
+```
+
+| Option | Default | Notes |
+|---|---|---|
+| `<screenshot>` | — | The captured screenshot placed into the frame. |
+| `--background <path>` | — | Required. Filled (cover) behind the device. |
+| `--frame <path>` | — | iPhone bezel PNG with a transparent screen cutout. Omit to skip framing. |
+| `--screen-rect <x,y,w,h>` | auto-detect | Where the screenshot goes inside the frame. Auto-detected from the frame's alpha when omitted. |
+| `--device <id>` | `iphone-6.9` | Repeatable. One of `iphone-6.9` (1290×2796), `iphone-6.5` (1242×2688), `iphone-5.5` (1242×2208), or `all`. |
+| `--orientation <portrait\|landscape>` | `portrait` | Swaps the device dimensions. |
+| `--scale <fraction>` | `0.85` | Framed-device size as a fraction of the canvas. |
+| `--position`, `--offset-x`, `--offset-y` | `center`, `0`, `0` | Where the device sits on the background. |
+| `--caption <string>` | — | Optional caption text. |
+| `--caption-position`, `--font`, `--font-size`, `--color`, `--stroke`, `--stroke-width` | `bottom`, system, `96`, `#FFFFFF`, —, `0` | Caption styling (same engine as `text`). |
+| `-o`, `--output <dir>` | `./` | Output **directory**; files are named `appstore_{device}_{w}x{h}.png`. |
+
+```sh
+# Single required size, framed + captioned
+swiftmagex appstore shot.png --background bg.png --frame iphone.png \
+  --caption "Plan your week" --stroke "#000000" --stroke-width 6
+
+# Every catalogued iPhone size at once
+swiftmagex appstore shot.png --background bg.png --frame iphone.png --device all -o ./shots
+```
+
+The bezel is **user-supplied** — any PNG with a transparent screen hole works; the
+screen region is found from its alpha channel (or pin it with `--screen-rect`).
+
 ### JSON output schema
 
 Every command emits the same envelope under `--json`. Keys are sorted; nil
@@ -226,12 +283,13 @@ in one place.
 
 ## MCP server
 
-`swiftmagex-mcp` exposes three tools — `generate_image`, `resize_image`,
-`overlay_text` — over stdio. Tool arguments mirror the CLI flags above; tool
-results report absolute file paths so the calling agent doesn't need to know
-the server's working directory. `generate_image` additionally returns the
-image bytes as MCP `image` content so the calling model can inspect what was
-produced.
+`swiftmagex-mcp` exposes five tools — `generate_image`, `resize_image`,
+`overlay_text`, `composite_images`, and `appstore_screenshots` — over stdio.
+Tool arguments mirror the CLI flags above (snake_case keys, e.g. `font_size`,
+`screen_rect`, `devices`); tool results report absolute file paths so the
+calling agent doesn't need to know the server's working directory.
+`generate_image` additionally returns the image bytes as MCP `image` content so
+the calling model can inspect what was produced.
 
 ### Configure Claude Code
 

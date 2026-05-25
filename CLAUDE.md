@@ -24,16 +24,16 @@ Generation requires `SWIFTMAGEX_GEMINI_API_KEY` (or fallback `GEMINI_API_KEY`) i
 Three SwiftPM targets in one package; two thin frontends over one core library. The shape matters because it's the project's main constraint:
 
 - **`SwiftMageXKit`** (library) — pure orchestration. **No external dependencies.** Networking is `URLSession`; raster work is CoreImage / CoreText / ImageIO. Defines the `ImageProvider` and `RasterEngine` protocols, request/response models, errors, and config.
-- **`swiftmagex`** (executable) — CLI frontend. Depends on `SwiftMageXKit` + `swift-argument-parser`. Subcommands: `generate`, `resize`, `text`. Global flags: `--json`, `--verbose`.
-- **`swiftmagex-mcp`** (executable) — MCP server frontend over stdio. Depends on `SwiftMageXKit` + the MCP Swift SDK. Exposes three tools (`generate_image`, `resize_image`, `overlay_text`) that mirror the CLI commands.
+- **`swiftmagex`** (executable) — CLI frontend. Depends on `SwiftMageXKit` + `swift-argument-parser`. Subcommands: `generate`, `resize`, `text`, `composite`, `appstore`. Global flags: `--json`, `--verbose`.
+- **`swiftmagex-mcp`** (executable) — MCP server frontend over stdio. Depends on `SwiftMageXKit` + the MCP Swift SDK. Exposes five tools (`generate_image`, `resize_image`, `overlay_text`, `composite_images`, `appstore_screenshots`) that mirror the CLI commands.
 
 Frontends own *only* their interface concern (argparsing/output, or MCP protocol). All business logic lives in the Kit. The two frontends share no dependency with each other — keep it that way; don't introduce code in one that pulls the other's dependency into the Kit.
 
-`generate` uses both `ImageProvider` (network) and `RasterEngine` (write file + embed metadata). `resize` and `text` use only `RasterEngine`.
+`generate` uses both `ImageProvider` (network) and `RasterEngine` (write file + embed metadata). `resize`, `text`, `composite`, and `appstore` use only `RasterEngine` — no API key. `appstore` (post-0.1) is the App Store Connect screenshot pipeline: frame a screenshot in a user-supplied bezel → composite onto a background → optional caption → batch-resize to ASC iPhone sizes from `ASCDeviceCatalog`.
 
 ### Protocols are abstractions for testability — keep additions concrete
 
-`RasterEngine` still has exactly one implementation (`CoreImageRasterEngine`). `ImageProvider` now has two: `GeminiProvider` (`:generateContent`) and `ImagenProvider` (`:predict`). Both Google AI shapes share host + auth + retry policy but differ enough in request/response that a single class would be all branches. Routing between them lives in `ModelCatalog` (model id → family) and `SwiftMageXOrchestrator.makeProvider(for:apiKey:)` — add a new model id to the catalog, not a new provider, unless the wire shape genuinely differs. The protocols still exist primarily for testability against `MockImageProvider` / `MockHTTPClient`; the spec defers Ollama/ComfyUI to 0.2.
+`RasterEngine` still has exactly one implementation (`CoreImageRasterEngine`) — it just grew more methods (`resize`, `overlayText`, `composite`, `frameScreenshot`, `load`, `write`). `ImageProvider` now has two: `GeminiProvider` (`:generateContent`) and `ImagenProvider` (`:predict`). Both Google AI shapes share host + auth + retry policy but differ enough in request/response that a single class would be all branches. Routing between them lives in `ModelCatalog` (model id → family) and `SwiftMageXOrchestrator.makeProvider(for:apiKey:)` — add a new model id to the catalog, not a new provider, unless the wire shape genuinely differs. The protocols still exist primarily for testability against `MockImageProvider` / `MockHTTPClient`; the spec defers Ollama/ComfyUI to 0.2.
 
 ### Dependency budget is a hard rule
 

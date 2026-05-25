@@ -207,6 +207,152 @@ final class RasterEngineTests: XCTestCase {
         }
     }
 
+    // MARK: - Composite
+
+    func testCompositeKeepsBackgroundDimensions() throws {
+        let engine = CoreImageRasterEngine()
+        let bg = RasterImage(cgImage: Self.makeColorImage(width: 200, height: 120, r: 200, g: 0, b: 0))
+        let fg = RasterImage(cgImage: Self.makeColorImage(width: 40, height: 40, r: 0, g: 200, b: 0))
+        let out = try engine.composite(fg, onto: bg, CompositeSpec(position: .center, scale: 0.25))
+        XCTAssertEqual(out.width, 200)
+        XCTAssertEqual(out.height, 120)
+    }
+
+    func testCompositePlacesForegroundAtAnchor() throws {
+        let engine = CoreImageRasterEngine()
+        // Red background, green foreground fit into a 0.25 box → ~50×50,
+        // centered on the 200×200 canvas at (75,75)–(125,125).
+        let bg = RasterImage(cgImage: Self.makeColorImage(width: 200, height: 200, r: 200, g: 0, b: 0))
+        let fg = RasterImage(cgImage: Self.makeColorImage(width: 50, height: 50, r: 0, g: 200, b: 0))
+        let out = try engine.composite(fg, onto: bg, CompositeSpec(position: .center, scale: 0.25))
+
+        let center = try XCTUnwrap(Self.rgba(of: out.cgImage, x: 100, y: 100))
+        XCTAssertGreaterThan(Int(center.g), 100, "center should show the green foreground")
+        XCTAssertLessThan(Int(center.r), 80, "center should not be the red background")
+
+        let corner = try XCTUnwrap(Self.rgba(of: out.cgImage, x: 5, y: 5))
+        XCTAssertGreaterThan(Int(corner.r), 150, "corner should remain the red background")
+        XCTAssertLessThan(Int(corner.g), 80, "corner should not show the foreground")
+    }
+
+    func testCompositeRejectsNonPositiveScale() {
+        let engine = CoreImageRasterEngine()
+        let bg = RasterImage(cgImage: Self.makeColorImage(width: 10, height: 10, r: 1, g: 1, b: 1))
+        let fg = RasterImage(cgImage: Self.makeColorImage(width: 4, height: 4, r: 2, g: 2, b: 2))
+        XCTAssertThrowsError(try engine.composite(fg, onto: bg, CompositeSpec(scale: 0))) { error in
+            guard let smx = error as? SwiftMageXError, case .invalidInput = smx else {
+                return XCTFail("Expected SwiftMageXError.invalidInput, got \(error)")
+            }
+        }
+    }
+
+    // MARK: - Device framing
+
+    func testDetectScreenRectFindsEnclosedHole() throws {
+        // 100×200 frame: 10px transparent margin, opaque blue bezel, a
+        // transparent hole near the top at (20,20) sized 60×40.
+        let frame = Self.makeFrameImage(
+            width: 100, height: 200, margin: 10,
+            hole: (x: 20, y: 20, w: 60, h: 40),
+            bezel: (0, 0, 255)
+        )
+        let rect = try XCTUnwrap(
+            CoreImageRasterEngine.detectScreenRect(in: frame, alphaThreshold: 16)
+        )
+        XCTAssertEqual(rect.x, 20)
+        XCTAssertEqual(rect.y, 20)
+        XCTAssertEqual(rect.width, 60)
+        XCTAssertEqual(rect.height, 40)
+    }
+
+    func testDetectScreenRectReturnsNilForOpaqueFrame() {
+        let opaque = Self.makeColorImage(width: 40, height: 40, r: 10, g: 10, b: 10)
+        XCTAssertNil(CoreImageRasterEngine.detectScreenRect(in: opaque, alphaThreshold: 16))
+    }
+
+    func testFrameScreenshotPlacesScreenshotInHole() throws {
+        let engine = CoreImageRasterEngine()
+        let frame = RasterImage(cgImage: Self.makeFrameImage(
+            width: 100, height: 200, margin: 10,
+            hole: (x: 20, y: 20, w: 60, h: 40),
+            bezel: (0, 0, 255)
+        ))
+        // Gray screenshot so the hole reads gray, distinct from the blue bezel
+        // and the transparent surround.
+        let shot = RasterImage(cgImage: Self.makeColorImage(width: 120, height: 80, r: 128, g: 128, b: 128))
+
+        let framed = try engine.frameScreenshot(shot, in: frame, DeviceFrameSpec())
+        XCTAssertEqual(framed.width, 100)
+        XCTAssertEqual(framed.height, 200)
+
+        // Inside the hole → screenshot (gray, high red channel).
+        let hole = try XCTUnwrap(Self.rgba(of: framed.cgImage, x: 40, y: 35))
+        XCTAssertGreaterThan(Int(hole.r), 100, "hole should reveal the gray screenshot")
+        XCTAssertEqual(Int(hole.a), 255, "hole pixel should be opaque")
+
+        // Bezel area below the hole → blue (low red, high blue).
+        let bezel = try XCTUnwrap(Self.rgba(of: framed.cgImage, x: 50, y: 120))
+        XCTAssertLessThan(Int(bezel.r), 60, "bezel should stay blue, not gray")
+        XCTAssertGreaterThan(Int(bezel.b), 180)
+
+        // Outer margin → transparent.
+        let margin = try XCTUnwrap(Self.rgba(of: framed.cgImage, x: 2, y: 2))
+        XCTAssertLessThan(Int(margin.a), 16, "outer margin should stay transparent")
+    }
+
+    func testFrameScreenshotHonorsExplicitScreenRect() throws {
+        let engine = CoreImageRasterEngine()
+        let opaqueFrame = RasterImage(cgImage: Self.makeColorImage(width: 80, height: 80, r: 0, g: 0, b: 255))
+        let shot = RasterImage(cgImage: Self.makeColorImage(width: 40, height: 40, r: 128, g: 128, b: 128))
+        // No transparent hole to auto-detect, so this must use the explicit rect
+        // (and would throw otherwise).
+        let spec = DeviceFrameSpec(screenRect: .init(x: 10, y: 10, width: 20, height: 20))
+        let framed = try engine.frameScreenshot(shot, in: opaqueFrame, spec)
+        XCTAssertEqual(framed.width, 80)
+        XCTAssertEqual(framed.height, 80)
+    }
+
+    func testFrameScreenshotThrowsWhenNoHoleAndNoRect() {
+        let engine = CoreImageRasterEngine()
+        let opaqueFrame = RasterImage(cgImage: Self.makeColorImage(width: 40, height: 40, r: 0, g: 0, b: 255))
+        let shot = RasterImage(cgImage: Self.makeColorImage(width: 20, height: 20, r: 1, g: 1, b: 1))
+        XCTAssertThrowsError(try engine.frameScreenshot(shot, in: opaqueFrame, DeviceFrameSpec())) { error in
+            guard let smx = error as? SwiftMageXError, case .invalidInput = smx else {
+                return XCTFail("Expected SwiftMageXError.invalidInput, got \(error)")
+            }
+        }
+    }
+
+    // MARK: - OutputPath.resolveNamed
+
+    func testResolveNamedBuildsAbsolutePerNamePaths() throws {
+        let dir = try Self.makeTempDir()
+        defer { try? FileManager.default.removeItem(at: dir) }
+
+        let urls = try OutputPath.resolveNamed(
+            target: dir.path,
+            names: ["appstore_iphone-6.9_1290x2796", "appstore_iphone-5.5_1242x2208"],
+            format: .png
+        )
+        XCTAssertEqual(urls.map(\.lastPathComponent), [
+            "appstore_iphone-6.9_1290x2796.png",
+            "appstore_iphone-5.5_1242x2208.png",
+        ])
+        for url in urls {
+            XCTAssertTrue(url.path.hasPrefix(dir.path), "expected absolute path under \(dir.path)")
+        }
+    }
+
+    func testResolveNamedRejectsFileTarget() {
+        XCTAssertThrowsError(
+            try OutputPath.resolveNamed(target: "out.png", names: ["a"], format: .png)
+        ) { error in
+            guard let smx = error as? SwiftMageXError, case .invalidInput = smx else {
+                return XCTFail("Expected SwiftMageXError.invalidInput, got \(error)")
+            }
+        }
+    }
+
     // MARK: - I/O failure modes
 
     func testLoadMissingFileThrowsIO() {
@@ -315,6 +461,94 @@ final class RasterEngineTests: XCTestCase {
             )!
         }
         return context.makeImage()!
+    }
+
+    /// Solid-color opaque image.
+    private static func makeColorImage(width: Int, height: Int, r: UInt8, g: UInt8, b: UInt8) -> CGImage {
+        let colorSpace = CGColorSpaceCreateDeviceRGB()
+        let bytesPerRow = width * 4
+        var bytes = [UInt8](repeating: 0, count: bytesPerRow * height)
+        for i in stride(from: 0, to: bytes.count, by: 4) {
+            bytes[i] = r
+            bytes[i + 1] = g
+            bytes[i + 2] = b
+            bytes[i + 3] = 255
+        }
+        let context = bytes.withUnsafeMutableBufferPointer { ptr -> CGContext in
+            CGContext(
+                data: ptr.baseAddress,
+                width: width,
+                height: height,
+                bitsPerComponent: 8,
+                bytesPerRow: bytesPerRow,
+                space: colorSpace,
+                bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
+            )!
+        }
+        return context.makeImage()!
+    }
+
+    /// A synthetic device frame: a fully transparent margin, an opaque bezel,
+    /// and an enclosed transparent screen hole. Row 0 is the top.
+    private static func makeFrameImage(
+        width: Int,
+        height: Int,
+        margin: Int,
+        hole: (x: Int, y: Int, w: Int, h: Int),
+        bezel: (r: UInt8, g: UInt8, b: UInt8)
+    ) -> CGImage {
+        let colorSpace = CGColorSpaceCreateDeviceRGB()
+        let bytesPerRow = width * 4
+        var bytes = [UInt8](repeating: 0, count: bytesPerRow * height) // all transparent
+        for y in 0..<height {
+            for x in 0..<width {
+                let inBezelBox = x >= margin && x < width - margin
+                    && y >= margin && y < height - margin
+                let inHole = x >= hole.x && x < hole.x + hole.w
+                    && y >= hole.y && y < hole.y + hole.h
+                guard inBezelBox && !inHole else { continue }
+                let i = y * bytesPerRow + x * 4
+                bytes[i] = bezel.r
+                bytes[i + 1] = bezel.g
+                bytes[i + 2] = bezel.b
+                bytes[i + 3] = 255
+            }
+        }
+        let context = bytes.withUnsafeMutableBufferPointer { ptr -> CGContext in
+            CGContext(
+                data: ptr.baseAddress,
+                width: width,
+                height: height,
+                bitsPerComponent: 8,
+                bytesPerRow: bytesPerRow,
+                space: colorSpace,
+                bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
+            )!
+        }
+        return context.makeImage()!
+    }
+
+    /// Reads a single pixel (top-left origin) from `image` as RGBA bytes.
+    private static func rgba(of image: CGImage, x: Int, y: Int) -> (r: UInt8, g: UInt8, b: UInt8, a: UInt8)? {
+        let width = image.width
+        let height = image.height
+        guard x >= 0, y >= 0, x < width, y < height else { return nil }
+        let colorSpace = CGColorSpaceCreateDeviceRGB()
+        guard let ctx = CGContext(
+            data: nil,
+            width: width,
+            height: height,
+            bitsPerComponent: 8,
+            bytesPerRow: 0,
+            space: colorSpace,
+            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
+        ) else { return nil }
+        ctx.draw(image, in: CGRect(x: 0, y: 0, width: width, height: height))
+        guard let data = ctx.data else { return nil }
+        let rowBytes = ctx.bytesPerRow
+        let p = data.bindMemory(to: UInt8.self, capacity: rowBytes * height)
+        let i = y * rowBytes + x * 4
+        return (p[i], p[i + 1], p[i + 2], p[i + 3])
     }
 
     private static func makeTempDir() throws -> URL {

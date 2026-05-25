@@ -11,6 +11,12 @@ struct SwiftMageX: AsyncParsableCommand {
         commandName: "swiftmagex",
         abstract: "Generate and process images from the terminal.",
         version: "0.1.0",
-        subcommands: [GenerateCommand.self, ResizeCommand.self, TextCommand.self]
+        subcommands: [
+            GenerateCommand.self,
+            ResizeCommand.self,
+            TextCommand.self,
+            CompositeCommand.self,
+            AppStoreCommand.self,
+        ]
     )
 }

@@ -135,10 +135,76 @@ final class CLIArgumentTests: XCTestCase {
         }
     }
 
+    // MARK: - composite
+
+    func testCompositeRequiresInputAndOverlay() {
+        XCTAssertThrowsError(try CompositeCommand.parse([]))
+        XCTAssertThrowsError(try CompositeCommand.parse(["bg.png"]))
+    }
+
+    func testCompositeAcceptsValidArguments() throws {
+        let cmd = try CompositeCommand.parse([
+            "bg.png", "--overlay", "fg.png", "--scale", "0.5", "--position", "bottom-right",
+        ])
+        XCTAssertEqual(cmd.input, "bg.png")
+        XCTAssertEqual(cmd.overlay, "fg.png")
+        XCTAssertEqual(cmd.scale, 0.5)
+        XCTAssertEqual(cmd.position, .bottomRight)
+    }
+
+    func testCompositeRejectsNonPositiveScale() {
+        XCTAssertThrowsError(try CompositeCommand.parse(["bg.png", "--overlay", "fg.png", "--scale", "0"]))
+    }
+
+    func testCompositeRejectsOpacityOutOfRange() {
+        XCTAssertThrowsError(try CompositeCommand.parse(["bg.png", "--overlay", "fg.png", "--opacity", "1.5"]))
+    }
+
+    // MARK: - appstore
+
+    func testAppStoreRequiresScreenshotAndBackground() {
+        XCTAssertThrowsError(try AppStoreCommand.parse([]))
+        XCTAssertThrowsError(try AppStoreCommand.parse(["shot.png"]))
+    }
+
+    func testAppStoreAcceptsMultipleDevicesAndAll() throws {
+        let cmd = try AppStoreCommand.parse([
+            "shot.png", "--background", "bg.png",
+            "--device", "iphone-6.9", "--device", "iphone-5.5",
+        ])
+        XCTAssertEqual(cmd.device, ["iphone-6.9", "iphone-5.5"])
+        XCTAssertNoThrow(try AppStoreCommand.parse(["shot.png", "--background", "bg.png", "--device", "all"]))
+    }
+
+    func testAppStoreRejectsUnknownDevice() {
+        XCTAssertThrowsError(
+            try AppStoreCommand.parse(["shot.png", "--background", "bg.png", "--device", "bogus"])
+        )
+    }
+
+    func testAppStoreParsesScreenRect() throws {
+        let cmd = try AppStoreCommand.parse([
+            "shot.png", "--background", "bg.png", "--frame", "f.png", "--screen-rect", "10,20,300,640",
+        ])
+        XCTAssertEqual(cmd.screenRect, "10,20,300,640")
+    }
+
+    func testAppStoreRejectsMalformedScreenRect() {
+        XCTAssertThrowsError(
+            try AppStoreCommand.parse(["shot.png", "--background", "bg.png", "--screen-rect", "10,20,300"])
+        )
+    }
+
+    func testAppStoreRejectsNonPositiveScale() {
+        XCTAssertThrowsError(
+            try AppStoreCommand.parse(["shot.png", "--background", "bg.png", "--scale", "0"])
+        )
+    }
+
     // MARK: - root
 
     func testRootRegistersAllSubcommands() {
         let names = SwiftMageX.configuration.subcommands.map { $0.configuration.commandName }
-        XCTAssertEqual(Set(names), ["generate", "resize", "text"])
+        XCTAssertEqual(Set(names), ["generate", "resize", "text", "composite", "appstore"])
     }
 }
