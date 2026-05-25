@@ -82,7 +82,7 @@ stampa, non logga e non scrive mai la chiave su disco — neanche con
 
 ## Manuale rapido
 
-Tre sottocomandi, tutti con gli stessi flag globali:
+Cinque sottocomandi, tutti con gli stessi flag globali:
 
 | Flag globale | Effetto |
 |---|---|
@@ -185,6 +185,64 @@ swiftmagex text screenshot.png --text "Download on the App Store" --position bot
 swiftmagex text cover.png --text "SALE" --position center --font-size 96 --stroke "#000000"
 ```
 
+### `swiftmagex composite` — sovrapporre un'immagine a un'altra
+
+```
+swiftmagex composite <sfondo> --overlay <primo-piano> [opzioni]
+```
+
+| Opzione | Default | Note |
+|---|---|---|
+| `<sfondo>` | — | L'immagine di base (la tela). |
+| `--overlay <percorso>` | — | Obbligatorio. Primo piano incollato sopra (rispetta l'alfa). |
+| `--position` | `center` | Gli stessi sette ancoraggi di `text`. |
+| `--scale <frazione>` | `1.0` | Dimensione del primo piano come frazione dello sfondo; proporzioni mantenute. |
+| `--offset-x`, `--offset-y <px>` | `0` | Spostamento dall'ancoraggio (positivo = destra / basso). |
+| `--opacity <0.0–1.0>` | `1.0` | Opacità di fusione del primo piano. |
+| `-o`, `--output <percorso>` | accanto allo sfondo | |
+| `--format <png\|jpeg>`, `--quality` | come lo sfondo / `0.9` | |
+
+```sh
+swiftmagex composite bg.png --overlay logo.png --position top-right --scale 0.2 -o hero.png
+```
+
+### `swiftmagex appstore` — screenshot per App Store Connect
+
+Inquadra uno screenshot in una cornice di dispositivo, lo scala su uno sfondo,
+sovrappone una didascalia opzionale e scrive il risultato in una o più
+dimensioni in pixel iPhone di App Store Connect — in batch, in un'unica passata.
+
+```
+swiftmagex appstore <screenshot> --background <sfondo> [opzioni]
+```
+
+| Opzione | Default | Note |
+|---|---|---|
+| `<screenshot>` | — | Lo screenshot collocato nella cornice. |
+| `--background <percorso>` | — | Obbligatorio. Riempie (cover) dietro al dispositivo. |
+| `--frame <percorso>` | — | PNG della cornice iPhone con un ritaglio di schermo trasparente. Ometti per non inquadrare. |
+| `--screen-rect <x,y,w,h>` | autorilevamento | Dove va lo screenshot nella cornice. Se omesso, rilevato dall'alfa della cornice. |
+| `--device <id>` | `iphone-6.9` | Ripetibile. Uno tra `iphone-6.9` (1290×2796), `iphone-6.5` (1242×2688), `iphone-5.5` (1242×2208) o `all`. |
+| `--orientation <portrait\|landscape>` | `portrait` | Scambia le dimensioni del dispositivo. |
+| `--scale <frazione>` | `0.85` | Dimensione del dispositivo inquadrato come frazione della tela. |
+| `--position`, `--offset-x`, `--offset-y` | `center`, `0`, `0` | Dove si posiziona il dispositivo sullo sfondo. |
+| `--caption <stringa>` | — | Testo della didascalia opzionale. |
+| `--caption-position`, `--font`, `--font-size`, `--color`, `--stroke`, `--stroke-width` | `bottom`, sistema, `96`, `#FFFFFF`, —, `0` | Stile della didascalia (stesso motore di `text`). |
+| `-o`, `--output <dir>` | `./` | **Directory** di output; i file si chiamano `appstore_{device}_{w}x{h}.png`. |
+
+```sh
+# Una sola dimensione richiesta, inquadrata + con didascalia
+swiftmagex appstore shot.png --background bg.png --frame iphone.png \
+  --caption "Plan your week" --stroke "#000000" --stroke-width 6
+
+# Tutte le dimensioni iPhone del catalogo in una volta
+swiftmagex appstore shot.png --background bg.png --frame iphone.png --device all -o ./shots
+```
+
+La cornice è **fornita dall'utente**: va bene qualsiasi PNG con un foro di schermo
+trasparente; la regione dello schermo si ricava dal suo canale alfa (oppure
+fissala con `--screen-rect`).
+
 ### Schema di output JSON
 
 Ogni comando emette lo stesso envelope sotto `--json`. Le chiavi sono
@@ -235,9 +293,11 @@ Politica di retry sui 429: fino a 5 tentativi con backoff esponenziale
 
 ## Server MCP
 
-`swiftmagex-mcp` espone tre strumenti — `generate_image`,
-`resize_image`, `overlay_text` — su stdio. Gli argomenti rispecchiano
-i flag della CLI; i risultati riportano percorsi assoluti così che
+`swiftmagex-mcp` espone cinque strumenti — `generate_image`,
+`resize_image`, `overlay_text`, `composite_images` e `appstore_screenshots`
+— su stdio. Gli argomenti rispecchiano
+i flag della CLI (chiavi in snake_case, es. `font_size`, `screen_rect`,
+`devices`); i risultati riportano percorsi assoluti così che
 l'agente chiamante non debba sapere la directory di lavoro del
 server. `generate_image` restituisce inoltre i byte dell'immagine come
 contenuto MCP `image`, in modo che il modello che ha invocato lo

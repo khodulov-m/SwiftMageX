@@ -83,7 +83,7 @@ ne journalise et n'écrit jamais la clé sur disque — même sous
 
 ## Manuel rapide
 
-Trois sous-commandes, toutes partageant les mêmes flags globaux :
+Cinq sous-commandes, toutes partageant les mêmes flags globaux :
 
 | Flag global | Effet |
 |---|---|
@@ -186,6 +186,64 @@ swiftmagex text screenshot.png --text "Download on the App Store" --position bot
 swiftmagex text cover.png --text "SALE" --position center --font-size 96 --stroke "#000000"
 ```
 
+### `swiftmagex composite` — coller une image sur une autre
+
+```
+swiftmagex composite <arrière-plan> --overlay <avant-plan> [options]
+```
+
+| Option | Défaut | Notes |
+|---|---|---|
+| `<arrière-plan>` | — | L'image de fond (le canevas). |
+| `--overlay <chemin>` | — | Requis. Avant-plan collé par-dessus (alpha respecté). |
+| `--position` | `center` | Les sept mêmes ancrages que `text`. |
+| `--scale <fraction>` | `1.0` | Taille de l'avant-plan en fraction de l'arrière-plan ; ratio préservé. |
+| `--offset-x`, `--offset-y <px>` | `0` | Décalage depuis l'ancrage (positif = droite / bas). |
+| `--opacity <0.0–1.0>` | `1.0` | Opacité de fusion de l'avant-plan. |
+| `-o`, `--output <chemin>` | à côté de l'arrière-plan | |
+| `--format <png\|jpeg>`, `--quality` | comme l'arrière-plan / `0.9` | |
+
+```sh
+swiftmagex composite bg.png --overlay logo.png --position top-right --scale 0.2 -o hero.png
+```
+
+### `swiftmagex appstore` — captures pour App Store Connect
+
+Encadre une capture dans un cadre d'appareil, la met à l'échelle sur un
+arrière-plan, superpose une légende facultative et écrit le résultat dans une ou
+plusieurs tailles de pixels iPhone d'App Store Connect — en lot, en une passe.
+
+```
+swiftmagex appstore <capture> --background <fond> [options]
+```
+
+| Option | Défaut | Notes |
+|---|---|---|
+| `<capture>` | — | La capture placée dans le cadre. |
+| `--background <chemin>` | — | Requis. Remplit (cover) derrière l'appareil. |
+| `--frame <chemin>` | — | PNG de cadre iPhone avec une découpe d'écran transparente. Omettre pour ne pas encadrer. |
+| `--screen-rect <x,y,w,h>` | auto-détection | Où va la capture dans le cadre. Détectée depuis l'alpha du cadre si omise. |
+| `--device <id>` | `iphone-6.9` | Répétable. L'un de `iphone-6.9` (1290×2796), `iphone-6.5` (1242×2688), `iphone-5.5` (1242×2208) ou `all`. |
+| `--orientation <portrait\|landscape>` | `portrait` | Échange les dimensions de l'appareil. |
+| `--scale <fraction>` | `0.85` | Taille de l'appareil encadré en fraction du canevas. |
+| `--position`, `--offset-x`, `--offset-y` | `center`, `0`, `0` | Où l'appareil se place sur l'arrière-plan. |
+| `--caption <chaîne>` | — | Texte de légende facultatif. |
+| `--caption-position`, `--font`, `--font-size`, `--color`, `--stroke`, `--stroke-width` | `bottom`, système, `96`, `#FFFFFF`, —, `0` | Style de la légende (même moteur que `text`). |
+| `-o`, `--output <rép>` | `./` | **Répertoire** de sortie ; les fichiers sont nommés `appstore_{device}_{w}x{h}.png`. |
+
+```sh
+# Une seule taille requise, encadrée + légendée
+swiftmagex appstore shot.png --background bg.png --frame iphone.png \
+  --caption "Plan your week" --stroke "#000000" --stroke-width 6
+
+# Toutes les tailles iPhone du catalogue d'un coup
+swiftmagex appstore shot.png --background bg.png --frame iphone.png --device all -o ./shots
+```
+
+Le cadre est **fourni par l'utilisateur** : tout PNG avec un trou d'écran
+transparent convient ; la zone d'écran est trouvée depuis son canal alpha (ou
+fixez-la avec `--screen-rect`).
+
 ### Schéma de sortie JSON
 
 Chaque commande émet la même enveloppe sous `--json`. Les clés sont
@@ -234,9 +292,11 @@ Politique de retry sur 429 : jusqu'à 5 tentatives, backoff exponentiel
 
 ## Serveur MCP
 
-`swiftmagex-mcp` expose trois outils — `generate_image`,
-`resize_image`, `overlay_text` — via stdio. Les arguments des outils
-reprennent les flags du CLI ; les résultats renvoient des chemins
+`swiftmagex-mcp` expose cinq outils — `generate_image`,
+`resize_image`, `overlay_text`, `composite_images` et `appstore_screenshots`
+— via stdio. Les arguments des outils
+reprennent les flags du CLI (clés en snake_case, p. ex. `font_size`,
+`screen_rect`, `devices`) ; les résultats renvoient des chemins
 absolus afin que l'agent appelant n'ait pas besoin de connaître le
 répertoire de travail du serveur. `generate_image` retourne en plus les
 octets de l'image en contenu MCP `image` afin que le modèle puisse

@@ -80,7 +80,7 @@ los metadatos del archivo de salida.
 
 ## Manual rápido
 
-Tres subcomandos, todos comparten los mismos flags globales:
+Cinco subcomandos, todos comparten los mismos flags globales:
 
 | Flag global | Efecto |
 |---|---|
@@ -182,6 +182,64 @@ swiftmagex text screenshot.png --text "Download on the App Store" --position bot
 swiftmagex text cover.png --text "SALE" --position center --font-size 96 --stroke "#000000"
 ```
 
+### `swiftmagex composite` — pegar una imagen sobre otra
+
+```
+swiftmagex composite <fondo> --overlay <primer-plano> [opciones]
+```
+
+| Opción | Predeterminado | Notas |
+|---|---|---|
+| `<fondo>` | — | La imagen de lienzo. |
+| `--overlay <ruta>` | — | Obligatorio. Primer plano pegado encima (respeta el alfa). |
+| `--position` | `center` | Los mismos siete anclajes que `text`. |
+| `--scale <fracción>` | `1.0` | Tamaño del primer plano como fracción del fondo; conserva la relación de aspecto. |
+| `--offset-x`, `--offset-y <px>` | `0` | Desplazamiento desde el anclaje (positivo = derecha / abajo). |
+| `--opacity <0.0–1.0>` | `1.0` | Opacidad de fusión del primer plano. |
+| `-o`, `--output <ruta>` | junto al fondo | |
+| `--format <png\|jpeg>`, `--quality` | igual que el fondo / `0.9` | |
+
+```sh
+swiftmagex composite bg.png --overlay logo.png --position top-right --scale 0.2 -o hero.png
+```
+
+### `swiftmagex appstore` — capturas para App Store Connect
+
+Enmarca una captura en un marco de dispositivo, la escala sobre un fondo,
+superpone un pie de foto opcional y escribe el resultado en uno o varios
+tamaños de píxeles de iPhone de App Store Connect, en lote y de una sola pasada.
+
+```
+swiftmagex appstore <captura> --background <fondo> [opciones]
+```
+
+| Opción | Predeterminado | Notas |
+|---|---|---|
+| `<captura>` | — | La captura colocada dentro del marco. |
+| `--background <ruta>` | — | Obligatorio. Rellena (cover) detrás del dispositivo. |
+| `--frame <ruta>` | — | PNG de marco de iPhone con un recorte de pantalla transparente. Omítelo para no enmarcar. |
+| `--screen-rect <x,y,w,h>` | autodetección | Dónde va la captura dentro del marco. Si se omite, se detecta desde el alfa del marco. |
+| `--device <id>` | `iphone-6.9` | Repetible. Uno de `iphone-6.9` (1290×2796), `iphone-6.5` (1242×2688), `iphone-5.5` (1242×2208) o `all`. |
+| `--orientation <portrait\|landscape>` | `portrait` | Intercambia las dimensiones del dispositivo. |
+| `--scale <fracción>` | `0.85` | Tamaño del dispositivo enmarcado como fracción del lienzo. |
+| `--position`, `--offset-x`, `--offset-y` | `center`, `0`, `0` | Dónde se sitúa el dispositivo sobre el fondo. |
+| `--caption <cadena>` | — | Texto de pie de foto opcional. |
+| `--caption-position`, `--font`, `--font-size`, `--color`, `--stroke`, `--stroke-width` | `bottom`, sistema, `96`, `#FFFFFF`, —, `0` | Estilo del pie de foto (mismo motor que `text`). |
+| `-o`, `--output <dir>` | `./` | **Directorio** de salida; los archivos se llaman `appstore_{device}_{w}x{h}.png`. |
+
+```sh
+# Un único tamaño obligatorio, enmarcado + con pie de foto
+swiftmagex appstore shot.png --background bg.png --frame iphone.png \
+  --caption "Plan your week" --stroke "#000000" --stroke-width 6
+
+# Todos los tamaños de iPhone del catálogo a la vez
+swiftmagex appstore shot.png --background bg.png --frame iphone.png --device all -o ./shots
+```
+
+El marco lo **aporta el usuario**: sirve cualquier PNG con un hueco de pantalla
+transparente; la región de pantalla se halla a partir de su canal alfa (o fíjala
+con `--screen-rect`).
+
 ### Esquema de salida JSON
 
 Cada comando emite el mismo sobre con `--json`. Las claves van ordenadas;
@@ -230,9 +288,11 @@ Política de retry en 429: hasta 5 reintentos con backoff exponencial
 
 ## Servidor MCP
 
-`swiftmagex-mcp` expone tres herramientas — `generate_image`,
-`resize_image`, `overlay_text` — sobre stdio. Los argumentos espejan los
-flags del CLI; los resultados reportan rutas absolutas para que el
+`swiftmagex-mcp` expone cinco herramientas — `generate_image`,
+`resize_image`, `overlay_text`, `composite_images` y `appstore_screenshots`
+— sobre stdio. Los argumentos espejan los
+flags del CLI (claves en snake_case, p. ej. `font_size`, `screen_rect`,
+`devices`); los resultados reportan rutas absolutas para que el
 agente no necesite saber el directorio de trabajo del servidor.
 `generate_image` además devuelve los bytes de la imagen como contenido
 MCP `image` para que el modelo invocante pueda ver lo que se produjo.

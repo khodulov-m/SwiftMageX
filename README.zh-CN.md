@@ -75,7 +75,7 @@ export GEMINI_API_KEY="…"
 
 ## 快速手册
 
-三个子命令共享同一组全局标志:
+五个子命令共享同一组全局标志:
 
 | 全局标志 | 作用 |
 |---|---|
@@ -176,6 +176,62 @@ swiftmagex text screenshot.png --text "Download on the App Store" --position bot
 swiftmagex text cover.png --text "SALE" --position center --font-size 96 --stroke "#000000"
 ```
 
+### `swiftmagex composite` — 把一张图叠到另一张图上
+
+```
+swiftmagex composite <背景> --overlay <前景> [选项]
+```
+
+| 选项 | 默认 | 说明 |
+|---|---|---|
+| `<背景>` | — | 画布图像。 |
+| `--overlay <路径>` | — | 必填。叠在上方的前景(保留透明度)。 |
+| `--position` | `center` | 与 `text` 相同的七个锚点。 |
+| `--scale <比例>` | `1.0` | 前景相对背景的尺寸比例;保持宽高比。 |
+| `--offset-x`, `--offset-y <px>` | `0` | 相对锚点的偏移(正值 = 右 / 下)。 |
+| `--opacity <0.0–1.0>` | `1.0` | 前景混合不透明度。 |
+| `-o`, `--output <路径>` | 与背景同目录 | |
+| `--format <png\|jpeg>`, `--quality` | 跟随背景 / `0.9` | |
+
+```sh
+swiftmagex composite bg.png --overlay logo.png --position top-right --scale 0.2 -o hero.png
+```
+
+### `swiftmagex appstore` — App Store Connect 截图
+
+把截图嵌入设备外框,按背景缩放,叠加可选的标题文字,并将结果输出为一个或多个
+App Store Connect 的 iPhone 像素尺寸——一次运行批量完成。
+
+```
+swiftmagex appstore <截图> --background <背景> [选项]
+```
+
+| 选项 | 默认 | 说明 |
+|---|---|---|
+| `<截图>` | — | 放入外框的截图。 |
+| `--background <路径>` | — | 必填。在设备后方铺满(cover)。 |
+| `--frame <路径>` | — | 屏幕部分透明的 iPhone 外框 PNG。省略则不嵌框。 |
+| `--screen-rect <x,y,w,h>` | 自动检测 | 截图在外框中的位置。省略时从外框的透明通道检测。 |
+| `--device <id>` | `iphone-6.9` | 可重复。`iphone-6.9`(1290×2796)、`iphone-6.5`(1242×2688)、`iphone-5.5`(1242×2208)或 `all` 之一。 |
+| `--orientation <portrait\|landscape>` | `portrait` | 交换设备尺寸。 |
+| `--scale <比例>` | `0.85` | 嵌框设备相对画布的尺寸比例。 |
+| `--position`, `--offset-x`, `--offset-y` | `center`, `0`, `0` | 设备在背景上的位置。 |
+| `--caption <字符串>` | — | 可选的标题文字。 |
+| `--caption-position`, `--font`, `--font-size`, `--color`, `--stroke`, `--stroke-width` | `bottom`, 系统, `96`, `#FFFFFF`, —, `0` | 标题样式(与 `text` 同一引擎)。 |
+| `-o`, `--output <目录>` | `./` | 输出**目录**;文件名为 `appstore_{device}_{w}x{h}.png`。 |
+
+```sh
+# 单一必需尺寸,嵌框 + 标题
+swiftmagex appstore shot.png --background bg.png --frame iphone.png \
+  --caption "Plan your week" --stroke "#000000" --stroke-width 6
+
+# 一次生成目录中所有 iPhone 尺寸
+swiftmagex appstore shot.png --background bg.png --frame iphone.png --device all -o ./shots
+```
+
+外框由**用户自备**——任何带透明屏幕镂空的 PNG 均可;屏幕区域会从其透明通道
+中识别(或用 `--screen-rect` 指定)。
+
 ### JSON 输出格式
 
 所有命令在 `--json` 下输出同一信封,键按字母排序,nil 字段完全省略
@@ -222,8 +278,8 @@ swiftmagex text cover.png --text "SALE" --position center --font-size 96 --strok
 
 ## MCP 服务器
 
-`swiftmagex-mcp` 通过 stdio 暴露三个工具:`generate_image`、
-`resize_image`、`overlay_text`。工具参数与 CLI 标志保持一致;返回的
+`swiftmagex-mcp` 通过 stdio 暴露五个工具:`generate_image`、
+`resize_image`、`overlay_text`、`composite_images`、`appstore_screenshots`。工具参数与 CLI 标志保持一致(snake_case 键名,如 `font_size`、`screen_rect`、`devices`);返回的
 文件路径都是绝对路径,调用方代理无需知道服务器的工作目录。
 `generate_image` 还会以 MCP `image` 内容形式返回图像字节,便于调用
 模型直接检视产物。
