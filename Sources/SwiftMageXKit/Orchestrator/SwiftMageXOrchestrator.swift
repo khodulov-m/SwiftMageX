@@ -185,6 +185,150 @@ public enum SwiftMageXOrchestrator {
         )
     }
 
+    /// Alpha-composite one local image onto another.
+    ///
+    /// Mirrors `swiftmagex composite`. `input` is the background, `overlay` the
+    /// foreground; both are interpreted relative to `currentDirectoryPath` when
+    /// not absolute. Output follows the same rules as ``resize(input:spec:output:format:quality:engine:timestamp:currentDirectoryPath:)``.
+    public static func composite(
+        input: String,
+        overlay: String,
+        spec: CompositeSpec,
+        output: String?,
+        format: ImageFormat?,
+        quality: Double,
+        engine: any RasterEngine = CoreImageRasterEngine(),
+        timestamp: Date = Date(),
+        currentDirectoryPath: String = FileManager.default.currentDirectoryPath
+    ) throws -> WrittenImage {
+        let backgroundURL = absoluteFileURL(input, currentDirectoryPath: currentDirectoryPath)
+        guard FileManager.default.fileExists(atPath: backgroundURL.path) else {
+            throw SwiftMageXError.io("input file not found: \(backgroundURL.path)")
+        }
+        let overlayURL = absoluteFileURL(overlay, currentDirectoryPath: currentDirectoryPath)
+        guard FileManager.default.fileExists(atPath: overlayURL.path) else {
+            throw SwiftMageXError.io("overlay file not found: \(overlayURL.path)")
+        }
+
+        let resolvedFormat = format ?? ImageFormat.detect(at: backgroundURL) ?? .png
+        let background = try engine.load(from: backgroundURL)
+        let foreground = try engine.load(from: overlayURL)
+        let composed = try engine.composite(foreground, onto: background, spec)
+        let outputURL = try OutputPath.resolveSingle(
+            target: output,
+            sourceURL: backgroundURL,
+            format: resolvedFormat,
+            timestamp: timestamp,
+            currentDirectoryPath: currentDirectoryPath
+        )
+        try engine.write(
+            composed,
+            to: outputURL,
+            format: resolvedFormat,
+            quality: quality,
+            metadata: nil
+        )
+        return WrittenImage(
+            path: outputURL,
+            format: resolvedFormat,
+            width: composed.width,
+            height: composed.height
+        )
+    }
+
+    /// Assemble App Store Connect screenshots, batched across device sizes.
+    ///
+    /// Mirrors `swiftmagex appstore`. The screenshot is framed once (when a
+    /// device `frame` bezel is given) and reused; for each device the
+    /// `background` is filled (cover) to the exact ASC pixel size, the framed
+    /// device is composited on top, an optional `caption` is overlaid, and the
+    /// result is written to a directory named `appstore_{deviceId}_{W}x{H}.png`.
+    ///
+    /// - Throws: ``SwiftMageXError/io(_:)`` for missing inputs,
+    ///   ``SwiftMageXError/invalidInput(_:)`` for an empty device list or a
+    ///   non-directory output, propagating raster errors otherwise.
+    public static func prepareAppStoreScreenshots(
+        screenshot: String,
+        background: String,
+        frame: String?,
+        frameSpec: DeviceFrameSpec = DeviceFrameSpec(),
+        caption: TextSpec?,
+        devices: [ASCDeviceSize],
+        placement: CompositeSpec,
+        orientation: Orientation = .portrait,
+        output: String?,
+        engine: any RasterEngine = CoreImageRasterEngine(),
+        timestamp: Date = Date(),
+        currentDirectoryPath: String = FileManager.default.currentDirectoryPath
+    ) throws -> [WrittenImage] {
+        guard !devices.isEmpty else {
+            throw SwiftMageXError.invalidInput("no target devices specified")
+        }
+        let screenshotURL = absoluteFileURL(screenshot, currentDirectoryPath: currentDirectoryPath)
+        guard FileManager.default.fileExists(atPath: screenshotURL.path) else {
+            throw SwiftMageXError.io("screenshot file not found: \(screenshotURL.path)")
+        }
+        let backgroundURL = absoluteFileURL(background, currentDirectoryPath: currentDirectoryPath)
+        guard FileManager.default.fileExists(atPath: backgroundURL.path) else {
+            throw SwiftMageXError.io("background file not found: \(backgroundURL.path)")
+        }
+
+        let rawScreenshot = try engine.load(from: screenshotURL)
+        // Frame the screenshot once and reuse it across every device size.
+        let framedDevice: RasterImage
+        if let frame = frame {
+            let frameURL = absoluteFileURL(frame, currentDirectoryPath: currentDirectoryPath)
+            guard FileManager.default.fileExists(atPath: frameURL.path) else {
+                throw SwiftMageXError.io("frame file not found: \(frameURL.path)")
+            }
+            let frameImage = try engine.load(from: frameURL)
+            framedDevice = try engine.frameScreenshot(rawScreenshot, in: frameImage, frameSpec)
+        } else {
+            framedDevice = rawScreenshot
+        }
+        let backgroundImage = try engine.load(from: backgroundURL)
+
+        let names = devices.map { device -> String in
+            let dims = device.dimensions(for: orientation)
+            return "appstore_\(device.id)_\(dims.width)x\(dims.height)"
+        }
+        let urls = try OutputPath.resolveNamed(
+            target: output,
+            names: names,
+            format: .png,
+            currentDirectoryPath: currentDirectoryPath
+        )
+
+        // The caption text doubles as the embedded prompt so each asset stays
+        // self-documenting (spec §12).
+        let metadata = ImageMetadata(
+            prompt: caption?.text,
+            model: nil,
+            seed: nil,
+            timestamp: timestamp,
+            toolVersion: Configuration.toolVersion
+        )
+
+        return try zip(devices, urls).map { device, url in
+            let dims = device.dimensions(for: orientation)
+            let canvas = try engine.resize(
+                backgroundImage,
+                to: ResizeSpec(width: dims.width, height: dims.height, fit: .cover)
+            )
+            var composed = try engine.composite(framedDevice, onto: canvas, placement)
+            if let caption = caption {
+                composed = try engine.overlayText(composed, caption)
+            }
+            try engine.write(composed, to: url, format: .png, quality: 1.0, metadata: metadata)
+            return WrittenImage(
+                path: url,
+                format: .png,
+                width: composed.width,
+                height: composed.height
+            )
+        }
+    }
+
     /// Constructs the right provider for `model` using ``ModelCatalog`` to
     /// pick between Gemini's `:generateContent` shape and Imagen's `:predict`.
     /// Exposed so the MCP frontend can share the same routing.

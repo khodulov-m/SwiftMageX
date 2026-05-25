@@ -196,14 +196,117 @@ final class ToolHandlersTests: XCTestCase {
         XCTAssertTrue(text.contains("[invalid_input]"), "expected invalid_input category: \(text)")
     }
 
+    // MARK: - composite_images
+
+    func testCompositeImagesToolWritesAbsolutePath() throws {
+        let bg = try TestPNG.writeFixture(width: 80, height: 80)
+        let fg = try TestPNG.writeFixture(width: 20, height: 20)
+        defer {
+            try? FileManager.default.removeItem(at: bg.deletingLastPathComponent())
+            try? FileManager.default.removeItem(at: fg.deletingLastPathComponent())
+        }
+
+        let arguments: [String: Value] = [
+            "input": .string(bg.path),
+            "overlay": .string(fg.path),
+            "scale": .double(0.5),
+            "position": .string("center"),
+        ]
+        let result = try ToolHandlers.composite(arguments: arguments)
+        XCTAssertNotEqual(result.isError, true)
+        let text = try XCTUnwrap(result.firstText)
+        let line = try XCTUnwrap(text.split(separator: "\n").last)
+        let path = String(line.split(separator: " ").first ?? "")
+        XCTAssertTrue(path.hasPrefix("/"), "absolute path required, got \(path)")
+        XCTAssertTrue(FileManager.default.fileExists(atPath: path))
+    }
+
+    func testCompositeImagesToolMissingOverlayReturnsInvalidParams() {
+        do {
+            _ = try ToolHandlers.composite(arguments: ["input": .string("/anything.png")])
+            XCTFail("expected MCPError.invalidParams for missing 'overlay'")
+        } catch let error as MCPError {
+            guard case .invalidParams = error else {
+                return XCTFail("expected .invalidParams, got \(error)")
+            }
+        } catch {
+            XCTFail("unexpected error type: \(error)")
+        }
+    }
+
+    // MARK: - appstore_screenshots
+
+    func testAppStoreScreenshotsToolBatchesToDeviceSizes() throws {
+        let shot = try TestPNG.writeFixture(width: 60, height: 130)
+        let bg = try TestPNG.writeFixture(width: 200, height: 400)
+        let outDir = FileManager.default.temporaryDirectory
+            .appendingPathComponent("swiftmagex-appstore-mcp-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: outDir, withIntermediateDirectories: true)
+        defer {
+            try? FileManager.default.removeItem(at: shot.deletingLastPathComponent())
+            try? FileManager.default.removeItem(at: bg.deletingLastPathComponent())
+            try? FileManager.default.removeItem(at: outDir)
+        }
+
+        let arguments: [String: Value] = [
+            "screenshot": .string(shot.path),
+            "background": .string(bg.path),
+            "devices": .array([.string("iphone-5.5")]),
+            "caption": .string("Hello"),
+            "output": .string(outDir.path),
+        ]
+        let result = try ToolHandlers.appStore(arguments: arguments)
+        XCTAssertNotEqual(result.isError, true)
+        let text = try XCTUnwrap(result.firstText)
+        let pathLines = text.split(separator: "\n").filter { $0.contains(".png") }
+        XCTAssertEqual(pathLines.count, 1)
+        let line = try XCTUnwrap(pathLines.first)
+        let path = String(line.split(separator: " ").first ?? "")
+        XCTAssertTrue(path.hasPrefix("/"), "absolute path required, got \(path)")
+        XCTAssertTrue(FileManager.default.fileExists(atPath: path))
+        XCTAssertTrue(text.contains("1242x2208"), "summary should report ASC pixel size: \(text)")
+    }
+
+    func testAppStoreScreenshotsToolMissingBackgroundReturnsInvalidParams() {
+        do {
+            _ = try ToolHandlers.appStore(arguments: ["screenshot": .string("/anything.png")])
+            XCTFail("expected MCPError.invalidParams for missing 'background'")
+        } catch let error as MCPError {
+            guard case .invalidParams = error else {
+                return XCTFail("expected .invalidParams, got \(error)")
+            }
+        } catch {
+            XCTFail("unexpected error type: \(error)")
+        }
+    }
+
+    func testAppStoreScreenshotsToolUnknownDeviceReturnsInvalidParams() {
+        do {
+            _ = try ToolHandlers.appStore(arguments: [
+                "screenshot": .string("/a.png"),
+                "background": .string("/b.png"),
+                "devices": .array([.string("iphone-99")]),
+            ])
+            XCTFail("expected MCPError.invalidParams for unknown device")
+        } catch let error as MCPError {
+            guard case .invalidParams = error else {
+                return XCTFail("expected .invalidParams, got \(error)")
+            }
+        } catch {
+            XCTFail("unexpected error type: \(error)")
+        }
+    }
+
     // MARK: - Registry
 
-    func testToolRegistryExposesAllThreeNames() {
+    func testToolRegistryExposesAllFiveNames() {
         let names = Set(SwiftMageXTools.all.map(\.name))
         XCTAssertEqual(names, [
             GenerateImageTool.name,
             ResizeImageTool.name,
             OverlayTextTool.name,
+            CompositeImagesTool.name,
+            AppStoreScreenshotsTool.name,
         ])
     }
 

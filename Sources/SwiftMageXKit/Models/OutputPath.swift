@@ -100,6 +100,44 @@ public enum OutputPath {
         return urls[0]
     }
 
+    /// Resolves an explicit list of base names inside a directory target.
+    ///
+    /// Used by batch commands (e.g. `appstore`) that name each output after the
+    /// thing that produced it rather than a timestamp. `target` must be a
+    /// directory (or `nil` for the cwd); a file target throws
+    /// ``SwiftMageXError/invalidInput(_:)``. Each name is combined with the
+    /// `format` extension and returned as an absolute URL.
+    public static func resolveNamed(
+        target: String?,
+        names: [String],
+        format: ImageFormat,
+        currentDirectoryPath: String = FileManager.default.currentDirectoryPath
+    ) throws -> [URL] {
+        let cwd = URL(fileURLWithPath: currentDirectoryPath, isDirectory: true)
+        let directory: URL
+        if let raw = target?.trimmingCharacters(in: .whitespacesAndNewlines), !raw.isEmpty {
+            let resolved = URL(fileURLWithPath: raw, relativeTo: cwd).standardizedFileURL
+            var isDir: ObjCBool = false
+            let exists = FileManager.default.fileExists(atPath: resolved.path, isDirectory: &isDir)
+            if exists && !isDir.boolValue {
+                throw SwiftMageXError.invalidInput("output must be a directory: \(resolved.path)")
+            }
+            if !exists && !raw.hasSuffix("/") && !resolved.pathExtension.isEmpty {
+                // A name with an extension and no trailing slash reads as a file.
+                throw SwiftMageXError.invalidInput("output must be a directory: \(resolved.path)")
+            }
+            directory = resolved
+        } else {
+            directory = cwd.standardizedFileURL
+        }
+
+        return names.map { name in
+            directory
+                .appendingPathComponent("\(name).\(format.fileExtension)")
+                .standardizedFileURL
+        }
+    }
+
     /// ISO-8601 compact form used in default filenames, e.g. `20260519T103045Z`.
     static func compactTimestamp(_ date: Date) -> String {
         let formatter = ISO8601DateFormatter()

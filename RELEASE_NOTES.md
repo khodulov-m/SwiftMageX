@@ -1,5 +1,27 @@
 # SwiftMageX
 
+## Post-0.1.0 — App Store Connect screenshots
+
+A first slice of the 0.2 "asset packs for developers" feature
+([spec §2/§17](SwiftMageX-MVP-0.1-spec.md)) — preparing upload-ready App Store
+Connect iPhone screenshots, entirely with local raster work (no API key):
+
+- New `swiftmagex appstore` command / `appstore_screenshots` MCP tool: frames a
+  screenshot inside a user-supplied iPhone bezel, scales it onto a background,
+  overlays an optional caption, and writes one file per ASC iPhone size in a
+  single run (`appstore_{device}_{w}x{h}.png`).
+- New `swiftmagex composite` command / `composite_images` MCP tool: alpha-composite
+  one image onto another with anchored position, scale, offset, and opacity. Used
+  internally by `appstore` and exposed on its own.
+- New `ASCDeviceCatalog` of iPhone screenshot slots — `iphone-6.9` (1290×2796,
+  the default), `iphone-6.5` (1242×2688), `iphone-5.5` (1242×2208), plus `all` and
+  an `--orientation` switch.
+- `RasterEngine` gained `composite(_:onto:_:)` and `frameScreenshot(_:in:_:)`;
+  the latter auto-detects the bezel's transparent screen cutout from its alpha
+  channel (overridable with `--screen-rect`). `CoreImageRasterEngine` remains the
+  only implementation; no new package dependencies, no bundled assets.
+- The MCP server now exposes five tools.
+
 ## Post-0.1.0 — Image model switching
 
 Added a second provider so `--model` (and the MCP `model` argument) can target

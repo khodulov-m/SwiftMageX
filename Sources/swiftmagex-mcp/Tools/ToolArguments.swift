@@ -70,6 +70,24 @@ struct ToolArguments {
         return d
     }
 
+    /// Decodes an array-of-strings argument. Returns `nil` when absent.
+    /// Accepts a JSON array of strings; also tolerates a single string so
+    /// agents can pass one value without wrapping it in an array.
+    func optionalStringArray(_ key: String) throws -> [String]? {
+        guard let value = raw[key] else { return nil }
+        if case .null = value { return nil }
+        if case .string(let s) = value { return [s] }
+        guard case .array(let items) = value else {
+            throw MCPError.invalidParams("\(toolName): '\(key)' must be an array of strings")
+        }
+        return try items.map { item in
+            guard case .string(let s) = item else {
+                throw MCPError.invalidParams("\(toolName): '\(key)' must contain only strings")
+            }
+            return s
+        }
+    }
+
     /// Decodes an enum-shaped string argument.
     func optionalEnum<T: RawRepresentable>(
         _ key: String,

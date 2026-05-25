@@ -15,6 +15,28 @@ public protocol RasterEngine: Sendable {
     /// Compose a text overlay onto `image` according to `spec`.
     func overlayText(_ image: RasterImage, _ spec: TextSpec) throws -> RasterImage
 
+    /// Alpha-composite `foreground` onto `background` according to `spec`.
+    ///
+    /// The result has `background`'s dimensions; `foreground` is scaled,
+    /// anchored, and blended on top.
+    func composite(
+        _ foreground: RasterImage,
+        onto background: RasterImage,
+        _ spec: CompositeSpec
+    ) throws -> RasterImage
+
+    /// Place `screenshot` into the screen cutout of a device `frame`.
+    ///
+    /// `frame` is a bezel image with a transparent screen hole; the screenshot
+    /// is scaled into that hole and the bezel drawn on top. The result keeps
+    /// `frame`'s dimensions and its surrounding transparency, ready to be
+    /// composited onto a background.
+    func frameScreenshot(
+        _ screenshot: RasterImage,
+        in frame: RasterImage,
+        _ spec: DeviceFrameSpec
+    ) throws -> RasterImage
+
     /// Write `image` to `url` in the chosen `format`, embedding optional `metadata`.
     func write(
         _ image: RasterImage,
@@ -115,6 +137,76 @@ public struct TextSpec: Sendable, Equatable {
         self.color = color
         self.strokeColor = strokeColor
         self.strokeWidth = strokeWidth
+    }
+}
+
+/// Parameters for ``RasterEngine/composite(_:onto:_:)``.
+public struct CompositeSpec: Sendable, Equatable {
+    /// Anchor of the foreground within the background. Reuses the text
+    /// overlay's seven-position scheme.
+    public var position: TextPosition
+    /// The foreground is contain-fit into a box of `scale × background size`,
+    /// preserving aspect ratio. `1.0` fits it inside the full background.
+    public var scale: Double
+    /// Horizontal nudge from the anchored position, in pixels (positive = right).
+    public var offsetX: Int
+    /// Vertical nudge from the anchored position, in pixels (positive = down).
+    public var offsetY: Int
+    /// Blend opacity of the foreground, `0.0`–`1.0`.
+    public var opacity: Double
+
+    /// Creates a composite specification.
+    public init(
+        position: TextPosition = .center,
+        scale: Double = 1.0,
+        offsetX: Int = 0,
+        offsetY: Int = 0,
+        opacity: Double = 1.0
+    ) {
+        self.position = position
+        self.scale = scale
+        self.offsetX = offsetX
+        self.offsetY = offsetY
+        self.opacity = opacity
+    }
+}
+
+/// Parameters for ``RasterEngine/frameScreenshot(_:in:_:)``.
+public struct DeviceFrameSpec: Sendable, Equatable {
+    /// The screen cutout in frame-pixel coordinates, origin at the top-left.
+    public struct ScreenRect: Sendable, Equatable {
+        public var x: Int
+        public var y: Int
+        public var width: Int
+        public var height: Int
+
+        public init(x: Int, y: Int, width: Int, height: Int) {
+            self.x = x
+            self.y = y
+            self.width = width
+            self.height = height
+        }
+    }
+
+    /// Where the screenshot goes inside the frame. `nil` auto-detects the
+    /// enclosed transparent region from the frame's alpha channel.
+    public var screenRect: ScreenRect?
+    /// Alpha value (0–255) below which a pixel counts as transparent during
+    /// auto-detection.
+    public var alphaThreshold: Int
+    /// How the screenshot fills the screen rect. `.cover` (the default) fills
+    /// it completely, cropping overflow.
+    public var screenFit: ResizeFit
+
+    /// Creates a device-frame specification.
+    public init(
+        screenRect: ScreenRect? = nil,
+        alphaThreshold: Int = 16,
+        screenFit: ResizeFit = .cover
+    ) {
+        self.screenRect = screenRect
+        self.alphaThreshold = alphaThreshold
+        self.screenFit = screenFit
     }
 }
 
