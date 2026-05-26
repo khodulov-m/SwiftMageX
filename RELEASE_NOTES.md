@@ -1,5 +1,29 @@
 # SwiftMageX
 
+## Post-0.1.0 — Bundled device frames
+
+The `appstore` pipeline no longer requires a user-supplied bezel for common
+devices:
+
+- New `DeviceFrameCatalog` shipping the [PommePlate](https://github.com/ephread/PommePlate)
+  iPhone 11 Pro Max / XS Max Space Grey bezel under [CC0 1.0](Sources/SwiftMageXKit/Resources/Frames/LICENSE-PommePlate.txt).
+  The vendored PNG is a derivative — a clean rounded-rect screen cutout was
+  punched into the upstream art so it works with `frameScreenshot`'s
+  transparent-hole contract. See
+  [Resources/Frames/ATTRIBUTION.md](Sources/SwiftMageXKit/Resources/Frames/ATTRIBUTION.md).
+- `swiftmagex appstore`'s `--frame` flag now accepts a bundled frame id in
+  addition to a path; omitting it auto-picks a bundled frame for the
+  requested `--device` when one exists. `--list-frames` enumerates the
+  bundled catalogue (plain or `--json`).
+- `swiftmagex-mcp` exposes a new `list_frames` tool, and the
+  `appstore_screenshots` tool's `frame` argument accepts the same ids.
+- `frames.json` is the single source of truth for what's bundled — adding a
+  new bezel is a JSON + PNG drop with no code change. Two helper scripts
+  ship under `scripts/` for vendoring third-party art:
+  `detect-screen-rect.swift` (finds the largest enclosed transparent region)
+  and `punch-rounded-rect.swift` (derives a transparent cutout from art that
+  renders the screen as a flat fill).
+
 ## Post-0.1.0 — App Store Connect screenshots
 
 A first slice of the 0.2 "asset packs for developers" feature

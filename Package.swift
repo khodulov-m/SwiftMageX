@@ -39,9 +39,13 @@ let package = Package(
         // MARK: - Core
 
         // Pure orchestration logic. No external dependencies — networking is
-        // URLSession, raster work is CoreImage / ImageIO / CoreText.
+        // URLSession, raster work is CoreImage / ImageIO / CoreText. Bundles
+        // CC0 device-frame artwork (Resources/Frames/) used by `appstore`.
         .target(
-            name: "SwiftMageXKit"
+            name: "SwiftMageXKit",
+            resources: [
+                .copy("Resources/Frames")
+            ]
         ),
 
         // MARK: - Frontends

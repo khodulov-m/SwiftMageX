@@ -127,7 +127,7 @@ enum AppStoreScreenshotsTool {
                 ]),
                 "frame": .object([
                     "type": .string("string"),
-                    "description": .string("Absolute path to a device bezel PNG with a transparent screen cutout. Omit to skip framing."),
+                    "description": .string("Device bezel: an absolute path to a PNG with a transparent screen cutout, OR a bundled frame id (see the `list_frames` tool). Omit to auto-pick a bundled frame for the requested device when one is available."),
                 ]),
                 "screen_rect": .object([
                     "type": .string("string"),

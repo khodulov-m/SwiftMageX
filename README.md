@@ -215,7 +215,8 @@ swiftmagex appstore <screenshot> --background <bg> [options]
 |---|---|---|
 | `<screenshot>` | — | The captured screenshot placed into the frame. |
 | `--background <path>` | — | Required. Filled (cover) behind the device. |
-| `--frame <path>` | — | iPhone bezel PNG with a transparent screen cutout. Omit to skip framing. |
+| `--frame <path\|id>` | auto | iPhone bezel: a PNG path with a transparent screen cutout, or a [bundled frame id](#built-in-device-frames) (e.g. `iphone-6.5-pommeplate-spacegray`). Omit to auto-pick a bundled frame for the requested device. |
+| `--list-frames` | — | List the bundled device frames and exit. Pair with `--json` for a parseable shape. |
 | `--screen-rect <x,y,w,h>` | auto-detect | Where the screenshot goes inside the frame. Auto-detected from the frame's alpha when omitted. |
 | `--device <id>` | `iphone-6.9` | Repeatable. One of `iphone-6.9` (1290×2796), `iphone-6.5` (1242×2688), `iphone-5.5` (1242×2208), or `all`. |
 | `--orientation <portrait\|landscape>` | `portrait` | Swaps the device dimensions. |
@@ -226,16 +227,31 @@ swiftmagex appstore <screenshot> --background <bg> [options]
 | `-o`, `--output <dir>` | `./` | Output **directory**; files are named `appstore_{device}_{w}x{h}.png`. |
 
 ```sh
-# Single required size, framed + captioned
-swiftmagex appstore shot.png --background bg.png --frame iphone.png \
+# Use the bundled iPhone 6.5" bezel (no --frame needed)
+swiftmagex appstore shot.png --background bg.png --device iphone-6.5 \
   --caption "Plan your week" --stroke "#000000" --stroke-width 6
 
-# Every catalogued iPhone size at once
+# Custom bezel, every catalogued iPhone size in one go
 swiftmagex appstore shot.png --background bg.png --frame iphone.png --device all -o ./shots
 ```
 
-The bezel is **user-supplied** — any PNG with a transparent screen hole works; the
-screen region is found from its alpha channel (or pin it with `--screen-rect`).
+#### Built-in device frames
+
+SwiftMageX ships a CC0-licensed iPhone 11 Pro Max / XS Max bezel from
+[PommePlate](https://github.com/ephread/PommePlate) (Space Grey, derivative
+with a punched screen cutout — see
+[Resources/Frames/ATTRIBUTION.md](Sources/SwiftMageXKit/Resources/Frames/ATTRIBUTION.md)).
+Pass `--device iphone-6.5` and it's used automatically; supply `--frame
+<path>` to override with your own art. To list everything bundled:
+
+```sh
+swiftmagex appstore --list-frames
+# → iphone-6.5-pommeplate-spacegray  iphone-6.5  iPhone 11 Pro Max / XS Max — Space Grey (PommePlate)
+```
+
+User-supplied frames still work the same way — any PNG with a transparent
+screen hole; the screen region is auto-detected from the alpha channel (or
+pin it with `--screen-rect`).
 
 ### `swiftmagex remove-bg` — local background removal
 
@@ -311,13 +327,15 @@ in one place.
 
 ## MCP server
 
-`swiftmagex-mcp` exposes six tools — `generate_image`, `resize_image`,
-`overlay_text`, `composite_images`, `appstore_screenshots`, and
-`remove_background` — over stdio. Tool arguments mirror the CLI flags above
-(snake_case keys, e.g. `font_size`, `screen_rect`, `devices`); tool results
-report absolute file paths so the calling agent doesn't need to know the
-server's working directory. `generate_image` additionally returns the image
-bytes as MCP `image` content so the calling model can inspect what was produced.
+`swiftmagex-mcp` exposes seven tools — `generate_image`, `resize_image`,
+`overlay_text`, `composite_images`, `appstore_screenshots`, `list_frames`,
+and `remove_background` — over stdio. Tool arguments mirror the CLI flags
+above (snake_case keys, e.g. `font_size`, `screen_rect`, `devices`); tool
+results report absolute file paths so the calling agent doesn't need to know
+the server's working directory. `generate_image` additionally returns the
+image bytes as MCP `image` content so the calling model can inspect what was
+produced. `list_frames` enumerates the bundled device bezels that
+`appstore_screenshots`'s `frame` argument accepts as an id.
 
 ### Configure Claude Code
 

@@ -15,11 +15,11 @@ struct MCPServerMain {
             name: "swiftmagex-mcp",
             version: Configuration.toolVersion,
             instructions: """
-            SwiftMageX MCP server. Provides six tools mirroring the CLI:
+            SwiftMageX MCP server. Provides seven tools mirroring the CLI:
             generate_image, resize_image, overlay_text, composite_images,
-            appstore_screenshots, and remove_background. Tool results return
-            absolute file paths because the calling agent does not know the
-            server's working directory.
+            appstore_screenshots, list_frames, and remove_background. Tool
+            results return absolute file paths because the calling agent does
+            not know the server's working directory.
             """,
             capabilities: .init(tools: .init(listChanged: false))
         )
@@ -45,6 +45,8 @@ struct MCPServerMain {
                     return try ToolHandlers.composite(arguments: params.arguments)
                 case AppStoreScreenshotsTool.name:
                     return try ToolHandlers.appStore(arguments: params.arguments)
+                case ListFramesTool.name:
+                    return ToolHandlers.listFrames()
                 case RemoveBackgroundTool.name:
                     return try ToolHandlers.removeBackground(arguments: params.arguments)
                 default:
@@ -111,6 +113,7 @@ enum SwiftMageXTools {
         OverlayTextTool.descriptor,
         CompositeImagesTool.descriptor,
         AppStoreScreenshotsTool.descriptor,
+        ListFramesTool.descriptor,
         RemoveBackgroundTool.descriptor,
     ]
 }

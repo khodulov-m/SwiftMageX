@@ -276,13 +276,26 @@ public enum SwiftMageXOrchestrator {
         let rawScreenshot = try engine.load(from: screenshotURL)
         // Frame the screenshot once and reuse it across every device size.
         let framedDevice: RasterImage
-        if let frame = frame {
-            let frameURL = absoluteFileURL(frame, currentDirectoryPath: currentDirectoryPath)
-            guard FileManager.default.fileExists(atPath: frameURL.path) else {
-                throw SwiftMageXError.io("frame file not found: \(frameURL.path)")
+        if let resolved = try resolveFrame(
+            frame: frame,
+            devices: devices,
+            currentDirectoryPath: currentDirectoryPath
+        ) {
+            let frameImage = try engine.load(from: resolved.url)
+            // Caller-supplied screenRect wins; bundled-frame rect is used only
+            // when the caller didn't specify one; falls through to alpha
+            // auto-detection otherwise.
+            let effectiveSpec: DeviceFrameSpec
+            if frameSpec.screenRect != nil || resolved.screenRect == nil {
+                effectiveSpec = frameSpec
+            } else {
+                effectiveSpec = DeviceFrameSpec(
+                    screenRect: resolved.screenRect,
+                    alphaThreshold: frameSpec.alphaThreshold,
+                    screenFit: frameSpec.screenFit
+                )
             }
-            let frameImage = try engine.load(from: frameURL)
-            framedDevice = try engine.frameScreenshot(rawScreenshot, in: frameImage, frameSpec)
+            framedDevice = try engine.frameScreenshot(rawScreenshot, in: frameImage, effectiveSpec)
         } else {
             framedDevice = rawScreenshot
         }
@@ -448,5 +461,50 @@ public enum SwiftMageXOrchestrator {
             throw SwiftMageXError.raster("provider image had no decodable frame")
         }
         return RasterImage(cgImage: cg)
+    }
+
+    /// Resolves the `frame:` argument of ``prepareAppStoreScreenshots(…)`` into
+    /// a concrete on-disk URL (plus an optional embedded screen rect), or
+    /// `nil` when no framing should happen.
+    ///
+    /// Resolution order:
+    /// 1. `frame == nil` → auto-pick a bundled frame for the *first* device,
+    ///    or return `nil` if none is bundled for that device (current
+    ///    behaviour preserved for unsupported slots).
+    /// 2. `frame` matches a bundled frame id → use the bundled asset.
+    /// 3. Otherwise treat it as a filesystem path.
+    ///
+    /// A non-empty string that's neither a known id nor an existing file
+    /// surfaces as ``SwiftMageXError/io(_:)`` so the frontend can report the
+    /// missing input with the same error category it already uses (spec §13).
+    private static func resolveFrame(
+        frame: String?,
+        devices: [ASCDeviceSize],
+        currentDirectoryPath: String
+    ) throws -> (url: URL, screenRect: DeviceFrameSpec.ScreenRect?)? {
+        guard let frame = frame else {
+            // Auto-pick: only when the first requested device has a bundled
+            // frame. Heterogeneous device lists fall back to "no auto-pick"
+            // because a single bezel may not silhouette the others well.
+            guard let firstDevice = devices.first,
+                  let bundled = DeviceFrameCatalog.defaultFrame(for: firstDevice.id) else {
+                return nil
+            }
+            let url = try bundled.url()
+            return (url, bundled.screenRect)
+        }
+
+        // Explicit value — try the catalog first.
+        if let bundled = DeviceFrameCatalog.frame(id: frame) {
+            let url = try bundled.url()
+            return (url, bundled.screenRect)
+        }
+
+        // Treat as a filesystem path; matches the previous behaviour exactly.
+        let frameURL = absoluteFileURL(frame, currentDirectoryPath: currentDirectoryPath)
+        guard FileManager.default.fileExists(atPath: frameURL.path) else {
+            throw SwiftMageXError.io("frame file not found: \(frameURL.path)")
+        }
+        return (frameURL, nil)
     }
 }
