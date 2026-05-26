@@ -15,14 +15,26 @@ struct AppStoreCommand: AsyncParsableCommand {
         helpNames: [.long]
     )
 
+    // `screenshot` and `background` are conceptually required, but they're
+    // declared optional so `--list-frames` can short-circuit before argument
+    // parsing rejects a missing positional. `validate()` enforces presence in
+    // the normal run path.
     @Argument(help: "Screenshot image to place into the device frame.")
-    var screenshot: String
+    var screenshot: String?
 
     @Option(name: .long, help: "Background image filled behind the device.")
-    var background: String
+    var background: String?
 
-    @Option(name: .long, help: "Device bezel PNG with a transparent screen cutout. Omit to skip framing.")
+    @Option(
+        name: .long,
+        help: ArgumentHelp(
+            "Device bezel: a path to a PNG, a bundled frame id (see --list-frames), or omit to auto-pick a bundled frame for the requested device when one is available."
+        )
+    )
     var frame: String?
+
+    @Flag(name: .customLong("list-frames"), help: "List bundled device frames and exit.")
+    var listFrames: Bool = false
 
     @Option(
         name: .customLong("screen-rect"),
@@ -104,6 +116,15 @@ struct AppStoreCommand: AsyncParsableCommand {
     @OptionGroup var globals: GlobalOptions
 
     func validate() throws {
+        // `--list-frames` short-circuits everything else; no other input is
+        // required for it to run.
+        if listFrames { return }
+        guard screenshot != nil else {
+            throw ValidationError("Missing expected argument '<screenshot>'.")
+        }
+        guard background != nil else {
+            throw ValidationError("Missing expected option '--background'.")
+        }
         // Surface unknown device ids early with exit code 2.
         _ = try resolveDevices()
         if screenRect != nil {
@@ -127,6 +148,11 @@ struct AppStoreCommand: AsyncParsableCommand {
     func run() async throws {
         let printer = ResultPrinter(json: globals.json, verbose: globals.verbose)
 
+        if listFrames {
+            printFrames(printer: printer)
+            return
+        }
+
         do {
             let devices = try resolveDevices()
             let frameSpec = DeviceFrameSpec(screenRect: try parseScreenRect())
@@ -149,9 +175,11 @@ struct AppStoreCommand: AsyncParsableCommand {
                 )
             }
 
+            // `validate()` guarantees these are non-nil in the normal run
+            // path; the bangs are safe.
             let written = try SwiftMageXOrchestrator.prepareAppStoreScreenshots(
-                screenshot: screenshot,
-                background: background,
+                screenshot: screenshot!,
+                background: background!,
                 frame: frame,
                 frameSpec: frameSpec,
                 caption: captionSpec,
@@ -202,6 +230,64 @@ struct AppStoreCommand: AsyncParsableCommand {
             throw ValidationError("--screen-rect width and height must be positive (got '\(raw)').")
         }
         return DeviceFrameSpec.ScreenRect(x: nums[0], y: nums[1], width: nums[2], height: nums[3])
+    }
+
+    /// Implements `--list-frames`. Plain mode emits one tab-separated line per
+    /// frame (id, deviceID, label); JSON mode emits a single object so a
+    /// calling agent has a stable schema to parse.
+    private func printFrames(printer _: ResultPrinter) {
+        let frames = DeviceFrameCatalog.all
+        if globals.json {
+            let payload = FrameListPayload(
+                command: "appstore",
+                frames: frames.map { frame in
+                    FrameListPayload.Entry(
+                        id: frame.id,
+                        deviceID: frame.deviceID,
+                        label: frame.label,
+                        source: frame.source,
+                        license: frame.license,
+                        isDefault: frame.isDefault
+                    )
+                }
+            )
+            do {
+                let encoder = JSONEncoder()
+                encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+                let data = try encoder.encode(payload)
+                FileHandle.standardOutput.write(data)
+                FileHandle.standardOutput.write(Data("\n".utf8))
+            } catch {
+                FileHandle.standardError.write(Data("error encoding frames: \(error.localizedDescription)\n".utf8))
+            }
+            return
+        }
+
+        guard !frames.isEmpty else {
+            FileHandle.standardOutput.write(Data("(no bundled frames)\n".utf8))
+            return
+        }
+        for frame in frames {
+            let line = "\(frame.id)\t\(frame.deviceID)\t\(frame.label)\n"
+            FileHandle.standardOutput.write(Data(line.utf8))
+        }
+    }
+}
+
+/// JSON shape for `appstore --list-frames --json`. Lives next to the command
+/// because it's the only consumer; doesn't go in `JSONResultEnvelope` which
+/// models the success/error envelope shared by all commands.
+private struct FrameListPayload: Encodable {
+    let command: String
+    let frames: [Entry]
+
+    struct Entry: Encodable {
+        let id: String
+        let deviceID: String
+        let label: String
+        let source: String?
+        let license: String?
+        let isDefault: Bool
     }
 }
 

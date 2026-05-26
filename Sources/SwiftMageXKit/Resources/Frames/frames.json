@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "frames": [
+    {
+      "id": "iphone-6.5-pommeplate-spacegray",
+      "deviceID": "iphone-6.5",
+      "label": "iPhone 11 Pro Max / XS Max — Space Grey (PommePlate)",
+      "resource": "iphone-6.5-pommeplate-spacegray",
+      "extension": "png",
+      "screenRect": { "x": 40, "y": 29, "width": 1332, "height": 2781 },
+      "default": true,
+      "source": "https://github.com/ephread/PommePlate",
+      "license": "CC0-1.0"
+    }
+  ]
+}

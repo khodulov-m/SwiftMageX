@@ -76,6 +76,83 @@ final class AppStoreFlowTests: XCTestCase {
         XCTAssertEqual(written[0].height, 2208)
     }
 
+    func testBundledFrameIdResolvesToVendoredArt() throws {
+        // `frame:` accepts a bundled frame id (no path on disk). The
+        // orchestrator should resolve it through `DeviceFrameCatalog` and
+        // produce a framed device just like a path argument would. We can't
+        // pixel-diff the result here, but we can assert that:
+        //   - the pipeline succeeds end-to-end with the real CC0 asset
+        //   - the output dimensions still match the requested ASC slot
+        let dir = try makeTempDir()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let screenshot = try writeColorPNG(dir, "shot.png", width: 200, height: 400, r: 0, g: 120, b: 200)
+        let background = try writeColorPNG(dir, "bg.png", width: 400, height: 400, r: 30, g: 30, b: 30)
+
+        let bundled = try XCTUnwrap(
+            DeviceFrameCatalog.frame(id: "iphone-6.5-pommeplate-spacegray"),
+            "bundled frame must be present in the catalog"
+        )
+        XCTAssertEqual(bundled.license, "CC0-1.0")
+
+        let written = try SwiftMageXOrchestrator.prepareAppStoreScreenshots(
+            screenshot: screenshot.path,
+            background: background.path,
+            frame: bundled.id,
+            caption: nil,
+            devices: try ASCDeviceCatalog.sizes(for: ["iphone-6.5"]),
+            placement: CompositeSpec(position: .center, scale: 0.85),
+            output: dir.path
+        )
+        XCTAssertEqual(written.count, 1)
+        XCTAssertEqual(written[0].width, 1242)
+        XCTAssertEqual(written[0].height, 2688)
+        XCTAssertTrue(FileManager.default.fileExists(atPath: written[0].path.path))
+    }
+
+    func testAutoPickFrameForKnownDeviceWithoutFrameArg() throws {
+        // When the caller omits `--frame` and the first device has a bundled
+        // bezel, the orchestrator should auto-pick it. The smoke-test here is
+        // that the pipeline completes — auto-pick failure would surface as an
+        // unhandled error from the catalog resolver.
+        let dir = try makeTempDir()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let screenshot = try writeColorPNG(dir, "shot.png", width: 200, height: 400, r: 200, g: 80, b: 80)
+        let background = try writeColorPNG(dir, "bg.png", width: 400, height: 400, r: 0, g: 0, b: 0)
+
+        let written = try SwiftMageXOrchestrator.prepareAppStoreScreenshots(
+            screenshot: screenshot.path,
+            background: background.path,
+            frame: nil,
+            caption: nil,
+            devices: try ASCDeviceCatalog.sizes(for: ["iphone-6.5"]),
+            placement: CompositeSpec(scale: 0.85),
+            output: dir.path
+        )
+        XCTAssertEqual(written.count, 1)
+        XCTAssertEqual(written[0].width, 1242)
+        XCTAssertEqual(written[0].height, 2688)
+    }
+
+    func testUnknownFrameIdSurfacesAsIOError() {
+        // A non-empty `frame:` that's neither a known id nor a real path on
+        // disk must surface as `.io` so the frontend reports the missing input
+        // with the same exit-code 5 category as before — *not* as a silently
+        // ignored value.
+        XCTAssertThrowsError(try SwiftMageXOrchestrator.prepareAppStoreScreenshots(
+            screenshot: "/tmp/whatever.png",
+            background: "/tmp/whatever.png",
+            frame: "iphone-99-bogus",
+            caption: nil,
+            devices: try ASCDeviceCatalog.sizes(for: ["iphone-6.5"]),
+            placement: CompositeSpec(),
+            output: nil
+        )) { error in
+            guard let smx = error as? SwiftMageXError, case .io = smx else {
+                return XCTFail("Expected SwiftMageXError.io for unknown frame id / non-existent file, got \(error)")
+            }
+        }
+    }
+
     func testMissingScreenshotThrowsIO() {
         XCTAssertThrowsError(try SwiftMageXOrchestrator.prepareAppStoreScreenshots(
             screenshot: "/tmp/does-not-exist-\(UUID().uuidString).png",

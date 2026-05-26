@@ -333,8 +333,20 @@ final class ToolHandlersTests: XCTestCase {
             OverlayTextTool.name,
             CompositeImagesTool.name,
             AppStoreScreenshotsTool.name,
+            ListFramesTool.name,
             RemoveBackgroundTool.name,
         ])
+    }
+
+    func testListFramesReportsBundledCatalog() {
+        let result = ToolHandlers.listFrames()
+        XCTAssertEqual(result.isError, false)
+        let text = (try? XCTUnwrap(result.firstText)) ?? ""
+        XCTAssertTrue(text.hasPrefix("OK"))
+        XCTAssertTrue(
+            text.contains("iphone-6.5-pommeplate-spacegray"),
+            "list_frames must surface the bundled CC0 PommePlate bezel: \(text)"
+        )
     }
 
     // MARK: - Helpers

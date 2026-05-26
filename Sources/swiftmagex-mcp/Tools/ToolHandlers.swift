@@ -161,6 +161,30 @@ enum ToolHandlers {
         }
     }
 
+    // MARK: - list_frames
+
+    static func listFrames() -> CallTool.Result {
+        let frames = DeviceFrameCatalog.all
+        if frames.isEmpty {
+            return CallTool.Result(
+                content: [.text(text: "(no bundled frames)", annotations: nil, _meta: nil)],
+                isError: false
+            )
+        }
+        var lines = ["OK"]
+        for frame in frames {
+            var parts = ["\(frame.id) → \(frame.deviceID): \(frame.label)"]
+            if let license = frame.license {
+                parts.append("(\(license))")
+            }
+            lines.append(parts.joined(separator: " "))
+        }
+        return CallTool.Result(
+            content: [.text(text: lines.joined(separator: "\n"), annotations: nil, _meta: nil)],
+            isError: false
+        )
+    }
+
     // MARK: - remove_background
 
     static func removeBackground(arguments: [String: Value]?) throws -> CallTool.Result {
