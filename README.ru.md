@@ -214,7 +214,8 @@ swiftmagex appstore <скриншот> --background <фон> [options]
 |---|---|---|
 | `<скриншот>` | — | Снятый скриншот, помещаемый в рамку. |
 | `--background <путь>` | — | Обязательно. Заполняет (cover) фон за устройством. |
-| `--frame <путь>` | — | PNG-рамка iPhone с прозрачным вырезом под экран. Опустите, чтобы не вставлять в рамку. |
+| `--frame <путь\|id>` | авто | Рамка iPhone: путь к PNG с прозрачным вырезом под экран или [id встроенной рамки](#встроенные-рамки-устройств) (напр. `iphone-6.5-pommeplate-spacegray`). Без значения автоматически подбирается встроенная рамка для запрошенного устройства, если такая есть. |
+| `--list-frames` | — | Выводит список встроенных рамок устройств и завершает работу. С `--json` — в машиночитаемой форме. |
 | `--screen-rect <x,y,w,h>` | автоопределение | Где разместить скриншот внутри рамки. Без значения определяется по альфа-каналу рамки. |
 | `--device <id>` | `iphone-6.9` | Повторяемый. Один из `iphone-6.9` (1290×2796), `iphone-6.5` (1242×2688), `iphone-5.5` (1242×2208) или `all`. |
 | `--orientation <portrait\|landscape>` | `portrait` | Меняет местами размеры устройства. |
@@ -225,17 +226,32 @@ swiftmagex appstore <скриншот> --background <фон> [options]
 | `-o`, `--output <каталог>` | `./` | **Каталог** вывода; файлы называются `appstore_{device}_{w}x{h}.png`. |
 
 ```sh
-# Один обязательный размер, в рамке + с подписью
-swiftmagex appstore shot.png --background bg.png --frame iphone.png \
+# Используем встроенную рамку iPhone 6.5" (без --frame)
+swiftmagex appstore shot.png --background bg.png --device iphone-6.5 \
   --caption "Plan your week" --stroke "#000000" --stroke-width 6
 
-# Сразу все размеры iPhone из каталога
+# Своя рамка, сразу все размеры iPhone из каталога
 swiftmagex appstore shot.png --background bg.png --frame iphone.png --device all -o ./shots
 ```
 
-Рамку **предоставляет пользователь** — подойдёт любой PNG с прозрачным отверстием
-под экран; область экрана находится по его альфа-каналу (или задайте её через
-`--screen-rect`).
+#### Встроенные рамки устройств
+
+SwiftMageX поставляется со встроенной рамкой iPhone 11 Pro Max / XS Max
+под лицензией CC0 из [PommePlate](https://github.com/ephread/PommePlate)
+(Space Grey, производное произведение с добавленным вырезом под экран —
+см. [Resources/Frames/ATTRIBUTION.md](Sources/SwiftMageXKit/Resources/Frames/ATTRIBUTION.md)).
+При `--device iphone-6.5` она подбирается автоматически; передайте
+`--frame <путь>`, чтобы переопределить её собственной графикой. Список
+всего, что встроено:
+
+```sh
+swiftmagex appstore --list-frames
+# → iphone-6.5-pommeplate-spacegray  iphone-6.5  iPhone 11 Pro Max / XS Max — Space Grey (PommePlate)
+```
+
+Рамки, переданные пользователем, по-прежнему работают как раньше —
+подойдёт любой PNG с прозрачным отверстием под экран; область экрана
+определяется по альфа-каналу (или задайте её через `--screen-rect`).
 
 ### `swiftmagex remove-bg` — локальное удаление фона
 
@@ -313,14 +329,16 @@ JSON-ошибка под `--json` тоже пишется в stdout — чтоб
 
 ## MCP-сервер
 
-`swiftmagex-mcp` предоставляет шесть инструментов — `generate_image`,
-`resize_image`, `overlay_text`, `composite_images`, `appstore_screenshots`
-и `remove_background` — через stdio. Аргументы инструментов
-повторяют флаги CLI (ключи в snake_case, напр. `font_size`, `screen_rect`,
-`devices`); в результатах возвращаются абсолютные пути, так что
-агенту не нужно знать рабочую директорию сервера. `generate_image`
-дополнительно возвращает байты изображения как MCP `image`-контент, чтобы
-вызывающая модель могла увидеть, что получилось.
+`swiftmagex-mcp` предоставляет семь инструментов — `generate_image`,
+`resize_image`, `overlay_text`, `composite_images`, `appstore_screenshots`,
+`list_frames` и `remove_background` — через stdio. Аргументы
+инструментов повторяют флаги CLI (ключи в snake_case, напр. `font_size`,
+`screen_rect`, `devices`); в результатах возвращаются абсолютные пути,
+так что агенту не нужно знать рабочую директорию сервера.
+`generate_image` дополнительно возвращает байты изображения как MCP
+`image`-контент, чтобы вызывающая модель могла увидеть, что получилось.
+`list_frames` перечисляет встроенные рамки устройств, чьи id принимает
+аргумент `frame` инструмента `appstore_screenshots`.
 
 ### Подключение Claude Code
 

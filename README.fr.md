@@ -222,7 +222,8 @@ swiftmagex appstore <capture> --background <fond> [options]
 |---|---|---|
 | `<capture>` | — | La capture placée dans le cadre. |
 | `--background <chemin>` | — | Requis. Remplit (cover) derrière l'appareil. |
-| `--frame <chemin>` | — | PNG de cadre iPhone avec une découpe d'écran transparente. Omettre pour ne pas encadrer. |
+| `--frame <chemin\|id>` | auto | Cadre iPhone : chemin vers un PNG avec une découpe d'écran transparente, ou un [identifiant de cadre fourni](#cadres-dappareil-intégrés) (p. ex. `iphone-6.5-pommeplate-spacegray`). Omettre pour qu'un cadre fourni soit choisi automatiquement pour l'appareil demandé, lorsqu'il en existe un. |
+| `--list-frames` | — | Liste les cadres d'appareil fournis puis quitte. Associez-le à `--json` pour une sortie analysable. |
 | `--screen-rect <x,y,w,h>` | auto-détection | Où va la capture dans le cadre. Détectée depuis l'alpha du cadre si omise. |
 | `--device <id>` | `iphone-6.9` | Répétable. L'un de `iphone-6.9` (1290×2796), `iphone-6.5` (1242×2688), `iphone-5.5` (1242×2208) ou `all`. |
 | `--orientation <portrait\|landscape>` | `portrait` | Échange les dimensions de l'appareil. |
@@ -233,17 +234,33 @@ swiftmagex appstore <capture> --background <fond> [options]
 | `-o`, `--output <rép>` | `./` | **Répertoire** de sortie ; les fichiers sont nommés `appstore_{device}_{w}x{h}.png`. |
 
 ```sh
-# Une seule taille requise, encadrée + légendée
-swiftmagex appstore shot.png --background bg.png --frame iphone.png \
+# Cadre iPhone 6.5" fourni (pas besoin de --frame)
+swiftmagex appstore shot.png --background bg.png --device iphone-6.5 \
   --caption "Plan your week" --stroke "#000000" --stroke-width 6
 
-# Toutes les tailles iPhone du catalogue d'un coup
+# Cadre personnalisé, toutes les tailles iPhone du catalogue d'un coup
 swiftmagex appstore shot.png --background bg.png --frame iphone.png --device all -o ./shots
 ```
 
-Le cadre est **fourni par l'utilisateur** : tout PNG avec un trou d'écran
-transparent convient ; la zone d'écran est trouvée depuis son canal alpha (ou
-fixez-la avec `--screen-rect`).
+#### Cadres d'appareil intégrés
+
+SwiftMageX embarque un cadre iPhone 11 Pro Max / XS Max sous licence CC0,
+issu de [PommePlate](https://github.com/ephread/PommePlate) (Space Grey,
+œuvre dérivée avec une découpe d'écran ajoutée — voir
+[Resources/Frames/ATTRIBUTION.md](Sources/SwiftMageXKit/Resources/Frames/ATTRIBUTION.md)).
+Avec `--device iphone-6.5`, il est utilisé automatiquement ; passez
+`--frame <chemin>` pour le remplacer par votre propre illustration. Pour
+lister tout ce qui est embarqué :
+
+```sh
+swiftmagex appstore --list-frames
+# → iphone-6.5-pommeplate-spacegray  iphone-6.5  iPhone 11 Pro Max / XS Max — Space Grey (PommePlate)
+```
+
+Les cadres fournis par l'utilisateur fonctionnent toujours de la même
+manière — tout PNG avec un trou d'écran transparent convient ; la zone
+d'écran est détectée depuis le canal alpha (ou fixez-la avec
+`--screen-rect`).
 
 ### `swiftmagex remove-bg` — suppression d'arrière-plan locale
 
@@ -321,15 +338,17 @@ Politique de retry sur 429 : jusqu'à 5 tentatives, backoff exponentiel
 
 ## Serveur MCP
 
-`swiftmagex-mcp` expose six outils — `generate_image`,
-`resize_image`, `overlay_text`, `composite_images`, `appstore_screenshots`
-et `remove_background` — via stdio. Les arguments des outils
+`swiftmagex-mcp` expose sept outils — `generate_image`,
+`resize_image`, `overlay_text`, `composite_images`, `appstore_screenshots`,
+`list_frames` et `remove_background` — via stdio. Les arguments des outils
 reprennent les flags du CLI (clés en snake_case, p. ex. `font_size`,
 `screen_rect`, `devices`) ; les résultats renvoient des chemins
 absolus afin que l'agent appelant n'ait pas besoin de connaître le
 répertoire de travail du serveur. `generate_image` retourne en plus les
 octets de l'image en contenu MCP `image` afin que le modèle puisse
-inspecter ce qui a été produit.
+inspecter ce qui a été produit. `list_frames` énumère les cadres
+d'appareil embarqués dont les identifiants sont acceptés par l'argument
+`frame` de `appstore_screenshots`.
 
 ### Configurer Claude Code
 

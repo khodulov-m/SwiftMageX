@@ -219,7 +219,8 @@ swiftmagex appstore <screenshot> --background <bg> [optionen]
 |---|---|---|
 | `<screenshot>` | — | Der aufgenommene Screenshot, der in den Rahmen gesetzt wird. |
 | `--background <pfad>` | — | Erforderlich. Hinter dem Gerät gefüllt (cover). |
-| `--frame <pfad>` | — | iPhone-Rahmen-PNG mit transparentem Bildschirm-Ausschnitt. Weglassen, um das Einrahmen zu überspringen. |
+| `--frame <pfad\|id>` | automatisch | iPhone-Rahmen: Pfad zu einer PNG mit transparentem Bildschirm-Ausschnitt oder eine [mitgelieferte Frame-ID](#integrierte-geräterahmen) (z. B. `iphone-6.5-pommeplate-spacegray`). Weglassen, um automatisch einen mitgelieferten Rahmen für das gewählte Gerät zu wählen, sofern vorhanden. |
+| `--list-frames` | — | Listet die mitgelieferten Geräterahmen auf und beendet. Mit `--json` für eine maschinenlesbare Form. |
 | `--screen-rect <x,y,w,h>` | automatisch | Wo der Screenshot im Rahmen sitzt. Wird ohne Angabe aus dem Alpha des Rahmens erkannt. |
 | `--device <id>` | `iphone-6.9` | Wiederholbar. Eines von `iphone-6.9` (1290×2796), `iphone-6.5` (1242×2688), `iphone-5.5` (1242×2208) oder `all`. |
 | `--orientation <portrait\|landscape>` | `portrait` | Tauscht die Gerätemaße. |
@@ -230,17 +231,31 @@ swiftmagex appstore <screenshot> --background <bg> [optionen]
 | `-o`, `--output <verz>` | `./` | Ausgabe-**Verzeichnis**; Dateien heißen `appstore_{device}_{w}x{h}.png`. |
 
 ```sh
-# Eine erforderliche Größe, gerahmt + mit Untertitel
-swiftmagex appstore shot.png --background bg.png --frame iphone.png \
+# Mitgelieferten iPhone-6.5"-Rahmen verwenden (kein --frame nötig)
+swiftmagex appstore shot.png --background bg.png --device iphone-6.5 \
   --caption "Plan your week" --stroke "#000000" --stroke-width 6
 
-# Alle katalogisierten iPhone-Größen auf einmal
+# Eigener Rahmen, alle katalogisierten iPhone-Größen in einem Durchlauf
 swiftmagex appstore shot.png --background bg.png --frame iphone.png --device all -o ./shots
 ```
 
-Der Rahmen wird **vom Benutzer bereitgestellt** — jede PNG mit transparentem
-Bildschirm-Loch funktioniert; der Bildschirmbereich wird aus dem Alpha-Kanal
-erkannt (oder mit `--screen-rect` festgelegt).
+#### Integrierte Geräterahmen
+
+SwiftMageX liefert einen CC0-lizenzierten iPhone-11-Pro-Max-/-XS-Max-Rahmen
+aus [PommePlate](https://github.com/ephread/PommePlate) (Space Grey,
+Ableitung mit eingestanztem Bildschirm-Ausschnitt — siehe
+[Resources/Frames/ATTRIBUTION.md](Sources/SwiftMageXKit/Resources/Frames/ATTRIBUTION.md)).
+Mit `--device iphone-6.5` wird er automatisch verwendet; `--frame <pfad>`
+überschreibt das mit eigener Grafik. Alles Mitgelieferte auflisten:
+
+```sh
+swiftmagex appstore --list-frames
+# → iphone-6.5-pommeplate-spacegray  iphone-6.5  iPhone 11 Pro Max / XS Max — Space Grey (PommePlate)
+```
+
+Eigene Rahmen funktionieren unverändert — jede PNG mit transparentem
+Bildschirm-Loch; der Bildschirmbereich wird aus dem Alpha-Kanal erkannt
+(oder mit `--screen-rect` festgelegt).
 
 ### `swiftmagex remove-bg` — lokale Hintergrundentfernung
 
@@ -318,15 +333,16 @@ damit ein Agent alles an einer Stelle parsen kann.
 
 ## MCP-Server
 
-`swiftmagex-mcp` stellt sechs Tools — `generate_image`,
-`resize_image`, `overlay_text`, `composite_images`, `appstore_screenshots`
-und `remove_background` — über stdio bereit. Tool-Argumente
+`swiftmagex-mcp` stellt sieben Tools — `generate_image`,
+`resize_image`, `overlay_text`, `composite_images`, `appstore_screenshots`,
+`list_frames` und `remove_background` — über stdio bereit. Tool-Argumente
 spiegeln die CLI-Flags wider (snake_case-Schlüssel, z. B. `font_size`,
 `screen_rect`, `devices`); Ergebnisse melden absolute Dateipfade,
 damit der aufrufende Agent das Arbeitsverzeichnis des Servers nicht
 kennen muss. `generate_image` liefert zusätzlich die Bildbytes als
 MCP-`image`-Inhalt, damit das aufrufende Modell das Resultat
-inspizieren kann.
+inspizieren kann. `list_frames` listet die mitgelieferten Geräterahmen
+auf, deren IDs `appstore_screenshots` im `frame`-Argument akzeptiert.
 
 ### Claude Code einrichten
 

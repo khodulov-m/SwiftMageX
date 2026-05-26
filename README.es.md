@@ -218,7 +218,8 @@ swiftmagex appstore <captura> --background <fondo> [opciones]
 |---|---|---|
 | `<captura>` | — | La captura colocada dentro del marco. |
 | `--background <ruta>` | — | Obligatorio. Rellena (cover) detrás del dispositivo. |
-| `--frame <ruta>` | — | PNG de marco de iPhone con un recorte de pantalla transparente. Omítelo para no enmarcar. |
+| `--frame <ruta\|id>` | auto | Marco de iPhone: ruta a un PNG con un recorte de pantalla transparente, o un [id de marco integrado](#marcos-de-dispositivo-integrados) (p. ej. `iphone-6.5-pommeplate-spacegray`). Omítelo para que se elija automáticamente un marco integrado del dispositivo solicitado, si hay uno disponible. |
+| `--list-frames` | — | Lista los marcos de dispositivo integrados y sale. Combínalo con `--json` para una salida parseable. |
 | `--screen-rect <x,y,w,h>` | autodetección | Dónde va la captura dentro del marco. Si se omite, se detecta desde el alfa del marco. |
 | `--device <id>` | `iphone-6.9` | Repetible. Uno de `iphone-6.9` (1290×2796), `iphone-6.5` (1242×2688), `iphone-5.5` (1242×2208) o `all`. |
 | `--orientation <portrait\|landscape>` | `portrait` | Intercambia las dimensiones del dispositivo. |
@@ -229,17 +230,31 @@ swiftmagex appstore <captura> --background <fondo> [opciones]
 | `-o`, `--output <dir>` | `./` | **Directorio** de salida; los archivos se llaman `appstore_{device}_{w}x{h}.png`. |
 
 ```sh
-# Un único tamaño obligatorio, enmarcado + con pie de foto
-swiftmagex appstore shot.png --background bg.png --frame iphone.png \
+# Marco integrado de iPhone 6.5" (no hace falta --frame)
+swiftmagex appstore shot.png --background bg.png --device iphone-6.5 \
   --caption "Plan your week" --stroke "#000000" --stroke-width 6
 
-# Todos los tamaños de iPhone del catálogo a la vez
+# Marco propio, todos los tamaños de iPhone del catálogo de una vez
 swiftmagex appstore shot.png --background bg.png --frame iphone.png --device all -o ./shots
 ```
 
-El marco lo **aporta el usuario**: sirve cualquier PNG con un hueco de pantalla
-transparente; la región de pantalla se halla a partir de su canal alfa (o fíjala
-con `--screen-rect`).
+#### Marcos de dispositivo integrados
+
+SwiftMageX incluye un marco de iPhone 11 Pro Max / XS Max bajo licencia CC0,
+tomado de [PommePlate](https://github.com/ephread/PommePlate) (Space Grey,
+derivado con un recorte de pantalla incrustado — véase
+[Resources/Frames/ATTRIBUTION.md](Sources/SwiftMageXKit/Resources/Frames/ATTRIBUTION.md)).
+Con `--device iphone-6.5` se usa automáticamente; pasa `--frame <ruta>` para
+sobrescribirlo con tu propia ilustración. Para listar todo lo integrado:
+
+```sh
+swiftmagex appstore --list-frames
+# → iphone-6.5-pommeplate-spacegray  iphone-6.5  iPhone 11 Pro Max / XS Max — Space Grey (PommePlate)
+```
+
+Los marcos aportados por el usuario siguen funcionando igual: cualquier PNG
+con un hueco de pantalla transparente; la región de pantalla se halla a partir
+del canal alfa (o fíjala con `--screen-rect`).
 
 ### `swiftmagex remove-bg` — eliminación de fondo local
 
@@ -317,14 +332,16 @@ Política de retry en 429: hasta 5 reintentos con backoff exponencial
 
 ## Servidor MCP
 
-`swiftmagex-mcp` expone seis herramientas — `generate_image`,
-`resize_image`, `overlay_text`, `composite_images`, `appstore_screenshots` y
-`remove_background` — sobre stdio. Los argumentos espejan los
-flags del CLI (claves en snake_case, p. ej. `font_size`, `screen_rect`,
+`swiftmagex-mcp` expone siete herramientas — `generate_image`,
+`resize_image`, `overlay_text`, `composite_images`, `appstore_screenshots`,
+`list_frames` y `remove_background` — sobre stdio. Los argumentos espejan
+los flags del CLI (claves en snake_case, p. ej. `font_size`, `screen_rect`,
 `devices`); los resultados reportan rutas absolutas para que el
 agente no necesite saber el directorio de trabajo del servidor.
 `generate_image` además devuelve los bytes de la imagen como contenido
 MCP `image` para que el modelo invocante pueda ver lo que se produjo.
+`list_frames` enumera los marcos de dispositivo integrados cuyos ids
+acepta el argumento `frame` de `appstore_screenshots`.
 
 ### Configurar Claude Code
 

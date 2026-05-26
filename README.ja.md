@@ -219,7 +219,8 @@ swiftmagex appstore <スクリーンショット> --background <背景> [オプ�
 |---|---|---|
 | `<スクリーンショット>` | — | フレームにはめ込む撮影済みスクリーンショット。 |
 | `--background <パス>` | — | 必須。デバイスの背後を埋める(cover)。 |
-| `--frame <パス>` | — | 画面部分が透明な iPhone フレーム PNG。省略するとフレーム合成をスキップ。 |
+| `--frame <パス\|id>` | 自動 | iPhone フレーム: 画面部分が透明な PNG のパス、または[同梱フレームの id](#組み込みのデバイスフレーム)(例: `iphone-6.5-pommeplate-spacegray`)。省略すると、指定デバイス用の同梱フレームが利用可能な場合は自動選択される。 |
+| `--list-frames` | — | 同梱されているデバイスフレームを一覧表示して終了。`--json` と併用で機械可読な形式に。 |
 | `--screen-rect <x,y,w,h>` | 自動検出 | フレーム内でスクリーンショットを置く位置。省略時はフレームのアルファから検出。 |
 | `--device <id>` | `iphone-6.9` | 繰り返し可。`iphone-6.9`(1290×2796)、`iphone-6.5`(1242×2688)、`iphone-5.5`(1242×2208)、または `all` のいずれか。 |
 | `--orientation <portrait\|landscape>` | `portrait` | デバイスの寸法を入れ替える。 |
@@ -230,16 +231,32 @@ swiftmagex appstore <スクリーンショット> --background <背景> [オプ�
 | `-o`, `--output <ディレクトリ>` | `./` | 出力**ディレクトリ**。ファイル名は `appstore_{device}_{w}x{h}.png`。 |
 
 ```sh
-# 必須サイズ 1 つ、フレーム + キャプション付き
-swiftmagex appstore shot.png --background bg.png --frame iphone.png \
+# 同梱の iPhone 6.5" フレームを使う(--frame 不要)
+swiftmagex appstore shot.png --background bg.png --device iphone-6.5 \
   --caption "Plan your week" --stroke "#000000" --stroke-width 6
 
-# カタログの全 iPhone サイズを一度に
+# 独自フレーム、カタログの全 iPhone サイズを一度に
 swiftmagex appstore shot.png --background bg.png --frame iphone.png --device all -o ./shots
 ```
 
-フレームは**ユーザーが用意**します。画面部分が透明な PNG なら何でも使えます。
-画面領域はアルファチャンネルから検出されます(または `--screen-rect` で指定)。
+#### 組み込みのデバイスフレーム
+
+SwiftMageX には CC0 ライセンスの iPhone 11 Pro Max / XS Max フレームが
+同梱されています([PommePlate](https://github.com/ephread/PommePlate) の
+Space Grey、画面の切り抜きを追加した派生作品 — 詳細は
+[Resources/Frames/ATTRIBUTION.md](Sources/SwiftMageXKit/Resources/Frames/ATTRIBUTION.md)
+を参照)。`--device iphone-6.5` を指定すると自動で使用され、`--frame
+<パス>` を指定すれば自前のアートワークで上書きできます。同梱内容の
+一覧表示:
+
+```sh
+swiftmagex appstore --list-frames
+# → iphone-6.5-pommeplate-spacegray  iphone-6.5  iPhone 11 Pro Max / XS Max — Space Grey (PommePlate)
+```
+
+ユーザー提供のフレームも従来どおり動作します — 画面部分が透明な PNG
+なら何でも使えます。画面領域はアルファチャンネルから検出されます
+(または `--screen-rect` で指定)。
 
 ### `swiftmagex remove-bg` — ローカルの背景除去
 
@@ -317,13 +334,14 @@ swiftmagex remove-bg product.heic
 
 ## MCP サーバ
 
-`swiftmagex-mcp` は stdio 上で 6 つのツール
-(`generate_image`、`resize_image`、`overlay_text`、`composite_images`、`appstore_screenshots`、`remove_background`)を提供します。
+`swiftmagex-mcp` は stdio 上で 7 つのツール
+(`generate_image`、`resize_image`、`overlay_text`、`composite_images`、`appstore_screenshots`、`list_frames`、`remove_background`)を提供します。
 引数は CLI フラグと対応しており(snake_case のキー、例: `font_size`、`screen_rect`、`devices`)、結果は絶対パスを返すので、呼び出
 し側エージェントはサーバの作業ディレクトリを知る必要がありません。
 `generate_image` は加えて、生成された画像のバイト列を MCP の
 `image` コンテンツとして返し、呼び出し側モデルが出力結果を直接確
-認できます。
+認できます。`list_frames` は同梱されているデバイスフレームを列挙し、
+その id は `appstore_screenshots` の `frame` 引数で受け付けられます。
 
 ### Claude Code を設定する
 
