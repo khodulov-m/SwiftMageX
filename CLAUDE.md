@@ -25,11 +25,11 @@ Three SwiftPM targets in one package; two thin frontends over one core library. 
 
 - **`SwiftMageXKit`** (library) — pure orchestration. **No external dependencies.** Networking is `URLSession`; raster work is CoreImage / CoreText / ImageIO. Defines the `ImageProvider` and `RasterEngine` protocols, request/response models, errors, and config.
 - **`swiftmagex`** (executable) — CLI frontend. Depends on `SwiftMageXKit` + `swift-argument-parser`. Subcommands: `generate`, `resize`, `text`, `composite`, `appstore`, `remove-bg` (the last three post-0.1). Global flags: `--json`, `--verbose`.
-- **`swiftmagex-mcp`** (executable) — MCP server frontend over stdio. Depends on `SwiftMageXKit` + the MCP Swift SDK. Exposes six tools (`generate_image`, `resize_image`, `overlay_text`, `composite_images`, `appstore_screenshots`, `remove_background`) that mirror the CLI commands.
+- **`swiftmagex-mcp`** (executable) — MCP server frontend over stdio. Depends on `SwiftMageXKit` + the MCP Swift SDK. Exposes seven tools (`generate_image`, `resize_image`, `overlay_text`, `composite_images`, `appstore_screenshots`, `list_frames`, `remove_background`) that mirror the CLI commands; `list_frames` is the discovery counterpart to `appstore_screenshots`'s bundled-bezel ids.
 
 Frontends own *only* their interface concern (argparsing/output, or MCP protocol). All business logic lives in the Kit. The two frontends share no dependency with each other — keep it that way; don't introduce code in one that pulls the other's dependency into the Kit.
 
-`generate` uses both `ImageProvider` (network) and `RasterEngine` (write file + embed metadata). `resize`, `text`, `composite`, `appstore`, and `remove-bg` use only `RasterEngine` — no API key. `appstore` (post-0.1) is the App Store Connect screenshot pipeline: frame a screenshot in a user-supplied bezel → composite onto a background → optional caption → batch-resize to ASC iPhone sizes from `ASCDeviceCatalog`.
+`generate` uses both `ImageProvider` (network) and `RasterEngine` (write file + embed metadata). `resize`, `text`, `composite`, `appstore`, and `remove-bg` use only `RasterEngine` — no API key. `appstore` (post-0.1) is the App Store Connect screenshot pipeline: frame a screenshot in a device bezel (a user-supplied path **or** a bundled frame id from `DeviceFrameCatalog`; auto-picked when the requested device has bundled art) → composite onto a background → optional caption → batch-resize to ASC iPhone sizes from `ASCDeviceCatalog`.
 
 ### Protocols are abstractions for testability — keep additions concrete
 
@@ -38,6 +38,10 @@ Frontends own *only* their interface concern (argparsing/output, or MCP protocol
 ### Dependency budget is a hard rule
 
 **Exactly two external packages**: `swift-argument-parser` (CLI only) and `modelcontextprotocol/swift-sdk` (MCP server only). The Kit itself must stay dependency-free. The MCP SDK is pinned with `.upToNextMinor(from: "0.12.1")` because pre-1.0 minor bumps may break — patch updates only; bump deliberately. Don't add a logging crate, a JSON crate, an HTTP crate, etc.
+
+### Kit ships SwiftPM resources
+
+`Sources/SwiftMageXKit/Resources/Frames/` carries device bezel PNGs + a `frames.json` manifest, surfaced through `DeviceFrameCatalog`. `Package.swift` declares them with `.copy("Resources/Frames")`. **This is not a dependency** — SwiftPM resources are a build feature, not a third-party package; the dep-budget rule still holds. The catalog is intentionally decoupled from `ASCDeviceCatalog` so one device id can have zero, one, or many bundled frames (colour variants, alternate eras). Adding a new bezel is a JSON + PNG drop with no code change. Two helper scripts live under `scripts/` for vendoring: `detect-screen-rect.swift` (find the largest enclosed transparent region in a candidate bezel) and `punch-rounded-rect.swift` (derive a clean cutout from third-party art that renders the screen as a flat fill rather than a transparent hole — PommePlate's iPhone art is the bundled example). `Bundle.module` is per-target, so tests reach the Kit's bundle via `DeviceFrameCatalog.resourceBundle` (the test target's own `.module` is empty). Provenance / licence metadata for bundled art lives in `Resources/Frames/ATTRIBUTION.md`; preserve it when adding new entries.
 
 ### Swift 6 strict concurrency is on
 
