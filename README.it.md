@@ -220,7 +220,8 @@ swiftmagex appstore <screenshot> --background <sfondo> [opzioni]
 |---|---|---|
 | `<screenshot>` | — | Lo screenshot collocato nella cornice. |
 | `--background <percorso>` | — | Obbligatorio. Riempie (cover) dietro al dispositivo. |
-| `--frame <percorso>` | — | PNG della cornice iPhone con un ritaglio di schermo trasparente. Ometti per non inquadrare. |
+| `--frame <percorso\|id>` | auto | Cornice iPhone: percorso a un PNG con un ritaglio di schermo trasparente, oppure un [id di cornice inclusa](#cornici-dispositivo-incluse) (es. `iphone-6.5-pommeplate-spacegray`). Ometti per scegliere automaticamente una cornice inclusa per il dispositivo richiesto, quando disponibile. |
+| `--list-frames` | — | Elenca le cornici dispositivo incluse ed esce. Usalo con `--json` per una forma analizzabile. |
 | `--screen-rect <x,y,w,h>` | autorilevamento | Dove va lo screenshot nella cornice. Se omesso, rilevato dall'alfa della cornice. |
 | `--device <id>` | `iphone-6.9` | Ripetibile. Uno tra `iphone-6.9` (1290×2796), `iphone-6.5` (1242×2688), `iphone-5.5` (1242×2208) o `all`. |
 | `--orientation <portrait\|landscape>` | `portrait` | Scambia le dimensioni del dispositivo. |
@@ -231,17 +232,32 @@ swiftmagex appstore <screenshot> --background <sfondo> [opzioni]
 | `-o`, `--output <dir>` | `./` | **Directory** di output; i file si chiamano `appstore_{device}_{w}x{h}.png`. |
 
 ```sh
-# Una sola dimensione richiesta, inquadrata + con didascalia
-swiftmagex appstore shot.png --background bg.png --frame iphone.png \
+# Cornice iPhone 6.5" inclusa (nessun --frame necessario)
+swiftmagex appstore shot.png --background bg.png --device iphone-6.5 \
   --caption "Plan your week" --stroke "#000000" --stroke-width 6
 
-# Tutte le dimensioni iPhone del catalogo in una volta
+# Cornice personalizzata, tutte le dimensioni iPhone del catalogo in una volta
 swiftmagex appstore shot.png --background bg.png --frame iphone.png --device all -o ./shots
 ```
 
-La cornice è **fornita dall'utente**: va bene qualsiasi PNG con un foro di schermo
-trasparente; la regione dello schermo si ricava dal suo canale alfa (oppure
-fissala con `--screen-rect`).
+#### Cornici dispositivo incluse
+
+SwiftMageX include una cornice iPhone 11 Pro Max / XS Max con licenza CC0
+proveniente da [PommePlate](https://github.com/ephread/PommePlate) (Space
+Grey, opera derivata con ritaglio di schermo aggiunto — vedi
+[Resources/Frames/ATTRIBUTION.md](Sources/SwiftMageXKit/Resources/Frames/ATTRIBUTION.md)).
+Con `--device iphone-6.5` viene usata automaticamente; passa `--frame
+<percorso>` per sostituirla con la tua grafica. Per elencare tutto ciò
+che è incluso:
+
+```sh
+swiftmagex appstore --list-frames
+# → iphone-6.5-pommeplate-spacegray  iphone-6.5  iPhone 11 Pro Max / XS Max — Space Grey (PommePlate)
+```
+
+Le cornici fornite dall'utente continuano a funzionare allo stesso modo:
+qualsiasi PNG con un foro di schermo trasparente; la regione dello
+schermo si ricava dal canale alfa (oppure fissala con `--screen-rect`).
 
 ### `swiftmagex remove-bg` — rimozione dello sfondo locale
 
@@ -321,15 +337,17 @@ Politica di retry sui 429: fino a 5 tentativi con backoff esponenziale
 
 ## Server MCP
 
-`swiftmagex-mcp` espone sei strumenti — `generate_image`,
-`resize_image`, `overlay_text`, `composite_images`, `appstore_screenshots`
-e `remove_background` — su stdio. Gli argomenti rispecchiano
+`swiftmagex-mcp` espone sette strumenti — `generate_image`,
+`resize_image`, `overlay_text`, `composite_images`, `appstore_screenshots`,
+`list_frames` e `remove_background` — su stdio. Gli argomenti rispecchiano
 i flag della CLI (chiavi in snake_case, es. `font_size`, `screen_rect`,
 `devices`); i risultati riportano percorsi assoluti così che
 l'agente chiamante non debba sapere la directory di lavoro del
 server. `generate_image` restituisce inoltre i byte dell'immagine come
 contenuto MCP `image`, in modo che il modello che ha invocato lo
-strumento possa ispezionare quanto prodotto.
+strumento possa ispezionare quanto prodotto. `list_frames` enumera le
+cornici dispositivo incluse i cui id sono accettati dall'argomento
+`frame` di `appstore_screenshots`.
 
 ### Configurare Claude Code
 

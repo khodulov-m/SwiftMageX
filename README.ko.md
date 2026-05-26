@@ -216,7 +216,8 @@ swiftmagex appstore <스크린샷> --background <배경> [옵션]
 |---|---|---|
 | `<스크린샷>` | — | 프레임에 끼울 캡처된 스크린샷. |
 | `--background <경로>` | — | 필수. 디바이스 뒤를 채움(cover). |
-| `--frame <경로>` | — | 화면 부분이 투명한 iPhone 프레임 PNG. 생략하면 프레임 합성을 건너뜀. |
+| `--frame <경로\|id>` | 자동 | iPhone 프레임: 화면 부분이 투명한 PNG 경로 또는 [내장 프레임 id](#내장-디바이스-프레임)(예: `iphone-6.5-pommeplate-spacegray`). 생략하면 요청된 디바이스에 대해 내장 프레임이 있을 때 자동으로 선택. |
+| `--list-frames` | — | 내장 디바이스 프레임을 나열하고 종료. `--json`과 함께 쓰면 파싱 가능한 형식으로 출력. |
 | `--screen-rect <x,y,w,h>` | 자동 감지 | 프레임 안에서 스크린샷이 놓일 위치. 생략 시 프레임의 알파에서 감지. |
 | `--device <id>` | `iphone-6.9` | 반복 가능. `iphone-6.9`(1290×2796), `iphone-6.5`(1242×2688), `iphone-5.5`(1242×2208), 또는 `all` 중 하나. |
 | `--orientation <portrait\|landscape>` | `portrait` | 디바이스 치수를 교체. |
@@ -227,16 +228,32 @@ swiftmagex appstore <스크린샷> --background <배경> [옵션]
 | `-o`, `--output <디렉터리>` | `./` | 출력 **디렉터리**. 파일명은 `appstore_{device}_{w}x{h}.png`. |
 
 ```sh
-# 필수 크기 하나, 프레임 + 캡션
-swiftmagex appstore shot.png --background bg.png --frame iphone.png \
+# 내장 iPhone 6.5" 프레임 사용(--frame 불필요)
+swiftmagex appstore shot.png --background bg.png --device iphone-6.5 \
   --caption "Plan your week" --stroke "#000000" --stroke-width 6
 
-# 카탈로그의 모든 iPhone 크기를 한 번에
+# 커스텀 프레임으로 카탈로그의 모든 iPhone 크기를 한 번에
 swiftmagex appstore shot.png --background bg.png --frame iphone.png --device all -o ./shots
 ```
 
-프레임은 **사용자가 제공**합니다. 화면 부분이 투명한 PNG라면 무엇이든 동작하며,
-화면 영역은 알파 채널에서 찾습니다(또는 `--screen-rect`로 지정).
+#### 내장 디바이스 프레임
+
+SwiftMageX에는 CC0 라이선스의 iPhone 11 Pro Max / XS Max 프레임이
+포함되어 있습니다([PommePlate](https://github.com/ephread/PommePlate)
+Space Grey, 화면 컷아웃을 추가한 파생물 — 자세한 내용은
+[Resources/Frames/ATTRIBUTION.md](Sources/SwiftMageXKit/Resources/Frames/ATTRIBUTION.md)
+참조). `--device iphone-6.5`를 지정하면 자동으로 사용되며, `--frame
+<경로>`로 직접 만든 아트워크로 덮어쓸 수 있습니다. 내장된 항목을
+모두 보려면:
+
+```sh
+swiftmagex appstore --list-frames
+# → iphone-6.5-pommeplate-spacegray  iphone-6.5  iPhone 11 Pro Max / XS Max — Space Grey (PommePlate)
+```
+
+사용자 제공 프레임도 그대로 동작합니다. 화면 부분이 투명한 PNG라면
+무엇이든 사용할 수 있고, 화면 영역은 알파 채널에서 찾습니다(또는
+`--screen-rect`로 지정).
 
 ### `swiftmagex remove-bg` — 로컬 배경 제거
 
@@ -313,12 +330,14 @@ nil 필드는 완전히 생략됩니다(`null` 자리표시 없음).
 
 ## MCP 서버
 
-`swiftmagex-mcp`는 stdio로 여섯 가지 도구
-(`generate_image`, `resize_image`, `overlay_text`, `composite_images`, `appstore_screenshots`, `remove_background`)를 노출합니다.
+`swiftmagex-mcp`는 stdio로 일곱 가지 도구
+(`generate_image`, `resize_image`, `overlay_text`, `composite_images`, `appstore_screenshots`, `list_frames`, `remove_background`)를 노출합니다.
 도구 인자는 CLI 플래그와 동일하며(snake_case 키, 예: `font_size`, `screen_rect`, `devices`), 결과는 절대 경로를 반환해 호
 출 에이전트가 서버의 작업 디렉터리를 알 필요가 없습니다.
 `generate_image`는 추가로 이미지 바이트를 MCP `image` 콘텐츠로
 함께 반환하여 호출 모델이 결과물을 직접 확인할 수 있습니다.
+`list_frames`는 `appstore_screenshots`의 `frame` 인자가 id로 받아들이는
+내장 디바이스 프레임을 열거합니다.
 
 ### Claude Code 구성
 

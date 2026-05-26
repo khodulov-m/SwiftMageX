@@ -217,7 +217,8 @@ swiftmagex appstore <captura> --background <fundo> [opções]
 |---|---|---|
 | `<captura>` | — | A captura colocada dentro da moldura. |
 | `--background <caminho>` | — | Obrigatório. Preenche (cover) atrás do dispositivo. |
-| `--frame <caminho>` | — | PNG de moldura de iPhone com um recorte de tela transparente. Omita para não emoldurar. |
+| `--frame <caminho\|id>` | auto | Moldura de iPhone: caminho para um PNG com um recorte de tela transparente, ou um [id de moldura incluída](#molduras-de-dispositivo-incluídas) (ex.: `iphone-6.5-pommeplate-spacegray`). Omita para escolher automaticamente uma moldura incluída para o dispositivo solicitado, quando disponível. |
+| `--list-frames` | — | Lista as molduras de dispositivo incluídas e sai. Combine com `--json` para uma forma analisável. |
 | `--screen-rect <x,y,w,h>` | autodetecção | Onde a captura fica na moldura. Se omitido, detectado pelo alfa da moldura. |
 | `--device <id>` | `iphone-6.9` | Repetível. Um de `iphone-6.9` (1290×2796), `iphone-6.5` (1242×2688), `iphone-5.5` (1242×2208) ou `all`. |
 | `--orientation <portrait\|landscape>` | `portrait` | Troca as dimensões do dispositivo. |
@@ -228,17 +229,32 @@ swiftmagex appstore <captura> --background <fundo> [opções]
 | `-o`, `--output <dir>` | `./` | **Diretório** de saída; os arquivos se chamam `appstore_{device}_{w}x{h}.png`. |
 
 ```sh
-# Um único tamanho obrigatório, emoldurado + com legenda
-swiftmagex appstore shot.png --background bg.png --frame iphone.png \
+# Moldura iPhone 6.5" incluída (não precisa de --frame)
+swiftmagex appstore shot.png --background bg.png --device iphone-6.5 \
   --caption "Plan your week" --stroke "#000000" --stroke-width 6
 
-# Todos os tamanhos de iPhone do catálogo de uma vez
+# Moldura própria, todos os tamanhos de iPhone do catálogo de uma vez
 swiftmagex appstore shot.png --background bg.png --frame iphone.png --device all -o ./shots
 ```
 
-A moldura é **fornecida pelo usuário** — qualquer PNG com um furo de tela
-transparente serve; a região da tela é encontrada pelo seu canal alfa (ou fixe-a
-com `--screen-rect`).
+#### Molduras de dispositivo incluídas
+
+O SwiftMageX inclui uma moldura de iPhone 11 Pro Max / XS Max sob licença
+CC0 vinda do [PommePlate](https://github.com/ephread/PommePlate) (Space
+Grey, obra derivada com recorte de tela incrustado — veja
+[Resources/Frames/ATTRIBUTION.md](Sources/SwiftMageXKit/Resources/Frames/ATTRIBUTION.md)).
+Com `--device iphone-6.5` ela é usada automaticamente; passe `--frame
+<caminho>` para sobrescrever com sua própria arte. Para listar tudo que
+vem incluso:
+
+```sh
+swiftmagex appstore --list-frames
+# → iphone-6.5-pommeplate-spacegray  iphone-6.5  iPhone 11 Pro Max / XS Max — Space Grey (PommePlate)
+```
+
+Molduras fornecidas pelo usuário continuam funcionando do mesmo jeito —
+qualquer PNG com um furo de tela transparente serve; a região da tela é
+detectada pelo canal alfa (ou fixe-a com `--screen-rect`).
 
 ### `swiftmagex remove-bg` — remoção de fundo local
 
@@ -317,15 +333,17 @@ Política de retry em 429: até 5 tentativas, backoff exponencial
 
 ## Servidor MCP
 
-`swiftmagex-mcp` expõe seis ferramentas — `generate_image`,
-`resize_image`, `overlay_text`, `composite_images`, `appstore_screenshots`
-e `remove_background` — por stdio. Os argumentos espelham as
+`swiftmagex-mcp` expõe sete ferramentas — `generate_image`,
+`resize_image`, `overlay_text`, `composite_images`, `appstore_screenshots`,
+`list_frames` e `remove_background` — por stdio. Os argumentos espelham as
 flags da CLI (chaves em snake_case, ex.: `font_size`, `screen_rect`,
 `devices`); os resultados informam caminhos absolutos para que o
 agente que chama não precise saber o diretório de trabalho do
 servidor. `generate_image` ainda devolve os bytes da imagem como
 conteúdo MCP `image`, permitindo que o modelo invocador inspecione o
-que foi gerado.
+que foi gerado. `list_frames` enumera as molduras de dispositivo
+incluídas cujos ids são aceitos pelo argumento `frame` de
+`appstore_screenshots`.
 
 ### Configurar o Claude Code
 

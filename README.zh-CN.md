@@ -210,7 +210,8 @@ swiftmagex appstore <截图> --background <背景> [选项]
 |---|---|---|
 | `<截图>` | — | 放入外框的截图。 |
 | `--background <路径>` | — | 必填。在设备后方铺满(cover)。 |
-| `--frame <路径>` | — | 屏幕部分透明的 iPhone 外框 PNG。省略则不嵌框。 |
+| `--frame <路径\|id>` | 自动 | iPhone 外框:屏幕部分透明的 PNG 路径,或[内置外框 id](#内置设备外框)(如 `iphone-6.5-pommeplate-spacegray`)。省略时,若所请求设备有内置外框,则自动选用。 |
+| `--list-frames` | — | 列出内置设备外框并退出。与 `--json` 搭配使用可输出可解析格式。 |
 | `--screen-rect <x,y,w,h>` | 自动检测 | 截图在外框中的位置。省略时从外框的透明通道检测。 |
 | `--device <id>` | `iphone-6.9` | 可重复。`iphone-6.9`(1290×2796)、`iphone-6.5`(1242×2688)、`iphone-5.5`(1242×2208)或 `all` 之一。 |
 | `--orientation <portrait\|landscape>` | `portrait` | 交换设备尺寸。 |
@@ -221,16 +222,30 @@ swiftmagex appstore <截图> --background <背景> [选项]
 | `-o`, `--output <目录>` | `./` | 输出**目录**;文件名为 `appstore_{device}_{w}x{h}.png`。 |
 
 ```sh
-# 单一必需尺寸,嵌框 + 标题
-swiftmagex appstore shot.png --background bg.png --frame iphone.png \
+# 使用内置的 iPhone 6.5" 外框(无需 --frame)
+swiftmagex appstore shot.png --background bg.png --device iphone-6.5 \
   --caption "Plan your week" --stroke "#000000" --stroke-width 6
 
-# 一次生成目录中所有 iPhone 尺寸
+# 自定义外框,一次生成目录中所有 iPhone 尺寸
 swiftmagex appstore shot.png --background bg.png --frame iphone.png --device all -o ./shots
 ```
 
-外框由**用户自备**——任何带透明屏幕镂空的 PNG 均可;屏幕区域会从其透明通道
-中识别(或用 `--screen-rect` 指定)。
+#### 内置设备外框
+
+SwiftMageX 内置了一份 CC0 协议的 iPhone 11 Pro Max / XS Max 外框,
+取自 [PommePlate](https://github.com/ephread/PommePlate)(Space Grey;
+为契合本工具的透明屏幕镂空,做了添加屏幕镂空的派生处理——详见
+[Resources/Frames/ATTRIBUTION.md](Sources/SwiftMageXKit/Resources/Frames/ATTRIBUTION.md))。
+传入 `--device iphone-6.5` 即可自动使用;若要换成自己的图,使用
+`--frame <路径>` 覆盖。列出全部内置项:
+
+```sh
+swiftmagex appstore --list-frames
+# → iphone-6.5-pommeplate-spacegray  iphone-6.5  iPhone 11 Pro Max / XS Max — Space Grey (PommePlate)
+```
+
+用户自备的外框依然按原方式工作——任何带透明屏幕镂空的 PNG 均可;
+屏幕区域会从透明通道中识别(或用 `--screen-rect` 指定)。
 
 ### `swiftmagex remove-bg` — 本地抠图去背
 
@@ -303,11 +318,12 @@ swiftmagex remove-bg product.heic
 
 ## MCP 服务器
 
-`swiftmagex-mcp` 通过 stdio 暴露六个工具:`generate_image`、
-`resize_image`、`overlay_text`、`composite_images`、`appstore_screenshots`、`remove_background`。工具参数与 CLI 标志保持一致(snake_case 键名,如 `font_size`、`screen_rect`、`devices`);返回的
+`swiftmagex-mcp` 通过 stdio 暴露七个工具:`generate_image`、
+`resize_image`、`overlay_text`、`composite_images`、`appstore_screenshots`、`list_frames`、`remove_background`。工具参数与 CLI 标志保持一致(snake_case 键名,如 `font_size`、`screen_rect`、`devices`);返回的
 文件路径都是绝对路径,调用方代理无需知道服务器的工作目录。
 `generate_image` 还会以 MCP `image` 内容形式返回图像字节,便于调用
-模型直接检视产物。
+模型直接检视产物。`list_frames` 列出 `appstore_screenshots` 的 `frame`
+参数可接受作为 id 的内置设备外框。
 
 ### 配置 Claude Code
 
