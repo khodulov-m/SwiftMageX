@@ -204,6 +204,32 @@ enum ToolHandlers {
         }
     }
 
+    // MARK: - smart_crop
+
+    static func smartCrop(arguments: [String: Value]?) throws -> CallTool.Result {
+        let input = try SmartCropTool.parse(arguments)
+
+        do {
+            let spec = SmartCropSpec(
+                aspectWidth: input.aspectWidth,
+                aspectHeight: input.aspectHeight
+            )
+            let written = try SwiftMageXOrchestrator.smartCrop(
+                input: input.input,
+                spec: spec,
+                output: input.output,
+                format: input.format,
+                quality: input.quality
+            )
+            return CallTool.Result(
+                content: [.text(text: summaryText(for: [written]), annotations: nil, _meta: nil)],
+                isError: false
+            )
+        } catch let error as SwiftMageXError {
+            return errorResult(error)
+        }
+    }
+
     // MARK: - Helpers
 
     /// Builds the human-readable summary that accompanies every tool result.

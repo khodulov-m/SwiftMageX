@@ -213,10 +213,30 @@ final class CLIArgumentTests: XCTestCase {
         XCTAssertEqual(cmd.output, "cutout.png")
     }
 
+    // MARK: - crop
+
+    func testCropRequiresInputAndAspect() {
+        XCTAssertThrowsError(try CropCommand.parse([]))
+        XCTAssertThrowsError(try CropCommand.parse(["photo.jpg"]))
+    }
+
+    func testCropParsesAspectAndOptionalOutput() throws {
+        let cmd = try CropCommand.parse(["photo.jpg", "--aspect", "9:16", "-o", "out.jpg"])
+        XCTAssertEqual(cmd.input, "photo.jpg")
+        XCTAssertEqual(cmd.aspect, "9:16")
+        XCTAssertEqual(cmd.output, "out.jpg")
+    }
+
+    func testCropRejectsMalformedAspect() {
+        XCTAssertThrowsError(try CropCommand.parse(["photo.jpg", "--aspect", "9-16"]))
+        XCTAssertThrowsError(try CropCommand.parse(["photo.jpg", "--aspect", "0:1"]))
+        XCTAssertThrowsError(try CropCommand.parse(["photo.jpg", "--aspect", "abc"]))
+    }
+
     // MARK: - root
 
     func testRootRegistersAllSubcommands() {
         let names = SwiftMageX.configuration.subcommands.map { $0.configuration.commandName }
-        XCTAssertEqual(Set(names), ["generate", "resize", "text", "composite", "appstore", "remove-bg"])
+        XCTAssertEqual(Set(names), ["generate", "resize", "text", "composite", "appstore", "remove-bg", "crop"])
     }
 }

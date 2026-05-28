@@ -44,6 +44,16 @@ public protocol RasterEngine: Sendable {
     /// a format that preserves transparency (PNG).
     func removeBackground(_ image: RasterImage) throws -> RasterImage
 
+    /// Crop `image` to the aspect ratio in `spec`, centering the window on the
+    /// image's salient region (Vision attention saliency). Local, on-device;
+    /// consumes no provider quota.
+    ///
+    /// The output keeps the source's pixel scale — this is a crop, not a
+    /// resize. When saliency yields no salient objects (rare; flat or
+    /// uniform images), falls back to a center crop so the requested aspect
+    /// ratio is still honored.
+    func smartCrop(_ image: RasterImage, _ spec: SmartCropSpec) throws -> RasterImage
+
     /// Write `image` to `url` in the chosen `format`, embedding optional `metadata`.
     func write(
         _ image: RasterImage,
@@ -214,6 +224,20 @@ public struct DeviceFrameSpec: Sendable, Equatable {
         self.screenRect = screenRect
         self.alphaThreshold = alphaThreshold
         self.screenFit = screenFit
+    }
+}
+
+/// Parameters for ``RasterEngine/smartCrop(_:_:)``.
+public struct SmartCropSpec: Sendable, Equatable {
+    /// Target aspect ratio numerator (width side). Must be positive.
+    public var aspectWidth: Int
+    /// Target aspect ratio denominator (height side). Must be positive.
+    public var aspectHeight: Int
+
+    /// Creates a smart-crop specification.
+    public init(aspectWidth: Int, aspectHeight: Int) {
+        self.aspectWidth = aspectWidth
+        self.aspectHeight = aspectHeight
     }
 }
 

@@ -335,6 +335,7 @@ final class ToolHandlersTests: XCTestCase {
             AppStoreScreenshotsTool.name,
             ListFramesTool.name,
             RemoveBackgroundTool.name,
+            SmartCropTool.name,
         ])
     }
 

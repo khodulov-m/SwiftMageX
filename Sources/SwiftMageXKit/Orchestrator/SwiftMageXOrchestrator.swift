@@ -397,6 +397,57 @@ public enum SwiftMageXOrchestrator {
         )
     }
 
+    /// Run a saliency-driven crop through the raster engine.
+    ///
+    /// Crops the source to the requested aspect ratio with the crop window
+    /// centered on the salient region detected by Vision's attention model.
+    /// No AI provider and no API key — saliency is on-device. The output
+    /// format defaults to the source format (overridable via `format`); no
+    /// metadata is embedded because this is a derived raster op.
+    ///
+    /// - Throws: ``SwiftMageXError/io(_:)`` when the input is missing,
+    ///   ``SwiftMageXError/invalidInput(_:)`` for a malformed spec, and
+    ///   ``SwiftMageXError/raster(_:)`` for pipeline failures.
+    public static func smartCrop(
+        input: String,
+        spec: SmartCropSpec,
+        output: String?,
+        format: ImageFormat?,
+        quality: Double,
+        engine: any RasterEngine = CoreImageRasterEngine(),
+        timestamp: Date = Date(),
+        currentDirectoryPath: String = FileManager.default.currentDirectoryPath
+    ) throws -> WrittenImage {
+        let inputURL = absoluteFileURL(input, currentDirectoryPath: currentDirectoryPath)
+        guard FileManager.default.fileExists(atPath: inputURL.path) else {
+            throw SwiftMageXError.io("input file not found: \(inputURL.path)")
+        }
+
+        let resolvedFormat = format ?? ImageFormat.detect(at: inputURL) ?? .png
+        let image = try engine.load(from: inputURL)
+        let cropped = try engine.smartCrop(image, spec)
+        let outputURL = try OutputPath.resolveSingle(
+            target: output,
+            sourceURL: inputURL,
+            format: resolvedFormat,
+            timestamp: timestamp,
+            currentDirectoryPath: currentDirectoryPath
+        )
+        try engine.write(
+            cropped,
+            to: outputURL,
+            format: resolvedFormat,
+            quality: quality,
+            metadata: nil
+        )
+        return WrittenImage(
+            path: outputURL,
+            format: resolvedFormat,
+            width: cropped.width,
+            height: cropped.height
+        )
+    }
+
     /// Constructs the right provider for `model` using ``ModelCatalog`` to
     /// pick between Gemini's `:generateContent` shape and Imagen's `:predict`.
     /// Exposed so the MCP frontend can share the same routing.

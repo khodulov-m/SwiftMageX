@@ -19,6 +19,7 @@ struct SwiftMageX: AsyncParsableCommand {
             CompositeCommand.self,
             AppStoreCommand.self,
             RemoveBackgroundCommand.self,
+            CropCommand.self,
         ]
     )
 }
