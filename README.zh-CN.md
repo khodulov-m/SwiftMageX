@@ -4,7 +4,7 @@
 
 仅 macOS 的图像生成与处理 CLI。SwiftMageX 是一个*编排器*:调用
 Google AI 图像 API(Gemini 或 Imagen)进行图像生成,并使用 CoreImage / CoreText / ImageIO / Vision 完成
-本地光栅操作(缩放、文字叠加、合成、App Store 截图、抠图去背),全部封装在一个仅有两个外部依赖的小
+本地光栅操作(缩放、文字叠加、合成、App Store 截图、抠图去背、显著性感知裁剪),全部封装在一个仅有两个外部依赖的小
 Swift 包中。同一个核心库还驱动一个 Model Context Protocol 服务器
 (`swiftmagex-mcp`),让 AI 代理可以把这些能力当作工具来调用。
 
@@ -17,7 +17,7 @@ Swift 包中。同一个核心库还驱动一个 Model Context Protocol 服务�
 - Swift 6.0+ 工具链(Xcode 16+)——仅在从源码构建时需要
 - 用于 `generate` 命令的 Google AI API 密钥,写入
   `SWIFTMAGEX_GEMINI_API_KEY`(或 `GEMINI_API_KEY`)——同一个密钥
-  适用于 Gemini 和 Imagen 模型。`resize`、`text`、`composite`、`appstore` 与 `remove-bg` 不需要密钥。
+  适用于 Gemini 和 Imagen 模型。`resize`、`text`、`composite`、`appstore`、`remove-bg` 与 `crop` 不需要密钥。
 
 ## 安装
 
@@ -75,7 +75,7 @@ export GEMINI_API_KEY="…"
 
 ## 快速手册
 
-六个子命令共享同一组全局标志:
+七个子命令共享同一组全局标志:
 
 | 全局标志 | 作用 |
 |---|---|
@@ -272,6 +272,35 @@ swiftmagex remove-bg product.heic
 
 若未检测到显著的前景主体,命令将以光栅错误失败(退出码 1)。
 
+### `swiftmagex crop` — 显著性感知的宽高比裁剪
+
+按用户指定的宽高比进行裁剪,裁剪窗口居中对齐于 Vision 设备端注意力模型
+识别的显著主体——而不是几何中心。无需 AI API、无需密钥、零配额消耗。
+输出保持源图像的像素尺度(这是裁剪,不是缩放),默认沿用源文件格式。
+
+```
+swiftmagex crop <input> --aspect <W:H> [选项]
+```
+
+| 选项 | 默认值 | 备注 |
+|---|---|---|
+| `<input>` | — | PNG、JPEG、HEIC 或 WebP。写出仅支持 PNG / JPEG。 |
+| `--aspect <W:H>` | — | 必填。两个正整数,如 `1:1`、`4:5`、`9:16`。 |
+| `-o`、`--output <路径>` | 与源同目录 | |
+| `--format <png\|jpeg>` | 与源一致 | HEIC / WebP 默认回退为 PNG。 |
+| `--quality <0.0–1.0>` | `0.9` | 仅 JPEG。 |
+
+```sh
+# 以显著主体为中心的正方形裁剪
+swiftmagex crop photo.jpg --aspect 1:1
+
+# 9:16 竖版裁剪,重新编码为 JPEG
+swiftmagex crop photo.jpg --aspect 9:16 -o portrait.jpg --format jpeg --quality 0.85
+```
+
+当显著性识别不到任何显著对象(罕见;平坦或均匀图像)时,回退为居中
+裁剪,以保证所请求的宽高比依然成立。
+
 ### JSON 输出格式
 
 所有命令在 `--json` 下输出同一信封,键按字母排序,nil 字段完全省略
@@ -291,7 +320,7 @@ swiftmagex remove-bg product.heic
 }
 ```
 
-错误(`resize`、`text` 与 `remove-bg` 省略 `provider` / `model`):
+错误(`resize`、`text`、`remove-bg` 与 `crop` 省略 `provider` / `model`):
 
 ```json
 {
@@ -318,8 +347,8 @@ swiftmagex remove-bg product.heic
 
 ## MCP 服务器
 
-`swiftmagex-mcp` 通过 stdio 暴露七个工具:`generate_image`、
-`resize_image`、`overlay_text`、`composite_images`、`appstore_screenshots`、`list_frames`、`remove_background`。工具参数与 CLI 标志保持一致(snake_case 键名,如 `font_size`、`screen_rect`、`devices`);返回的
+`swiftmagex-mcp` 通过 stdio 暴露八个工具:`generate_image`、
+`resize_image`、`overlay_text`、`composite_images`、`appstore_screenshots`、`list_frames`、`remove_background`、`smart_crop`。工具参数与 CLI 标志保持一致(snake_case 键名,如 `font_size`、`screen_rect`、`devices`);返回的
 文件路径都是绝对路径,调用方代理无需知道服务器的工作目录。
 `generate_image` 还会以 MCP `image` 内容形式返回图像字节,便于调用
 模型直接检视产物。`list_frames` 列出 `appstore_screenshots` 的 `frame`
@@ -374,15 +403,15 @@ claude mcp add -s user swiftmagex /usr/local/bin/swiftmagex-mcp \
 |---|---|---|
 | `Configuration error: missing SWIFTMAGEX_GEMINI_API_KEY`(退出码 4) | 运行 `generate` 或调用 `generate_image` 时环境里没有 API 密钥。 | 导出 `SWIFTMAGEX_GEMINI_API_KEY`(或备用 `GEMINI_API_KEY`);MCP 场景下加进客户端的 `env` 块,见上文。 |
 | `Provider error: quota exhausted after 5 retries`(退出码 3) | Gemini 在 1 s → 16 s 的退避窗口内每次都返回 `429`。 | 等待配额恢复、切换项目或稍后重试。退避节奏是固定的,见规范 §13。 |
-| `I/O error: input file not found: /…/foo.png`(退出码 1) | 传给本地命令(`resize` / `text` / `composite` / `appstore` / `remove-bg`,或其 MCP 工具)的路径不存在或不可读。 | 使用绝对路径,检查权限,确认格式属于 PNG / JPEG / HEIC / WebP(写入仅支持 PNG / JPEG)。 |
+| `I/O error: input file not found: /…/foo.png`(退出码 1) | 传给本地命令(`resize` / `text` / `composite` / `appstore` / `remove-bg` / `crop`,或其 MCP 工具)的路径不存在或不可读。 | 使用绝对路径,检查权限,确认格式属于 PNG / JPEG / HEIC / WebP(写入仅支持 PNG / JPEG)。 |
 | `"swiftmagex" cannot be opened because the developer cannot be verified` | 已下载的二进制被 Gatekeeper 隔离。 | `xattr -d com.apple.quarantine /usr/local/bin/swiftmagex`(`swiftmagex-mcp` 同理)。 |
 
 ## 范围与状态
 
 这是 0.1 MVP——三个命令、两个 Google AI 图像提供商(Gemini 与
-Imagen)、一个 MCP 服务器,外加 0.1 之后新增的三个本地命令
-`composite`、`appstore`、`remove-bg`(图像合成、App Store Connect 截图、
-基于 Vision 的抠图去背)。
+Imagen)、一个 MCP 服务器,外加 0.1 之后新增的四个本地命令
+`composite`、`appstore`、`remove-bg`、`crop`(图像合成、
+App Store Connect 截图、基于 Vision 的抠图去背、显著性感知裁剪)。
 超出该边界的内容均推迟,详见规范
 [§2 Scope of version 0.1](SwiftMageX-MVP-0.1-spec.md#2-scope-of-version-01)
 (edit / inpainting、本地提供商、Homebrew 分发、配置文件、

@@ -5,9 +5,9 @@
 A macOS-only image generation and processing CLI. SwiftMageX is an
 *orchestrator* — it calls the Google AI image API (Gemini or Imagen) for
 generation and performs local raster operations (resize, text overlay,
-compositing, App Store screenshots, background removal) with CoreImage /
-CoreText / ImageIO / Vision, all from a small Swift package with exactly
-two external dependencies. The same core library backs a Model Context
+compositing, App Store screenshots, background removal, saliency-aware
+crop) with CoreImage / CoreText / ImageIO / Vision, all from a small Swift
+package with exactly two external dependencies. The same core library backs a Model Context
 Protocol server (`swiftmagex-mcp`) so AI agents can use the same capabilities
 as tools.
 
@@ -20,7 +20,7 @@ See `SwiftMageX-MVP-0.1-spec.md` for the authoritative specification and
 - Swift 6.0+ toolchain (Xcode 16+) — only required to build from source
 - A Google AI API key in `SWIFTMAGEX_GEMINI_API_KEY` (or `GEMINI_API_KEY`)
   for the `generate` command — used for both Gemini and Imagen models.
-  `resize`, `text`, `composite`, `appstore`, and `remove-bg` need no key.
+  `resize`, `text`, `composite`, `appstore`, `remove-bg`, and `crop` need no key.
 
 ## Installation
 
@@ -79,7 +79,7 @@ metadata.
 
 ## Quick manual
 
-Six subcommands, all sharing the same global flags:
+Seven subcommands, all sharing the same global flags:
 
 | Global flag | Effect |
 |---|---|
@@ -280,6 +280,36 @@ swiftmagex remove-bg product.heic
 If no salient foreground subject is detected, the command fails with a raster
 error (exit 1).
 
+### `swiftmagex crop` — saliency-aware aspect-ratio crop
+
+Crops to a user-supplied aspect ratio with the crop window centered on the
+salient subject picked by Vision's on-device attention model — not the
+geometric centre. No AI API, no key, zero quota. The output keeps the source's
+pixel scale (this is a crop, not a resize) and defaults to the source format.
+
+```
+swiftmagex crop <input> --aspect <W:H> [options]
+```
+
+| Option | Default | Notes |
+|---|---|---|
+| `<input>` | — | PNG, JPEG, HEIC, or WebP. Write is PNG / JPEG only. |
+| `--aspect <W:H>` | — | Required. Two positive integers, e.g. `1:1`, `4:5`, `9:16`. |
+| `-o`, `--output <path>` | sibling of source | |
+| `--format <png\|jpeg>` | matches source | HEIC / WebP sources default to PNG. |
+| `--quality <0.0–1.0>` | `0.9` | JPEG only. |
+
+```sh
+# Square crop centered on the salient subject
+swiftmagex crop photo.jpg --aspect 1:1
+
+# 9:16 portrait crop, re-encode as JPEG
+swiftmagex crop photo.jpg --aspect 9:16 -o portrait.jpg --format jpeg --quality 0.85
+```
+
+When saliency finds no salient objects (rare; flat or uniform images), falls
+back to a centre crop so the requested aspect ratio is still honoured.
+
 ### JSON output schema
 
 Every command emits the same envelope under `--json`. Keys are sorted; nil
@@ -299,7 +329,7 @@ Success:
 }
 ```
 
-Error (`resize`, `text`, and `remove-bg` omit `provider` / `model`):
+Error (`resize`, `text`, `remove-bg`, and `crop` omit `provider` / `model`):
 
 ```json
 {
@@ -327,9 +357,9 @@ in one place.
 
 ## MCP server
 
-`swiftmagex-mcp` exposes seven tools — `generate_image`, `resize_image`,
+`swiftmagex-mcp` exposes eight tools — `generate_image`, `resize_image`,
 `overlay_text`, `composite_images`, `appstore_screenshots`, `list_frames`,
-and `remove_background` — over stdio. Tool arguments mirror the CLI flags
+`remove_background`, and `smart_crop` — over stdio. Tool arguments mirror the CLI flags
 above (snake_case keys, e.g. `font_size`, `screen_rect`, `devices`); tool
 results report absolute file paths so the calling agent doesn't need to know
 the server's working directory. `generate_image` additionally returns the
@@ -385,16 +415,16 @@ disk in the client's general environment.
 |---|---|---|
 | `Configuration error: missing SWIFTMAGEX_GEMINI_API_KEY` (exit 4) | No API key in the environment when running `generate` or invoking `generate_image`. | Export `SWIFTMAGEX_GEMINI_API_KEY` (or the fallback `GEMINI_API_KEY`) — or, for MCP, add it to the client's `env` block as shown above. |
 | `Provider error: quota exhausted after 5 retries` (exit 3) | Gemini returned `429` on every attempt in the backoff window (1 s → 16 s). | Wait for quota to refill, switch projects, or run again later. The backoff schedule is fixed; see spec §13. |
-| `I/O error: input file not found: /…/foo.png` (exit 1) | The path passed to a local command (`resize` / `text` / `composite` / `appstore` / `remove-bg`, or their MCP tools) doesn't exist or isn't readable. | Pass an absolute path, verify permissions, or check that the file format is one of PNG / JPEG / HEIC / WebP (write is PNG / JPEG only). |
+| `I/O error: input file not found: /…/foo.png` (exit 1) | The path passed to a local command (`resize` / `text` / `composite` / `appstore` / `remove-bg` / `crop`, or their MCP tools) doesn't exist or isn't readable. | Pass an absolute path, verify permissions, or check that the file format is one of PNG / JPEG / HEIC / WebP (write is PNG / JPEG only). |
 | `"swiftmagex" cannot be opened because the developer cannot be verified` | Gatekeeper quarantine on a downloaded binary. | `xattr -d com.apple.quarantine /usr/local/bin/swiftmagex` (and the same for `swiftmagex-mcp`). |
 
 ## Scope and status
 
 This is the 0.1 MVP — three commands, two Google AI image providers
-(Gemini and Imagen), one MCP server — plus three post-0.1 local additions:
-`composite`, `appstore`, and `remove-bg` (image compositing, App Store Connect
-screenshots, and Vision-based background removal). Anything outside that
-boundary is deferred; see spec
+(Gemini and Imagen), one MCP server — plus four post-0.1 local additions:
+`composite`, `appstore`, `remove-bg`, and `crop` (image compositing, App Store
+Connect screenshots, Vision-based background removal, and saliency-aware
+smart crop). Anything outside that boundary is deferred; see spec
 [§2 Scope of version 0.1](SwiftMageX-MVP-0.1-spec.md#2-scope-of-version-01)
 for the full out-of-scope list (edit / inpainting, local providers, Homebrew
 distribution, config file, Keychain, …).

@@ -1,5 +1,25 @@
 # SwiftMageX
 
+## Post-0.1.0 — Saliency-aware smart crop
+
+A new local raster command that crops to a user-supplied aspect ratio with the
+crop window centered on the salient subject rather than the geometric centre:
+
+- New `swiftmagex crop` command / `smart_crop` MCP tool. Takes `--aspect W:H`
+  (e.g. `1:1`, `4:5`, `9:16`); no resize — pixels stay at source scale. Output
+  format defaults to the source format (`--format png|jpeg` to override).
+- Driven by Vision's on-device attention saliency
+  (`VNGenerateAttentionBasedSaliencyImageRequest`). Same dep posture as
+  `remove-bg`: a system framework, so the dependency budget (still exactly
+  `swift-argument-parser` and `modelcontextprotocol/swift-sdk`) is untouched.
+- `RasterEngine` gained `smartCrop(_:_:)`; the algorithm computes the largest
+  `W:H` rect that fits in the source, positions it on the union centroid of
+  the salient bounding boxes (Y-flipped from Vision's normalized coords),
+  clamps to image bounds, and applies `CGImage.cropping(to:)`. When saliency
+  yields no salient objects (rare; flat or uniform images), falls back to a
+  center crop so the requested aspect ratio still holds.
+- The MCP server now exposes eight tools.
+
 ## Post-0.1.0 — Bundled device frames
 
 The `appstore` pipeline no longer requires a user-supplied bezel for common
