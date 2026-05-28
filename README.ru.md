@@ -5,8 +5,9 @@
 CLI для генерации и обработки изображений, только под macOS. SwiftMageX —
 *оркестратор*: он обращается к API изображений Google AI (Gemini или Imagen) для генерации и выполняет
 локальные растровые операции (resize, наложение текста, композиция,
-скриншоты для App Store, удаление фона) через CoreImage / CoreText / ImageIO / Vision. Это компактный Swift-пакет ровно с двумя
-внешними зависимостями. Та же базовая библиотека используется в сервере
+скриншоты для App Store, удаление фона, кадрирование по выраженности)
+через CoreImage / CoreText / ImageIO / Vision. Это компактный
+Swift-пакет ровно с двумя внешними зависимостями. Та же базовая библиотека используется в сервере
 Model Context Protocol (`swiftmagex-mcp`), благодаря чему AI-агенты могут
 вызывать те же возможности в виде инструментов.
 
@@ -19,7 +20,7 @@ Model Context Protocol (`swiftmagex-mcp`), благодаря чему AI-аге
 - Swift 6.0+ (Xcode 16+) — нужен только для сборки из исходников
 - API-ключ Google AI в переменной `SWIFTMAGEX_GEMINI_API_KEY`
   (или `GEMINI_API_KEY`) для команды `generate` — подходит и для
-  Gemini, и для Imagen. Для `resize`, `text`, `composite`, `appstore` и `remove-bg` ключ не требуется.
+  Gemini, и для Imagen. Для `resize`, `text`, `composite`, `appstore`, `remove-bg` и `crop` ключ не требуется.
 
 ## Установка
 
@@ -78,7 +79,7 @@ export GEMINI_API_KEY="…"
 
 ## Краткий мануал
 
-Шесть подкоманд; глобальные флаги общие:
+Семь подкоманд; глобальные флаги общие:
 
 | Флаг | Эффект |
 |---|---|
@@ -281,6 +282,39 @@ swiftmagex remove-bg product.heic
 Если заметный объект переднего плана не обнаружен, команда завершается
 с растровой ошибкой (exit 1).
 
+### `swiftmagex crop` — кадрирование по соотношению с учётом выраженности
+
+Кадрирует под заданное пользователем соотношение сторон, центрируя окно
+обрезки на выраженном объекте, найденном моделью внимания Vision на
+устройстве, — а не на геометрическом центре. Без AI API, без ключа, с
+нулевым расходом квоты. Вывод сохраняет пиксельный масштаб исходника
+(это кадрирование, а не resize), а формат по умолчанию совпадает с
+исходным.
+
+```
+swiftmagex crop <input> --aspect <W:H> [опции]
+```
+
+| Опция | По умолчанию | Примечания |
+|---|---|---|
+| `<input>` | — | PNG, JPEG, HEIC или WebP. Запись только PNG / JPEG. |
+| `--aspect <W:H>` | — | Обязательно. Два положительных целых, напр. `1:1`, `4:5`, `9:16`. |
+| `-o`, `--output <path>` | рядом с исходником | |
+| `--format <png\|jpeg>` | как у исходника | HEIC / WebP по умолчанию падают в PNG. |
+| `--quality <0.0–1.0>` | `0.9` | Только JPEG. |
+
+```sh
+# Квадратное кадрирование с центром на выраженном объекте
+swiftmagex crop photo.jpg --aspect 1:1
+
+# Вертикальное 9:16, перекодированное в JPEG
+swiftmagex crop photo.jpg --aspect 9:16 -o portrait.jpg --format jpeg --quality 0.85
+```
+
+Если выраженность не находит ни одного объекта (редко; плоские или
+однородные изображения), кадрирование переходит на центрирование по
+геометрии — заданное соотношение сторон всё равно соблюдается.
+
 ### Схема JSON-вывода
 
 Любая команда под `--json` выдаёт один и тот же конверт. Ключи
@@ -300,7 +334,7 @@ swiftmagex remove-bg product.heic
 }
 ```
 
-Ошибка (`resize`, `text` и `remove-bg` не выдают `provider` / `model`):
+Ошибка (`resize`, `text`, `remove-bg` и `crop` не выдают `provider` / `model`):
 
 ```json
 {
@@ -329,9 +363,9 @@ JSON-ошибка под `--json` тоже пишется в stdout — чтоб
 
 ## MCP-сервер
 
-`swiftmagex-mcp` предоставляет семь инструментов — `generate_image`,
+`swiftmagex-mcp` предоставляет восемь инструментов — `generate_image`,
 `resize_image`, `overlay_text`, `composite_images`, `appstore_screenshots`,
-`list_frames` и `remove_background` — через stdio. Аргументы
+`list_frames`, `remove_background` и `smart_crop` — через stdio. Аргументы
 инструментов повторяют флаги CLI (ключи в snake_case, напр. `font_size`,
 `screen_rect`, `devices`); в результатах возвращаются абсолютные пути,
 так что агенту не нужно знать рабочую директорию сервера.
@@ -389,16 +423,16 @@ claude mcp add -s user swiftmagex /usr/local/bin/swiftmagex-mcp \
 |---|---|---|
 | `Configuration error: missing SWIFTMAGEX_GEMINI_API_KEY` (exit 4) | В окружении нет API-ключа при запуске `generate` / вызове `generate_image`. | Экспортируйте `SWIFTMAGEX_GEMINI_API_KEY` (или запасной `GEMINI_API_KEY`); для MCP — добавьте ключ в блок `env` клиента, как показано выше. |
 | `Provider error: quota exhausted after 5 retries` (exit 3) | Gemini возвращал `429` на всех попытках в окне backoff'а (1 с → 16 с). | Дождитесь пополнения квоты, переключите проект или попробуйте позже. Расписание backoff'а зафиксировано; см. спецификацию §13. |
-| `I/O error: input file not found: /…/foo.png` (exit 1) | Путь, переданный в локальную команду (`resize` / `text` / `composite` / `appstore` / `remove-bg` или их MCP-инструменты), не существует или нечитаем. | Передайте абсолютный путь, проверьте права, убедитесь, что формат — один из PNG / JPEG / HEIC / WebP (запись только в PNG / JPEG). |
+| `I/O error: input file not found: /…/foo.png` (exit 1) | Путь, переданный в локальную команду (`resize` / `text` / `composite` / `appstore` / `remove-bg` / `crop` или их MCP-инструменты), не существует или нечитаем. | Передайте абсолютный путь, проверьте права, убедитесь, что формат — один из PNG / JPEG / HEIC / WebP (запись только в PNG / JPEG). |
 | `"swiftmagex" cannot be opened because the developer cannot be verified` | Gatekeeper поставил карантин на скачанный бинарник. | `xattr -d com.apple.quarantine /usr/local/bin/swiftmagex` (и то же для `swiftmagex-mcp`). |
 
 ## Область и статус
 
 Это 0.1 MVP — три команды, два провайдера изображений Google AI
-(Gemini и Imagen), один MCP-сервер — плюс три локальных дополнения после
-0.1: `composite`, `appstore` и `remove-bg` (композиция, скриншоты для App
-Store Connect и удаление фона на базе Vision). Всё,
-что за этой границей, отложено; полный список вне области см. в
+(Gemini и Imagen), один MCP-сервер — плюс четыре локальных дополнения
+после 0.1: `composite`, `appstore`, `remove-bg` и `crop` (композиция,
+скриншоты для App Store Connect, удаление фона на базе Vision и
+кадрирование по выраженности). Всё, что за этой границей, отложено; полный список вне области см. в
 спецификации
 [§2 Scope of version 0.1](SwiftMageX-MVP-0.1-spec.md#2-scope-of-version-01)
 (edit / inpainting, локальные провайдеры, дистрибуция через Homebrew,

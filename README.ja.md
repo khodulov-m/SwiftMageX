@@ -4,7 +4,7 @@
 
 macOS 専用の画像生成・処理 CLI。SwiftMageX は*オーケストレータ*で
 あり、生成は Google AI 画像 API(Gemini または Imagen)を呼び出し、ローカルなラスター処理(リ
-サイズ、テキスト合成、画像合成、App Store スクリーンショット、背景除去)は
+サイズ、テキスト合成、画像合成、App Store スクリーンショット、背景除去、サリエンシー対応クロップ)は
 CoreImage / CoreText / ImageIO / Vision で実行します。すべてが外部依存ちょうど 2 つの小さな Swift パッケージに収
 まっています。同じコアライブラリが Model Context Protocol サーバ
 (`swiftmagex-mcp`)を支え、AI エージェントが同じ機能をツールとし
@@ -21,7 +21,7 @@ CoreImage / CoreText / ImageIO / Vision で実行します。すべてが外部�
 - `generate` コマンド用の Google AI API キーを
   `SWIFTMAGEX_GEMINI_API_KEY`(または `GEMINI_API_KEY`)に設定。
   Gemini と Imagen の両方の生成に使えます。`resize`、`text`、
-  `composite`、`appstore`、`remove-bg` にキーは不要です。
+  `composite`、`appstore`、`remove-bg`、`crop` にキーは不要です。
 
 ## インストール
 
@@ -81,7 +81,7 @@ export GEMINI_API_KEY="…"
 
 ## クイックマニュアル
 
-6 つのサブコマンドはいずれも同じグローバルフラグを共有します:
+7 つのサブコマンドはいずれも同じグローバルフラグを共有します:
 
 | グローバルフラグ | 効果 |
 |---|---|
@@ -285,6 +285,38 @@ swiftmagex remove-bg product.heic
 目立つ前景の被写体が検出されない場合、コマンドはラスターエラーで失敗
 します(終了コード 1)。
 
+### `swiftmagex crop` — サリエンシー対応のアスペクト比クロップ
+
+ユーザー指定のアスペクト比でクロップし、クロップウィンドウは Vision の
+オンデバイス注意モデルが検出した目立つ被写体に中心を合わせます — 幾何
+中心ではありません。AI API もキーも不要、クォータ消費ゼロです。出力は
+ソースのピクセルスケールを保持し(リサイズではなくクロップ)、既定で
+ソースと同じ形式になります。
+
+```
+swiftmagex crop <input> --aspect <W:H> [オプション]
+```
+
+| オプション | 既定値 | 補足 |
+|---|---|---|
+| `<input>` | — | PNG、JPEG、HEIC、WebP。書き出しは PNG / JPEG のみ。 |
+| `--aspect <W:H>` | — | 必須。2 つの正の整数、例 `1:1`、`4:5`、`9:16`。 |
+| `-o`、`--output <path>` | ソースと同じ場所 | |
+| `--format <png\|jpeg>` | ソースと同じ | HEIC / WebP は既定で PNG にフォールバック。 |
+| `--quality <0.0–1.0>` | `0.9` | JPEG のみ。 |
+
+```sh
+# 目立つ被写体を中心にした正方形クロップ
+swiftmagex crop photo.jpg --aspect 1:1
+
+# 9:16 の縦長クロップを JPEG で再エンコード
+swiftmagex crop photo.jpg --aspect 9:16 -o portrait.jpg --format jpeg --quality 0.85
+```
+
+サリエンシーが目立つオブジェクトを見つけられない場合(まれ。平坦・均一
+な画像)、要求されたアスペクト比を保てるよう中央クロップにフォール
+バックします。
+
 ### JSON 出力スキーマ
 
 `--json` ですべてのコマンドが同じエンベロープを返します。キーは
@@ -305,7 +337,7 @@ swiftmagex remove-bg product.heic
 }
 ```
 
-エラー(`resize`、`text`、`remove-bg` は `provider` / `model` を省略):
+エラー(`resize`、`text`、`remove-bg`、`crop` は `provider` / `model` を省略):
 
 ```json
 {
@@ -334,8 +366,8 @@ swiftmagex remove-bg product.heic
 
 ## MCP サーバ
 
-`swiftmagex-mcp` は stdio 上で 7 つのツール
-(`generate_image`、`resize_image`、`overlay_text`、`composite_images`、`appstore_screenshots`、`list_frames`、`remove_background`)を提供します。
+`swiftmagex-mcp` は stdio 上で 8 つのツール
+(`generate_image`、`resize_image`、`overlay_text`、`composite_images`、`appstore_screenshots`、`list_frames`、`remove_background`、`smart_crop`)を提供します。
 引数は CLI フラグと対応しており(snake_case のキー、例: `font_size`、`screen_rect`、`devices`)、結果は絶対パスを返すので、呼び出
 し側エージェントはサーバの作業ディレクトリを知る必要がありません。
 `generate_image` は加えて、生成された画像のバイト列を MCP の
@@ -392,16 +424,16 @@ claude mcp add -s user swiftmagex /usr/local/bin/swiftmagex-mcp \
 |---|---|---|
 | `Configuration error: missing SWIFTMAGEX_GEMINI_API_KEY`(終了コード 4) | `generate` や `generate_image` 実行時に API キーが環境にない。 | `SWIFTMAGEX_GEMINI_API_KEY`(または代替の `GEMINI_API_KEY`)をエクスポート。MCP の場合はクライアントの `env` ブロックに記述(上記参照)。 |
 | `Provider error: quota exhausted after 5 retries`(終了コード 3) | バックオフ窓(1 s → 16 s)内のすべての試行で Gemini が `429` を返した。 | クォータの回復を待つ、プロジェクトを切り替える、または後ほど再実行。バックオフ間隔は固定(仕様 §13)。 |
-| `I/O error: input file not found: /…/foo.png`(終了コード 1) | ローカルコマンド(`resize` / `text` / `composite` / `appstore` / `remove-bg`、またはそれらの MCP ツール)に渡したパスが存在しないか読み取り不可。 | 絶対パスを使い、権限と形式(PNG / JPEG / HEIC / WebP、書き出しは PNG / JPEG のみ)を確認。 |
+| `I/O error: input file not found: /…/foo.png`(終了コード 1) | ローカルコマンド(`resize` / `text` / `composite` / `appstore` / `remove-bg` / `crop`、またはそれらの MCP ツール)に渡したパスが存在しないか読み取り不可。 | 絶対パスを使い、権限と形式(PNG / JPEG / HEIC / WebP、書き出しは PNG / JPEG のみ)を確認。 |
 | `"swiftmagex" cannot be opened because the developer cannot be verified` | ダウンロードしたバイナリに Gatekeeper の検疫が付与されている。 | `xattr -d com.apple.quarantine /usr/local/bin/swiftmagex`(`swiftmagex-mcp` も同様)。 |
 
 ## スコープと状態
 
 これは 0.1 MVP — 3 つのコマンド、2 つの Google AI 画像プロバイダ
 (Gemini と Imagen)、1 つの MCP サーバ、さらに 0.1 以降に追加された
-3 つのローカルコマンド `composite`、`appstore`、`remove-bg`(画像合成、
-App Store Connect スクリーンショット、Vision ベースの背景除去)です。それ以外
-はすべて延期されています。スコープ
+4 つのローカルコマンド `composite`、`appstore`、`remove-bg`、`crop`
+(画像合成、App Store Connect スクリーンショット、Vision ベースの背景除去、
+サリエンシー対応クロップ)です。それ以外はすべて延期されています。スコープ
 外の項目一覧は仕様
 [§2 Scope of version 0.1](SwiftMageX-MVP-0.1-spec.md#2-scope-of-version-01)
 を参照(edit / インペイント、ローカルプロバイダ、Homebrew 配布、

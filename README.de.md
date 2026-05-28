@@ -5,9 +5,9 @@
 CLI für Bildgenerierung und Bildverarbeitung — nur für macOS. SwiftMageX
 ist ein *Orchestrator*: er ruft die Google-AI-Bild-API (Gemini oder Imagen) zur Generierung auf und
 führt lokale Rasteroperationen (Resize, Text-Overlay, Compositing,
-App-Store-Screenshots, Hintergrundentfernung) mit CoreImage / CoreText /
-ImageIO / Vision durch — alles aus einem kleinen Swift-Paket mit genau zwei externen
-Abhängigkeiten. Dieselbe Kernbibliothek bedient
+App-Store-Screenshots, Hintergrundentfernung, salienz-basierter
+Zuschnitt) mit CoreImage / CoreText / ImageIO / Vision durch — alles
+aus einem kleinen Swift-Paket mit genau zwei externen Abhängigkeiten. Dieselbe Kernbibliothek bedient
 einen Model-Context-Protocol-Server (`swiftmagex-mcp`), damit
 KI-Agenten dieselben Fähigkeiten als Tools nutzen können.
 
@@ -20,8 +20,8 @@ was in v0.1.0 ausgeliefert wurde, steht in `RELEASE_NOTES.md`.
 - Swift-6.0+-Toolchain (Xcode 16+) — nur für den Bau aus den Quellen
 - Ein Google-AI-API-Key in `SWIFTMAGEX_GEMINI_API_KEY` (oder
   `GEMINI_API_KEY`) für den `generate`-Befehl — funktioniert für
-  Gemini- und Imagen-Modelle. `resize`, `text`, `composite`, `appstore`
-  und `remove-bg` benötigen keinen Key.
+  Gemini- und Imagen-Modelle. `resize`, `text`, `composite`, `appstore`,
+  `remove-bg` und `crop` benötigen keinen Key.
 
 ## Installation
 
@@ -82,7 +82,7 @@ nicht unter `--verbose` und nicht in Output-Datei-Metadaten.
 
 ## Schnelles Handbuch
 
-Sechs Unterbefehle, alle teilen sich dieselben globalen Flags:
+Sieben Unterbefehle, alle teilen sich dieselben globalen Flags:
 
 | Globales Flag | Wirkung |
 |---|---|
@@ -285,6 +285,39 @@ swiftmagex remove-bg product.heic
 Wird kein hervorstechendes Vordergrundmotiv erkannt, schlägt der Befehl
 mit einem Raster-Fehler fehl (exit 1).
 
+### `swiftmagex crop` — salienz-basierter Seitenverhältnis-Zuschnitt
+
+Schneidet auf ein vom Nutzer angegebenes Seitenverhältnis zu und zentriert
+das Zuschnitt-Fenster auf das vom On-Device-Attention-Modell von Vision
+erkannte hervorstechende Motiv — nicht auf die geometrische Mitte. Ohne
+KI-API, ohne Key, ohne Quota-Verbrauch. Die Ausgabe behält die
+Pixel-Skalierung der Quelle (es ist ein Zuschnitt, kein Resize) und nutzt
+standardmäßig dasselbe Format.
+
+```
+swiftmagex crop <input> --aspect <W:H> [optionen]
+```
+
+| Option | Standard | Hinweise |
+|---|---|---|
+| `<input>` | — | PNG, JPEG, HEIC oder WebP. Schreiben nur PNG / JPEG. |
+| `--aspect <W:H>` | — | Pflicht. Zwei positive Ganzzahlen, z. B. `1:1`, `4:5`, `9:16`. |
+| `-o`, `--output <pfad>` | Geschwister-Datei zur Quelle | |
+| `--format <png\|jpeg>` | wie Quelle | HEIC / WebP fallen auf PNG zurück. |
+| `--quality <0.0–1.0>` | `0.9` | Nur JPEG. |
+
+```sh
+# Quadratischer Zuschnitt, zentriert auf das hervorstechende Motiv
+swiftmagex crop photo.jpg --aspect 1:1
+
+# 9:16-Hochkant-Zuschnitt, neu als JPEG codiert
+swiftmagex crop photo.jpg --aspect 9:16 -o portrait.jpg --format jpeg --quality 0.85
+```
+
+Findet die Salienz keine hervorstechenden Objekte (selten; flache oder
+gleichmäßige Bilder), fällt der Befehl auf einen mittigen Zuschnitt
+zurück, sodass das gewünschte Seitenverhältnis trotzdem eingehalten wird.
+
 ### JSON-Ausgabe-Schema
 
 Jeder Befehl emittiert unter `--json` dieselbe Hülle. Schlüssel sind
@@ -304,7 +337,7 @@ Erfolg:
 }
 ```
 
-Fehler (`resize`, `text` und `remove-bg` lassen `provider` / `model` weg):
+Fehler (`resize`, `text`, `remove-bg` und `crop` lassen `provider` / `model` weg):
 
 ```json
 {
@@ -333,9 +366,9 @@ damit ein Agent alles an einer Stelle parsen kann.
 
 ## MCP-Server
 
-`swiftmagex-mcp` stellt sieben Tools — `generate_image`,
+`swiftmagex-mcp` stellt acht Tools — `generate_image`,
 `resize_image`, `overlay_text`, `composite_images`, `appstore_screenshots`,
-`list_frames` und `remove_background` — über stdio bereit. Tool-Argumente
+`list_frames`, `remove_background` und `smart_crop` — über stdio bereit. Tool-Argumente
 spiegeln die CLI-Flags wider (snake_case-Schlüssel, z. B. `font_size`,
 `screen_rect`, `devices`); Ergebnisse melden absolute Dateipfade,
 damit der aufrufende Agent das Arbeitsverzeichnis des Servers nicht
@@ -394,16 +427,17 @@ er landet nicht im allgemeinen Environment des Clients.
 |---|---|---|
 | `Configuration error: missing SWIFTMAGEX_GEMINI_API_KEY` (exit 4) | Kein API-Key im Environment bei `generate` bzw. `generate_image`. | `SWIFTMAGEX_GEMINI_API_KEY` (oder ersatzweise `GEMINI_API_KEY`) exportieren; für MCP in den `env`-Block des Clients eintragen (siehe oben). |
 | `Provider error: quota exhausted after 5 retries` (exit 3) | Gemini hat in jedem Versuch im Backoff-Fenster (1 s → 16 s) `429` geliefert. | Auf Quota-Erneuerung warten, Projekt wechseln oder später erneut starten. Backoff-Schema ist fix; siehe Spec §13. |
-| `I/O error: input file not found: /…/foo.png` (exit 1) | Der an einen lokalen Befehl (`resize` / `text` / `composite` / `appstore` / `remove-bg` bzw. deren MCP-Tools) übergebene Pfad existiert nicht oder ist nicht lesbar. | Absoluten Pfad übergeben, Berechtigungen prüfen, Format aus PNG / JPEG / HEIC / WebP wählen (Schreiben nur in PNG / JPEG). |
+| `I/O error: input file not found: /…/foo.png` (exit 1) | Der an einen lokalen Befehl (`resize` / `text` / `composite` / `appstore` / `remove-bg` / `crop` bzw. deren MCP-Tools) übergebene Pfad existiert nicht oder ist nicht lesbar. | Absoluten Pfad übergeben, Berechtigungen prüfen, Format aus PNG / JPEG / HEIC / WebP wählen (Schreiben nur in PNG / JPEG). |
 | `"swiftmagex" cannot be opened because the developer cannot be verified` | Gatekeeper-Quarantäne auf einem heruntergeladenen Binary. | `xattr -d com.apple.quarantine /usr/local/bin/swiftmagex` (und dasselbe für `swiftmagex-mcp`). |
 
 ## Umfang und Status
 
 Dies ist das 0.1 MVP — drei Befehle, zwei Google-AI-Bild-Provider
-(Gemini und Imagen), ein MCP-Server — plus drei lokale Erweiterungen nach
-0.1: `composite`, `appstore` und `remove-bg` (Compositing,
-App-Store-Connect-Screenshots und Vision-basierte Hintergrundentfernung).
-Alles außerhalb dieser Grenze ist aufgeschoben; die
+(Gemini und Imagen), ein MCP-Server — plus vier lokale Erweiterungen nach
+0.1: `composite`, `appstore`, `remove-bg` und `crop` (Compositing,
+App-Store-Connect-Screenshots, Vision-basierte Hintergrundentfernung und
+salienz-basierter Zuschnitt). Alles außerhalb dieser Grenze ist
+aufgeschoben; die
 vollständige Out-of-Scope-Liste findet sich in spec
 [§2 Scope of version 0.1](SwiftMageX-MVP-0.1-spec.md#2-scope-of-version-01)
 (edit / Inpainting, lokale Provider, Homebrew-Distribution,
