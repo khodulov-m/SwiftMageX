@@ -272,6 +272,42 @@ final class RasterEngineTests: XCTestCase {
         }
     }
 
+    // MARK: - Smart crop
+
+    func testSmartCropLandscapeToSquareKeepsHeight() throws {
+        let engine = CoreImageRasterEngine()
+        let source = RasterImage(cgImage: Self.makeBlobImage(width: 400, height: 300))
+
+        // 1:1 in a 400x300 source → cropW=300, cropH=300. Saliency picks the
+        // crop offset; the dimensions are fixed by the aspect math, so this
+        // assertion holds for both the saliency path and the center-crop
+        // fallback (synthetic blobs may not register as salient).
+        let cropped = try engine.smartCrop(source, SmartCropSpec(aspectWidth: 1, aspectHeight: 1))
+        XCTAssertEqual(cropped.width, 300)
+        XCTAssertEqual(cropped.height, 300)
+    }
+
+    func testSmartCropLandscapeToPortraitFitsTallestRect() throws {
+        let engine = CoreImageRasterEngine()
+        let source = RasterImage(cgImage: Self.makeBlobImage(width: 400, height: 300))
+
+        // 9:16 in 400x300 → height stays 300, width = round(300 * 9/16) = 169.
+        let cropped = try engine.smartCrop(source, SmartCropSpec(aspectWidth: 9, aspectHeight: 16))
+        XCTAssertEqual(cropped.width, 169)
+        XCTAssertEqual(cropped.height, 300)
+    }
+
+    func testSmartCropRejectsZeroAspect() {
+        let engine = CoreImageRasterEngine()
+        let source = RasterImage(cgImage: Self.makeBlobImage(width: 200, height: 200))
+
+        XCTAssertThrowsError(try engine.smartCrop(source, SmartCropSpec(aspectWidth: 0, aspectHeight: 1))) { error in
+            guard let smx = error as? SwiftMageXError, case .invalidInput = smx else {
+                return XCTFail("Expected SwiftMageXError.invalidInput, got \(error)")
+            }
+        }
+    }
+
     // MARK: - Device framing
 
     func testDetectScreenRectFindsEnclosedHole() throws {

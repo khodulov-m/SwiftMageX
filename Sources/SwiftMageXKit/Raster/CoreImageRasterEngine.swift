@@ -399,6 +399,83 @@ public struct CoreImageRasterEngine: RasterEngine {
         return RasterImage(cgImage: output)
     }
 
+    // MARK: - Smart crop
+
+    public func smartCrop(_ image: RasterImage, _ spec: SmartCropSpec) throws -> RasterImage {
+        guard spec.aspectWidth > 0, spec.aspectHeight > 0 else {
+            throw SwiftMageXError.invalidInput(
+                "aspect ratio must be positive (got \(spec.aspectWidth):\(spec.aspectHeight))"
+            )
+        }
+
+        let source = image.cgImage
+        let sourceW = source.width
+        let sourceH = source.height
+        guard sourceW > 0, sourceH > 0 else {
+            throw SwiftMageXError.raster("source image has zero dimensions")
+        }
+
+        // Largest aspectW:aspectH rect that fits inside the source. Compare
+        // ratios as Doubles to avoid integer-division surprises on odd sizes.
+        let srcRatio = Double(sourceW) / Double(sourceH)
+        let targetRatio = Double(spec.aspectWidth) / Double(spec.aspectHeight)
+        let cropW: Int
+        let cropH: Int
+        if targetRatio >= srcRatio {
+            cropW = sourceW
+            cropH = max(1, Int((Double(sourceW) * Double(spec.aspectHeight) / Double(spec.aspectWidth)).rounded()))
+        } else {
+            cropH = sourceH
+            cropW = max(1, Int((Double(sourceH) * Double(spec.aspectWidth) / Double(spec.aspectHeight)).rounded()))
+        }
+
+        // Vision's attention saliency (macOS 10.15+) runs the built-in
+        // on-device model — no network, no provider quota.
+        let request = VNGenerateAttentionBasedSaliencyImageRequest()
+        let handler = VNImageRequestHandler(cgImage: source, options: [:])
+        do {
+            try handler.perform([request])
+        } catch {
+            throw SwiftMageXError.raster("attention saliency failed: \(error.localizedDescription)")
+        }
+
+        // Saliency center in image-pixel coordinates (top-left origin). Vision
+        // normalizes bounding boxes to [0,1] with a bottom-left origin, so the
+        // Y component is flipped on the way out.
+        let centerX: Double
+        let centerY: Double
+        if let observation = request.results?.first,
+           let salientObjects = observation.salientObjects,
+           !salientObjects.isEmpty {
+            var union = salientObjects[0].boundingBox
+            for object in salientObjects.dropFirst() {
+                union = union.union(object.boundingBox)
+            }
+            let normCenterX = union.midX
+            let normCenterY = union.midY
+            centerX = Double(sourceW) * Double(normCenterX)
+            centerY = Double(sourceH) * (1.0 - Double(normCenterY))
+        } else {
+            // Flat / uniform images may yield no salient objects — fall back
+            // to a center crop so the requested aspect ratio still holds.
+            centerX = Double(sourceW) / 2.0
+            centerY = Double(sourceH) / 2.0
+        }
+
+        let maxX = sourceW - cropW
+        let maxY = sourceH - cropH
+        let rawX = Int((centerX - Double(cropW) / 2.0).rounded())
+        let rawY = Int((centerY - Double(cropH) / 2.0).rounded())
+        let originX = min(max(0, rawX), max(0, maxX))
+        let originY = min(max(0, rawY), max(0, maxY))
+
+        let rect = CGRect(x: originX, y: originY, width: cropW, height: cropH)
+        guard let cropped = source.cropping(to: rect) else {
+            throw SwiftMageXError.raster("smart crop failed")
+        }
+        return RasterImage(cgImage: cropped)
+    }
+
     // MARK: - Write
 
     public func write(
