@@ -94,9 +94,11 @@ public enum SwiftMageXOrchestrator {
         }
     }
 
-    /// Run an image-to-image edit through Gemini (`:generateContent` with
-    /// `inlineData` parts). `input` is the source image; an optional `mask`
-    /// is sent as a second image part (white = edit region, black = preserve).
+    /// Run an image-to-image / multi-image edit through Gemini
+    /// (`:generateContent` with `inlineData` parts). `input` is the primary
+    /// source image; `references` is an optional list of additional reference
+    /// images the prompt can compose against; an optional `mask` is sent as a
+    /// final image part (white = edit region, black = preserve).
     ///
     /// Mirrors the production / testable split that ``generate(request:output:environment:engine:timestamp:currentDirectoryPath:)``
     /// uses: this overload resolves the API key from the environment and
@@ -108,6 +110,7 @@ public enum SwiftMageXOrchestrator {
     ///   file is missing, and provider / raster errors otherwise.
     public static func edit(
         input: String,
+        references: [String] = [],
         mask: String?,
         request: GenerationRequest,
         output: String?,
@@ -124,6 +127,7 @@ public enum SwiftMageXOrchestrator {
         let provider = makeProvider(for: request.model, apiKey: apiKey)
         return try await edit(
             input: input,
+            references: references,
             mask: mask,
             request: request,
             output: output,
@@ -138,6 +142,7 @@ public enum SwiftMageXOrchestrator {
     /// tests and by the MCP server.
     public static func edit(
         input: String,
+        references: [String] = [],
         mask: String?,
         request: GenerationRequest,
         output: String?,
@@ -152,16 +157,20 @@ public enum SwiftMageXOrchestrator {
             )
         }
 
-        let inputURL = absoluteFileURL(input, currentDirectoryPath: currentDirectoryPath)
-        guard FileManager.default.fileExists(atPath: inputURL.path) else {
-            throw SwiftMageXError.io("input file not found: \(inputURL.path)")
+        var referenceImages: [ReferenceImage] = []
+        referenceImages.reserveCapacity(1 + references.count)
+        referenceImages.append(try loadReference(
+            path: input,
+            role: "input",
+            currentDirectoryPath: currentDirectoryPath
+        ))
+        for path in references {
+            referenceImages.append(try loadReference(
+                path: path,
+                role: "reference",
+                currentDirectoryPath: currentDirectoryPath
+            ))
         }
-        guard let inputFormat = ImageFormat.detect(at: inputURL) else {
-            throw SwiftMageXError.invalidInput(
-                "unsupported edit input format at \(inputURL.path); use PNG or JPEG"
-            )
-        }
-        let inputData = try readImageBytes(at: inputURL)
 
         var maskData: Data?
         var maskMime: String?
@@ -180,8 +189,7 @@ public enum SwiftMageXOrchestrator {
         }
 
         var augmented = request
-        augmented.referenceImage = inputData
-        augmented.referenceImageMimeType = inputFormat.mimeType
+        augmented.referenceImages = referenceImages
         augmented.mask = maskData
         augmented.maskMimeType = maskMime
 
@@ -593,6 +601,27 @@ public enum SwiftMageXOrchestrator {
                 "could not read \(url.path): \(error.localizedDescription)"
             )
         }
+    }
+
+    /// Resolves an edit input or reference path to a typed ``ReferenceImage``.
+    /// `role` is used purely to disambiguate the error message ("input file
+    /// not found" vs "reference file not found").
+    private static func loadReference(
+        path: String,
+        role: String,
+        currentDirectoryPath: String
+    ) throws -> ReferenceImage {
+        let url = absoluteFileURL(path, currentDirectoryPath: currentDirectoryPath)
+        guard FileManager.default.fileExists(atPath: url.path) else {
+            throw SwiftMageXError.io("\(role) file not found: \(url.path)")
+        }
+        guard let format = ImageFormat.detect(at: url) else {
+            throw SwiftMageXError.invalidInput(
+                "unsupported edit \(role) format at \(url.path); use PNG or JPEG"
+            )
+        }
+        let data = try readImageBytes(at: url)
+        return ReferenceImage(data: data, mimeType: format.mimeType)
     }
 
     private static func writeOne(

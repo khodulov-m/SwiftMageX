@@ -1,26 +1,30 @@
 # SwiftMageX
 
-## Post-0.1.0 — Image-to-image edit via Gemini
+## Post-0.1.0 — Image-to-image / multi-image edit via Gemini
 
 The first slice of the 0.2 `edit` work
 ([spec §3.1](SwiftMageX-MVP-0.1-spec.md), [§17](SwiftMageX-MVP-0.1-spec.md)) —
-image-to-image and inpainting against the same Gemini `:generateContent`
-endpoint `generate` already uses, with the source image (and optional mask)
-sent as `inlineData` parts alongside the text prompt:
+image-to-image, multi-image composition, and inpainting against the same
+Gemini `:generateContent` endpoint `generate` already uses, with every
+attached image sent as an `inlineData` part alongside the text prompt:
 
 - New `swiftmagex edit <input> <prompt>` command / `edit_image` MCP tool.
-  Required args: source image (PNG or JPEG) and a text instruction. Optional:
-  `--mask` (grayscale/binary PNG/JPEG — white marks the region to edit),
-  `--count 1–4`, `--seed`, `-o/--output`.
+  Required args: primary source image (PNG or JPEG) and a text instruction.
+  Optional: `--reference <path>` (repeatable — each adds another inline
+  image part the prompt can compose against), `--mask` (grayscale/binary
+  PNG/JPEG — white marks the region to edit on the primary input),
+  `--count 1–4`, `--seed`, `-o/--output`. The MCP tool exposes `references`
+  as an array.
 - Gemini-only: the CLI gates non-Gemini models in `validate()` (exit 2);
   `ImagenProvider` has a defensive guard that rejects any request carrying
   image bytes. Imagen's `:predict` shape has no inline-image slot.
 - Wire-level changes are private to `GeminiProvider`: the request `parts[]`
   schema gained a sum-type entry (`{text}` *or* `{inlineData: {mimeType, data}}`)
-  so each part encodes cleanly with no `null` keys. No new package dependency.
-- `GenerationRequest` gained optional `referenceImage` / `referenceImageMimeType` /
-  `mask` / `maskMimeType` fields with `nil` defaults — existing text-to-image
-  call sites compile unchanged.
+  so each part encodes cleanly with no `null` keys; the provider iterates
+  `referenceImages` and appends one part per image. No new package dependency.
+- `GenerationRequest` gained `referenceImages: [ReferenceImage]` (typed
+  pairing of bytes + MIME) and optional `mask` / `maskMimeType` fields with
+  empty / nil defaults — existing text-to-image call sites compile unchanged.
 - Edited outputs carry the same `tEXt`/EXIF metadata as `generate` (prompt,
   model, seed, timestamp, tool version); the recorded prompt is the edit
   instruction.

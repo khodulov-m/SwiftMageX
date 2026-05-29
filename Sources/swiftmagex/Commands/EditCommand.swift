@@ -2,16 +2,17 @@ import ArgumentParser
 import Foundation
 import SwiftMageXKit
 
-/// `swiftmagex edit <input> <prompt> [options]` — image-to-image / inpainting
-/// via Gemini's `:generateContent` endpoint. The source image (and optional
-/// mask) are sent as inline parts alongside the text prompt.
+/// `swiftmagex edit <input> <prompt> [options]` — image-to-image / multi-image
+/// / inpainting via Gemini's `:generateContent` endpoint. The primary input,
+/// any `--reference` images, and an optional mask are sent as inline parts
+/// alongside the text prompt.
 struct EditCommand: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "edit",
-        abstract: "Edit an image with a Gemini model (image-to-image / inpainting)."
+        abstract: "Edit an image with a Gemini model (image-to-image / multi-image / inpainting)."
     )
 
-    @Argument(help: "Source image file to edit (PNG or JPEG).")
+    @Argument(help: "Primary source image to edit (PNG or JPEG).")
     var input: String
 
     @Argument(help: "Text prompt describing the edit.")
@@ -19,7 +20,14 @@ struct EditCommand: AsyncParsableCommand {
 
     @Option(
         name: .long,
-        help: "Optional grayscale/binary mask (PNG or JPEG). White marks the region to edit."
+        parsing: .singleValue,
+        help: "Additional reference image (PNG or JPEG). Repeatable — every `--reference` adds another inline image part the prompt can compose against."
+    )
+    var reference: [String] = []
+
+    @Option(
+        name: .long,
+        help: "Optional grayscale/binary mask (PNG or JPEG). White marks the region to edit on the primary input."
     )
     var mask: String?
 
@@ -71,6 +79,7 @@ struct EditCommand: AsyncParsableCommand {
         do {
             let written = try await SwiftMageXOrchestrator.edit(
                 input: input,
+                references: reference,
                 mask: mask,
                 request: request,
                 output: outputTarget

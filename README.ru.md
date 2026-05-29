@@ -130,12 +130,13 @@ swiftmagex generate "A simple red apple on a white background, test image" \
 Каждый выходной PNG содержит prompt, модель, seed, метку времени и
 версию утилиты в `tEXt`-чанках (для JPEG — в EXIF-поле `UserComment`).
 
-### `swiftmagex edit` — image-to-image / инпейнтинг через Gemini
+### `swiftmagex edit` — image-to-image / мультиизображение / инпейнтинг через Gemini
 
-Отправляет исходное изображение (и опциональную маску) в модель Gemini
-вместе с текстовым промтом. Изображение передаётся как `inlineData`-часть
-того же вызова `:generateContent`, который использует `generate` — без
-нового эндпоинта и без новой зависимости.
+Отправляет исходное изображение (плюс любые дополнительные референсы и
+опциональную маску) в модель Gemini вместе с текстовым промтом. Каждое
+изображение передаётся как `inlineData`-часть того же вызова
+`:generateContent`, который использует `generate` — без нового эндпоинта
+и без новой зависимости.
 
 ```
 swiftmagex edit <input> <prompt> [options]
@@ -143,9 +144,10 @@ swiftmagex edit <input> <prompt> [options]
 
 | Опция | По умолчанию | Примечания |
 |---|---|---|
-| `<input>` | — | Обязательно. Исходное изображение (PNG или JPEG). |
+| `<input>` | — | Обязательно. Основное исходное изображение (PNG или JPEG). |
 | `<prompt>` | — | Обязательно. Текстовая инструкция, описывающая правку. |
-| `--mask <путь>` | — | Опциональная маска в градациях серого или бинарная (PNG или JPEG). Белый отмечает область для правки, чёрный сохраняет оригинал. |
+| `--reference <путь>` | — | Повторяемая. Дополнительное референс-изображение (PNG или JPEG). Каждый `--reference` добавляет ещё одну inline-часть, которую промт может комбинировать — например: «возьми объект из изображения 1 и помести его в сцену из изображения 2». |
+| `--mask <путь>` | — | Опциональная маска в градациях серого или бинарная (PNG или JPEG). Белый отмечает область для правки на основном изображении, чёрный сохраняет оригинал. |
 | `-o`, `--output <путь>` | `./` | Файл или директория. Для директории файлы именуются `swiftmagex_{timestamp}_{index}.png`. |
 | `-n`, `--count <1–4>` | `1` | Количество вариантов. Каждый — отдельный запрос. |
 | `--seed <uint64>` | — | Записывается в метаданные, даже если провайдер его игнорирует. |
@@ -158,6 +160,10 @@ swiftmagex edit apple.png "make the apple green instead of red" -o edited.png
 # Инпейнтинг области с маской
 swiftmagex edit photo.png "replace the marked region with a sunset sky" \
   --mask sky-mask.png -o photo_edited.png
+
+# Композиция из двух референсных изображений
+swiftmagex edit person.png "place the person from image 1 into the scene of image 2" \
+  --reference street.png -o composed.png
 
 # Четыре варианта одной и той же правки
 swiftmagex edit shot.jpg "add a snowy mountain in the background" -n 4 -o ./out

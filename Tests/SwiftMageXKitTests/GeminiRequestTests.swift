@@ -127,19 +127,14 @@ final class GeminiRequestTests: XCTestCase {
             count: 1,
             seed: nil,
             model: Self.testModel,
-            referenceImage: inputBytes,
-            referenceImageMimeType: "image/png"
+            referenceImages: [
+                ReferenceImage(data: inputBytes, mimeType: "image/png")
+            ]
         )
 
         _ = try await provider.generate(request)
 
-        let recorded = try XCTUnwrap(mock.receivedRequests.first)
-        let httpBody = try XCTUnwrap(recorded.httpBody)
-        let json = try XCTUnwrap(
-            try JSONSerialization.jsonObject(with: httpBody) as? [String: Any]
-        )
-        let contents = try XCTUnwrap(json["contents"] as? [[String: Any]])
-        let parts = try XCTUnwrap(contents.first?["parts"] as? [[String: Any]])
+        let parts = try Self.partsOf(mock.receivedRequests.first)
         XCTAssertEqual(parts.count, 2, "Edit request should have text + image parts")
 
         XCTAssertEqual(parts[0]["text"] as? String, Self.testPrompt)
@@ -165,21 +160,16 @@ final class GeminiRequestTests: XCTestCase {
             count: 1,
             seed: nil,
             model: Self.testModel,
-            referenceImage: inputBytes,
-            referenceImageMimeType: "image/png",
+            referenceImages: [
+                ReferenceImage(data: inputBytes, mimeType: "image/png")
+            ],
             mask: maskBytes,
             maskMimeType: "image/jpeg"
         )
 
         _ = try await provider.generate(request)
 
-        let recorded = try XCTUnwrap(mock.receivedRequests.first)
-        let httpBody = try XCTUnwrap(recorded.httpBody)
-        let json = try XCTUnwrap(
-            try JSONSerialization.jsonObject(with: httpBody) as? [String: Any]
-        )
-        let contents = try XCTUnwrap(json["contents"] as? [[String: Any]])
-        let parts = try XCTUnwrap(contents.first?["parts"] as? [[String: Any]])
+        let parts = try Self.partsOf(mock.receivedRequests.first)
         XCTAssertEqual(parts.count, 3, "Edit request with mask should have text + image + mask parts")
 
         let imagePart = try XCTUnwrap(parts[1]["inlineData"] as? [String: Any])
@@ -189,6 +179,59 @@ final class GeminiRequestTests: XCTestCase {
         let maskPart = try XCTUnwrap(parts[2]["inlineData"] as? [String: Any])
         XCTAssertEqual(maskPart["mimeType"] as? String, "image/jpeg")
         XCTAssertEqual(Data(base64Encoded: maskPart["data"] as? String ?? ""), maskBytes)
+    }
+
+    func testGeminiEditRequestIncludesMultipleReferenceImages() async throws {
+        let body = try Self.makeResponseJSON(imageBytes: Self.sampleImageBytes)
+        let mock = MockHTTPClient(stubs: [.init(data: body, statusCode: 200)])
+        let provider = Self.makeProvider(httpClient: mock)
+
+        let primary = Data([0x01, 0x02, 0x03])
+        let secondRef = Data([0x10, 0x20, 0x30, 0x40])
+        let thirdRef = Data([0xAA, 0xBB])
+        let request = GenerationRequest(
+            prompt: Self.testPrompt,
+            size: .square,
+            count: 1,
+            seed: nil,
+            model: Self.testModel,
+            referenceImages: [
+                ReferenceImage(data: primary, mimeType: "image/png"),
+                ReferenceImage(data: secondRef, mimeType: "image/jpeg"),
+                ReferenceImage(data: thirdRef, mimeType: "image/png")
+            ]
+        )
+
+        _ = try await provider.generate(request)
+
+        let parts = try Self.partsOf(mock.receivedRequests.first)
+        XCTAssertEqual(parts.count, 4, "Three references plus text should yield four parts")
+
+        XCTAssertEqual(parts[0]["text"] as? String, Self.testPrompt)
+
+        let primaryPart = try XCTUnwrap(parts[1]["inlineData"] as? [String: Any])
+        XCTAssertEqual(primaryPart["mimeType"] as? String, "image/png")
+        XCTAssertEqual(Data(base64Encoded: primaryPart["data"] as? String ?? ""), primary)
+
+        let secondPart = try XCTUnwrap(parts[2]["inlineData"] as? [String: Any])
+        XCTAssertEqual(secondPart["mimeType"] as? String, "image/jpeg")
+        XCTAssertEqual(Data(base64Encoded: secondPart["data"] as? String ?? ""), secondRef)
+
+        let thirdPart = try XCTUnwrap(parts[3]["inlineData"] as? [String: Any])
+        XCTAssertEqual(thirdPart["mimeType"] as? String, "image/png")
+        XCTAssertEqual(Data(base64Encoded: thirdPart["data"] as? String ?? ""), thirdRef)
+    }
+
+    /// Decodes the JSON body of a recorded request and returns its `parts[]`
+    /// array — shared helper used by every edit-shape assertion.
+    private static func partsOf(_ request: URLRequest?) throws -> [[String: Any]] {
+        let recorded = try XCTUnwrap(request)
+        let httpBody = try XCTUnwrap(recorded.httpBody)
+        let json = try XCTUnwrap(
+            try JSONSerialization.jsonObject(with: httpBody) as? [String: Any]
+        )
+        let contents = try XCTUnwrap(json["contents"] as? [[String: Any]])
+        return try XCTUnwrap(contents.first?["parts"] as? [[String: Any]])
     }
 
     // MARK: - Response decoding

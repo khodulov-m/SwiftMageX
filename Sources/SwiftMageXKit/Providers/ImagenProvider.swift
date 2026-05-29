@@ -59,7 +59,7 @@ public struct ImagenProvider: ImageProvider {
         // Imagen's `:predict` shape has no inline-image slot. The CLI gates
         // on this at validate(); the guard here catches anything that slipped
         // past — e.g. a future MCP caller forgetting to check the family.
-        guard request.referenceImage == nil, request.mask == nil else {
+        guard request.referenceImages.isEmpty, request.mask == nil else {
             throw SwiftMageXError.invalidInput(
                 "Imagen models do not support image-to-image edit; use a gemini-* model"
             )

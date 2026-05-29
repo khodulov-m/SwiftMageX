@@ -98,9 +98,11 @@ public struct GeminiProvider: ImageProvider {
         }
 
         var parts: [GeminiRequestPart] = [.text(request.prompt)]
-        if let image = request.referenceImage,
-           let mime = request.referenceImageMimeType {
-            parts.append(.inlineData(mimeType: mime, base64: image.base64EncodedString()))
+        for reference in request.referenceImages {
+            parts.append(.inlineData(
+                mimeType: reference.mimeType,
+                base64: reference.data.base64EncodedString()
+            ))
         }
         if let mask = request.mask, let mime = request.maskMimeType {
             parts.append(.inlineData(mimeType: mime, base64: mask.base64EncodedString()))

@@ -131,12 +131,12 @@ swiftmagex generate "A simple red apple on a white background, test image" \
 각 출력 PNG는 `tEXt` 청크에 prompt, 모델, seed, 타임스탬프,
 도구 버전을 담습니다(JPEG는 EXIF `UserComment` 필드 사용).
 
-### `swiftmagex edit` — Gemini를 통한 이미지-투-이미지 / 인페인팅
+### `swiftmagex edit` — Gemini를 통한 이미지-투-이미지 / 다중 이미지 / 인페인팅
 
-소스 이미지(및 선택적 마스크)를 텍스트 프롬프트와 함께 Gemini 모델에
-보냅니다. 이미지는 `generate`가 사용하는 것과 동일한 `:generateContent`
-호출의 `inlineData` 파트로 함께 전송됩니다 —— 새 엔드포인트도, 새
-의존성도 없습니다.
+소스 이미지(추가 참조 이미지 및 선택적 마스크 포함)를 텍스트 프롬프트와
+함께 Gemini 모델에 보냅니다. 각 이미지는 `generate`가 사용하는 것과
+동일한 `:generateContent` 호출의 `inlineData` 파트로 함께 전송됩니다
+—— 새 엔드포인트도, 새 의존성도 없습니다.
 
 ```
 swiftmagex edit <input> <prompt> [옵션]
@@ -144,9 +144,10 @@ swiftmagex edit <input> <prompt> [옵션]
 
 | 옵션 | 기본값 | 설명 |
 |---|---|---|
-| `<input>` | — | 필수. 소스 이미지(PNG 또는 JPEG). |
+| `<input>` | — | 필수. 기본 소스 이미지(PNG 또는 JPEG). |
 | `<prompt>` | — | 필수. 편집을 설명하는 텍스트 지시. |
-| `--mask <경로>` | — | 선택적인 그레이스케일/이진 마스크(PNG 또는 JPEG). 흰색은 편집할 영역을, 검정색은 보존할 영역을 표시. |
+| `--reference <경로>` | — | 반복 가능. 추가 참조 이미지(PNG 또는 JPEG). `--reference`를 지정할 때마다 또 하나의 inline 이미지 파트가 추가되어 프롬프트가 이를 조합해 사용할 수 있습니다 —— 예: "이미지 1의 인물을 이미지 2의 장면에 배치하라". |
+| `--mask <경로>` | — | 선택적인 그레이스케일/이진 마스크(PNG 또는 JPEG). 흰색은 기본 이미지에서 편집할 영역, 검정색은 보존할 영역을 표시. |
 | `-o`, `--output <경로>` | `./` | 파일 또는 디렉터리. 디렉터리인 경우 파일명은 `swiftmagex_{timestamp}_{index}.png`. |
 | `-n`, `--count <1–4>` | `1` | 변형 수. 각 변형은 별도 요청. |
 | `--seed <uint64>` | — | 프로바이더가 무시하더라도 메타데이터에 기록됩니다. |
@@ -159,6 +160,10 @@ swiftmagex edit apple.png "make the apple green instead of red" -o edited.png
 # 마스크로 영역 인페인팅
 swiftmagex edit photo.png "replace the marked region with a sunset sky" \
   --mask sky-mask.png -o photo_edited.png
+
+# 두 장의 참조 이미지로 합성
+swiftmagex edit person.png "place the person from image 1 into the scene of image 2" \
+  --reference street.png -o composed.png
 
 # 동일한 편집의 네 가지 변형
 swiftmagex edit shot.jpg "add a snowy mountain in the background" -n 4 -o ./out

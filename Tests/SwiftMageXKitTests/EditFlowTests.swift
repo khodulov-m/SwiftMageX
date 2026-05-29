@@ -95,10 +95,75 @@ final class EditFlowTests: XCTestCase {
         )
 
         let recorded = try XCTUnwrap(provider.receivedRequests.first)
-        XCTAssertEqual(recorded.referenceImage, originalBytes)
-        XCTAssertEqual(recorded.referenceImageMimeType, "image/png")
+        XCTAssertEqual(recorded.referenceImages.count, 1)
+        XCTAssertEqual(recorded.referenceImages.first?.data, originalBytes)
+        XCTAssertEqual(recorded.referenceImages.first?.mimeType, "image/png")
         XCTAssertNil(recorded.mask)
         XCTAssertNil(recorded.maskMimeType)
+    }
+
+    func testEditPassesMultipleReferenceImagesToProvider() async throws {
+        let dir = try Self.makeTempDir()
+        defer { try? FileManager.default.removeItem(at: dir) }
+
+        let primaryURL = try Self.writePNG(in: dir, name: "primary.png")
+        let secondURL = try Self.writePNG(in: dir, name: "ref2.png")
+        let thirdURL = try Self.writePNG(in: dir, name: "ref3.png")
+        let primaryBytes = try Data(contentsOf: primaryURL)
+        let secondBytes = try Data(contentsOf: secondURL)
+        let thirdBytes = try Data(contentsOf: thirdURL)
+        let pngBytes = try Self.makeSolidPNGData(width: 8, height: 8)
+        let request = Self.makeRequest(prompt: "merge subject from primary into scene 2")
+        let provider = MockImageProvider(images: [
+            Self.makeImage(data: pngBytes, request: request)
+        ])
+
+        _ = try await SwiftMageXOrchestrator.edit(
+            input: primaryURL.path,
+            references: [secondURL.path, thirdURL.path],
+            mask: nil,
+            request: request,
+            output: dir.path,
+            provider: provider
+        )
+
+        let recorded = try XCTUnwrap(provider.receivedRequests.first)
+        XCTAssertEqual(
+            recorded.referenceImages.map(\.data),
+            [primaryBytes, secondBytes, thirdBytes],
+            "Primary input is index 0; --reference values follow in order"
+        )
+        XCTAssertEqual(
+            recorded.referenceImages.map(\.mimeType),
+            ["image/png", "image/png", "image/png"]
+        )
+    }
+
+    func testEditRejectsMissingReferenceFile() async throws {
+        let dir = try Self.makeTempDir()
+        defer { try? FileManager.default.removeItem(at: dir) }
+
+        let primaryURL = try Self.writePNG(in: dir, name: "primary.png")
+        let request = Self.makeRequest()
+        let provider = MockImageProvider(images: [])
+
+        do {
+            _ = try await SwiftMageXOrchestrator.edit(
+                input: primaryURL.path,
+                references: [dir.appendingPathComponent("missing-ref.png").path],
+                mask: nil,
+                request: request,
+                output: dir.path,
+                provider: provider
+            )
+            XCTFail("Expected missing reference file to throw")
+        } catch let error as SwiftMageXError {
+            guard case .io(let message) = error else {
+                return XCTFail("Expected .io, got \(error)")
+            }
+            XCTAssertTrue(message.contains("reference"), "Error should distinguish reference vs input: \(message)")
+        }
+        XCTAssertEqual(provider.receivedRequests.count, 0)
     }
 
     func testEditPassesMaskBytesToProvider() async throws {

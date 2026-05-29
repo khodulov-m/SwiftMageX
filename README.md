@@ -130,11 +130,12 @@ swiftmagex generate "A simple red apple on a white background, test image" \
 Each output PNG carries the prompt, model, seed, timestamp, and tool version
 in `tEXt` chunks (JPEG variants use the EXIF `UserComment` field).
 
-### `swiftmagex edit` — image-to-image / inpainting via Gemini
+### `swiftmagex edit` — image-to-image / multi-image / inpainting via Gemini
 
-Send a source image (and optional mask) to a Gemini model alongside the text
-prompt. The image is encoded as an `inlineData` part of the same
-`:generateContent` call `generate` uses — no new endpoint, no new dependency.
+Send a source image (plus any additional references and an optional mask) to
+a Gemini model alongside the text prompt. Each image is encoded as an
+`inlineData` part of the same `:generateContent` call `generate` uses — no
+new endpoint, no new dependency.
 
 ```
 swiftmagex edit <input> <prompt> [options]
@@ -142,9 +143,10 @@ swiftmagex edit <input> <prompt> [options]
 
 | Option | Default | Notes |
 |---|---|---|
-| `<input>` | — | Required. Source image (PNG or JPEG). |
+| `<input>` | — | Required. Primary source image (PNG or JPEG). |
 | `<prompt>` | — | Required. Text instruction describing the edit. |
-| `--mask <path>` | — | Optional grayscale/binary mask (PNG or JPEG). White marks the region to edit, black preserves the original. |
+| `--reference <path>` | — | Repeatable. Additional reference image (PNG or JPEG). Each `--reference` becomes another inline image part the prompt can compose against — e.g. "take the subject from image 1 and put it in scene 2". |
+| `--mask <path>` | — | Optional grayscale/binary mask (PNG or JPEG). White marks the region to edit on the primary input, black preserves the original. |
 | `-o`, `--output <path>` | `./` | File or directory. If a directory, files are named `swiftmagex_{timestamp}_{index}.png`. |
 | `-n`, `--count <1–4>` | `1` | Number of variants. Each variant is a separate request. |
 | `--seed <uint64>` | — | Recorded in metadata even when the provider ignores it. |
@@ -157,6 +159,10 @@ swiftmagex edit apple.png "make the apple green instead of red" -o edited.png
 # Inpaint a region with a mask
 swiftmagex edit photo.png "replace the marked region with a sunset sky" \
   --mask sky-mask.png -o photo_edited.png
+
+# Compose across two reference images
+swiftmagex edit person.png "place the person from image 1 into the scene of image 2" \
+  --reference street.png -o composed.png
 
 # Four variants of the same edit
 swiftmagex edit shot.jpg "add a snowy mountain in the background" -n 4 -o ./out

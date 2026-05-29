@@ -11,6 +11,7 @@ enum EditImageTool {
     /// Typed inputs decoded from the MCP arguments dictionary.
     struct Input {
         let image: String
+        let references: [String]
         let prompt: String
         let mask: String?
         let count: Int
@@ -28,6 +29,7 @@ enum EditImageTool {
     static func parse(_ raw: [String: Value]?) throws -> Input {
         let args = ToolArguments(raw, toolName: name)
         let image = try args.requiredString("image")
+        let references = try args.optionalStringArray("references") ?? []
         let prompt = try args.requiredString("prompt")
         let mask = try args.optionalString("mask")
         let count = try args.optionalInt("count") ?? 1
@@ -44,6 +46,7 @@ enum EditImageTool {
         let output = try args.optionalString("output")
         return Input(
             image: image,
+            references: references,
             prompt: prompt,
             mask: mask,
             count: count,
@@ -61,13 +64,20 @@ enum EditImageTool {
     /// MCP tool descriptor with full input schema.
     static let descriptor = Tool(
         name: name,
-        description: "Edit an image with a Gemini model (image-to-image / inpainting). The source image is sent inline alongside the prompt; an optional mask marks the region to edit. Returns absolute paths and the edited image content.",
+        description: "Edit an image with a Gemini model (image-to-image / multi-image edit / inpainting). The source image is sent inline alongside the prompt; an optional list of additional reference images lets the prompt compose across them; an optional mask marks the region to edit on the primary image. Returns absolute paths and the edited image content.",
         inputSchema: .object([
             "type": .string("object"),
             "properties": .object([
                 "image": .object([
                     "type": .string("string"),
-                    "description": .string("Absolute path to the source image (PNG or JPEG)."),
+                    "description": .string("Absolute path to the primary source image (PNG or JPEG)."),
+                ]),
+                "references": .object([
+                    "type": .string("array"),
+                    "items": .object([
+                        "type": .string("string"),
+                    ]),
+                    "description": .string("Optional additional reference images (PNG or JPEG). Each path becomes an extra inline image part the prompt can compose against — e.g. \"take the subject from image 1 and place it in scene 2\"."),
                 ]),
                 "prompt": .object([
                     "type": .string("string"),
@@ -75,7 +85,7 @@ enum EditImageTool {
                 ]),
                 "mask": .object([
                     "type": .string("string"),
-                    "description": .string("Optional path to a grayscale/binary mask (PNG or JPEG). White marks the region to edit, black preserves the original."),
+                    "description": .string("Optional path to a grayscale/binary mask (PNG or JPEG). White marks the region to edit, black preserves the original. Applied against the primary image."),
                 ]),
                 "count": .object([
                     "type": .string("integer"),

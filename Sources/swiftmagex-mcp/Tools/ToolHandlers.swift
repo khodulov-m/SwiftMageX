@@ -71,6 +71,7 @@ enum ToolHandlers {
             )
             let written = try await SwiftMageXOrchestrator.edit(
                 input: input.image,
+                references: input.references,
                 mask: input.mask,
                 request: request,
                 output: input.output,

@@ -126,11 +126,11 @@ swiftmagex generate "A simple red apple on a white background, test image" \
 每个输出的 PNG 会在 `tEXt` 块中携带 prompt、模型、seed、时间戳和
 工具版本;JPEG 写入 EXIF 的 `UserComment` 字段。
 
-### `swiftmagex edit` — 通过 Gemini 进行图生图 / 局部修复
+### `swiftmagex edit` — 通过 Gemini 进行图生图 / 多图合成 / 局部修复
 
-将一张源图像(以及可选的蒙版)与文本提示一起发送给 Gemini 模型。图像
-以 `inlineData` 部分随 `generate` 使用的同一个 `:generateContent` 调用一起
-传递 —— 没有新端点,没有新依赖。
+将一张源图像(以及任意数量的额外参考图与可选的蒙版)与文本提示一起发送给
+Gemini 模型。每张图像都会作为 `inlineData` 部分随 `generate` 使用的同一个
+`:generateContent` 调用一起传递 —— 没有新端点,没有新依赖。
 
 ```
 swiftmagex edit <input> <prompt> [选项]
@@ -138,9 +138,10 @@ swiftmagex edit <input> <prompt> [选项]
 
 | 选项 | 默认值 | 说明 |
 |---|---|---|
-| `<input>` | — | 必填。源图像(PNG 或 JPEG)。 |
+| `<input>` | — | 必填。主源图像(PNG 或 JPEG)。 |
 | `<prompt>` | — | 必填。描述编辑动作的文本指令。 |
-| `--mask <路径>` | — | 可选的灰度/二值蒙版(PNG 或 JPEG)。白色标记要编辑的区域,黑色保留原图。 |
+| `--reference <路径>` | — | 可重复。额外的参考图像(PNG 或 JPEG)。每个 `--reference` 都会添加一个 inline 图像部分,prompt 可以引用并组合 —— 例如 "把图 1 中的人物放到图 2 的场景中"。 |
+| `--mask <路径>` | — | 可选的灰度/二值蒙版(PNG 或 JPEG)。白色标记主图上要编辑的区域,黑色保留原图。 |
 | `-o`、`--output <路径>` | `./` | 文件或目录。若是目录,文件名为 `swiftmagex_{timestamp}_{index}.png`。 |
 | `-n`、`--count <1–4>` | `1` | 生成的变体数。每个变体都是一个独立请求。 |
 | `--seed <uint64>` | — | 即便提供商忽略,也会写入元数据。 |
@@ -153,6 +154,10 @@ swiftmagex edit apple.png "make the apple green instead of red" -o edited.png
 # 用蒙版做局部修复
 swiftmagex edit photo.png "replace the marked region with a sunset sky" \
   --mask sky-mask.png -o photo_edited.png
+
+# 用两张参考图做组合
+swiftmagex edit person.png "place the person from image 1 into the scene of image 2" \
+  --reference street.png -o composed.png
 
 # 同一次编辑的四个变体
 swiftmagex edit shot.jpg "add a snowy mountain in the background" -n 4 -o ./out

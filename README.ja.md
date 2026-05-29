@@ -134,12 +134,12 @@ swiftmagex generate "A simple red apple on a white background, test image" \
 タイムスタンプ、ツールバージョンが埋め込まれます(JPEG は EXIF の
 `UserComment` フィールドを使用)。
 
-### `swiftmagex edit` — Gemini による image-to-image / インペインティング
+### `swiftmagex edit` — Gemini による image-to-image / マルチ画像 / インペインティング
 
-ソース画像(およびオプションのマスク)を、テキストプロンプトと一緒に
-Gemini モデルへ送信します。画像は `generate` が使っているのと同じ
-`:generateContent` 呼び出しの中で `inlineData` パートとして同梱されます
-—— 新しいエンドポイントも、新しい依存も必要ありません。
+ソース画像(さらに追加の参照画像とオプションのマスク)を、テキスト
+プロンプトと一緒に Gemini モデルへ送信します。各画像は `generate` が
+使っているのと同じ `:generateContent` 呼び出しの中で `inlineData` パート
+として同梱されます —— 新しいエンドポイントも、新しい依存も必要ありません。
 
 ```
 swiftmagex edit <input> <prompt> [オプション]
@@ -147,9 +147,10 @@ swiftmagex edit <input> <prompt> [オプション]
 
 | オプション | 既定値 | 補足 |
 |---|---|---|
-| `<input>` | — | 必須。ソース画像(PNG または JPEG)。 |
+| `<input>` | — | 必須。プライマリのソース画像(PNG または JPEG)。 |
 | `<prompt>` | — | 必須。編集内容を記述するテキスト指示。 |
-| `--mask <パス>` | — | 任意のグレースケール/二値マスク(PNG または JPEG)。白が編集領域、黒が保持領域。 |
+| `--reference <パス>` | — | 繰り返し可。追加の参照画像(PNG または JPEG)。`--reference` を指定するたびに別の inline 画像パートが追加され、プロンプトがそれらを組み合わせて利用できます —— 例:「画像 1 の被写体を画像 2 のシーンに配置する」。 |
+| `--mask <パス>` | — | 任意のグレースケール/二値マスク(PNG または JPEG)。白がプライマリ画像上の編集領域、黒が保持領域。 |
 | `-o`、`--output <パス>` | `./` | ファイルまたはディレクトリ。ディレクトリ指定時のファイル名は `swiftmagex_{timestamp}_{index}.png`。 |
 | `-n`、`--count <1–4>` | `1` | バリアント数。各バリアントは個別のリクエスト。 |
 | `--seed <uint64>` | — | プロバイダーが無視する場合でもメタデータには記録されます。 |
@@ -162,6 +163,10 @@ swiftmagex edit apple.png "make the apple green instead of red" -o edited.png
 # マスクを使って局所的にインペイント
 swiftmagex edit photo.png "replace the marked region with a sunset sky" \
   --mask sky-mask.png -o photo_edited.png
+
+# 2 枚の参照画像でコンポジション
+swiftmagex edit person.png "place the person from image 1 into the scene of image 2" \
+  --reference street.png -o composed.png
 
 # 同じ編集の 4 バリアント
 swiftmagex edit shot.jpg "add a snowy mountain in the background" -n 4 -o ./out

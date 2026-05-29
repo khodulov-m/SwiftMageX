@@ -138,12 +138,13 @@ Chaque PNG produit transporte le prompt, le modèle, le seed, l'horodatage
 et la version de l'outil dans des chunks `tEXt` (les JPEG utilisent le
 champ EXIF `UserComment`).
 
-### `swiftmagex edit` — image-à-image / inpainting via Gemini
+### `swiftmagex edit` — image-à-image / multi-image / inpainting via Gemini
 
-Envoie une image source (et un masque optionnel) à un modèle Gemini en plus
-du prompt textuel. L'image voyage en tant que partie `inlineData` à
-l'intérieur du même appel `:generateContent` que `generate` utilise — pas
-de nouvel endpoint, pas de nouvelle dépendance.
+Envoie une image source (plus d'éventuelles références additionnelles et un
+masque optionnel) à un modèle Gemini en plus du prompt textuel. Chaque image
+voyage en tant que partie `inlineData` à l'intérieur du même appel
+`:generateContent` que `generate` utilise — pas de nouvel endpoint, pas de
+nouvelle dépendance.
 
 ```
 swiftmagex edit <input> <prompt> [options]
@@ -151,9 +152,10 @@ swiftmagex edit <input> <prompt> [options]
 
 | Option | Défaut | Notes |
 |---|---|---|
-| `<input>` | — | Obligatoire. Image source (PNG ou JPEG). |
+| `<input>` | — | Obligatoire. Image source primaire (PNG ou JPEG). |
 | `<prompt>` | — | Obligatoire. Instruction textuelle décrivant l'édition. |
-| `--mask <chemin>` | — | Masque optionnel en niveaux de gris ou binaire (PNG ou JPEG). Le blanc marque la zone à éditer, le noir préserve l'original. |
+| `--reference <chemin>` | — | Répétable. Image de référence additionnelle (PNG ou JPEG). Chaque `--reference` ajoute une autre partie inline que le prompt peut composer — p. ex. « place le sujet de l'image 1 dans la scène de l'image 2 ». |
+| `--mask <chemin>` | — | Masque optionnel en niveaux de gris ou binaire (PNG ou JPEG). Le blanc marque la zone à éditer sur l'image primaire, le noir préserve l'original. |
 | `-o`, `--output <chemin>` | `./` | Fichier ou répertoire. Si répertoire, les fichiers sont nommés `swiftmagex_{timestamp}_{index}.png`. |
 | `-n`, `--count <1–4>` | `1` | Nombre de variantes. Chacune est une requête séparée. |
 | `--seed <uint64>` | — | Enregistré dans les métadonnées même si le fournisseur l'ignore. |
@@ -166,6 +168,10 @@ swiftmagex edit apple.png "make the apple green instead of red" -o edited.png
 # Inpainting d'une zone avec un masque
 swiftmagex edit photo.png "replace the marked region with a sunset sky" \
   --mask sky-mask.png -o photo_edited.png
+
+# Composition à partir de deux images de référence
+swiftmagex edit person.png "place the person from image 1 into the scene of image 2" \
+  --reference street.png -o composed.png
 
 # Quatre variantes de la même édition
 swiftmagex edit shot.jpg "add a snowy mountain in the background" -n 4 -o ./out
