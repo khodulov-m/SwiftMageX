@@ -97,12 +97,17 @@ public struct GeminiProvider: ImageProvider {
             )
         }
 
+        var parts: [GeminiRequestPart] = [.text(request.prompt)]
+        if let image = request.referenceImage,
+           let mime = request.referenceImageMimeType {
+            parts.append(.inlineData(mimeType: mime, base64: image.base64EncodedString()))
+        }
+        if let mask = request.mask, let mime = request.maskMimeType {
+            parts.append(.inlineData(mimeType: mime, base64: mask.base64EncodedString()))
+        }
         let body = GeminiRequestBody(
             contents: [
-                GeminiRequestContent(
-                    role: "user",
-                    parts: [GeminiRequestPart(text: request.prompt)]
-                )
+                GeminiRequestContent(role: "user", parts: parts)
             ],
             generationConfig: GeminiGenerationConfig(responseModalities: ["IMAGE"])
         )
@@ -208,8 +213,36 @@ private struct GeminiRequestContent: Encodable {
     let parts: [GeminiRequestPart]
 }
 
-private struct GeminiRequestPart: Encodable {
-    let text: String
+/// A single Gemini `parts[]` entry. The wire form is either `{text: "..."}`
+/// for the prompt or `{inlineData: {mimeType, data}}` for an image — never
+/// both, so this is encoded as a sum type. Swift's default `Encodable` synth
+/// would emit `null` for absent optional keys, which the API rejects.
+private enum GeminiRequestPart: Encodable {
+    case text(String)
+    case inlineData(mimeType: String, base64: String)
+
+    private enum CodingKeys: String, CodingKey {
+        case text
+        case inlineData
+    }
+
+    private struct InlineData: Encodable {
+        let mimeType: String
+        let data: String
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        switch self {
+        case .text(let text):
+            try container.encode(text, forKey: .text)
+        case .inlineData(let mimeType, let base64):
+            try container.encode(
+                InlineData(mimeType: mimeType, data: base64),
+                forKey: .inlineData
+            )
+        }
+    }
 }
 
 private struct GeminiGenerationConfig: Encodable {

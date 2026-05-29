@@ -81,7 +81,7 @@ export GEMINI_API_KEY="…"
 
 ## クイックマニュアル
 
-7 つのサブコマンドはいずれも同じグローバルフラグを共有します:
+8 つのサブコマンドはいずれも同じグローバルフラグを共有します:
 
 | グローバルフラグ | 効果 |
 |---|---|
@@ -133,6 +133,42 @@ swiftmagex generate "A simple red apple on a white background, test image" \
 各 PNG の出力には、`tEXt` チャンクとして prompt、モデル、seed、
 タイムスタンプ、ツールバージョンが埋め込まれます(JPEG は EXIF の
 `UserComment` フィールドを使用)。
+
+### `swiftmagex edit` — Gemini による image-to-image / インペインティング
+
+ソース画像(およびオプションのマスク)を、テキストプロンプトと一緒に
+Gemini モデルへ送信します。画像は `generate` が使っているのと同じ
+`:generateContent` 呼び出しの中で `inlineData` パートとして同梱されます
+—— 新しいエンドポイントも、新しい依存も必要ありません。
+
+```
+swiftmagex edit <input> <prompt> [オプション]
+```
+
+| オプション | 既定値 | 補足 |
+|---|---|---|
+| `<input>` | — | 必須。ソース画像(PNG または JPEG)。 |
+| `<prompt>` | — | 必須。編集内容を記述するテキスト指示。 |
+| `--mask <パス>` | — | 任意のグレースケール/二値マスク(PNG または JPEG)。白が編集領域、黒が保持領域。 |
+| `-o`、`--output <パス>` | `./` | ファイルまたはディレクトリ。ディレクトリ指定時のファイル名は `swiftmagex_{timestamp}_{index}.png`。 |
+| `-n`、`--count <1–4>` | `1` | バリアント数。各バリアントは個別のリクエスト。 |
+| `--seed <uint64>` | — | プロバイダーが無視する場合でもメタデータには記録されます。 |
+| `--model <id>` | `gemini-2.5-flash-image` | Gemini モデルである必要があります —— Imagen の `:predict` 形式は inline 画像入力を受け付けず、終了コード 2 で拒否されます。 |
+
+```sh
+# 被写体の色を変える
+swiftmagex edit apple.png "make the apple green instead of red" -o edited.png
+
+# マスクを使って局所的にインペイント
+swiftmagex edit photo.png "replace the marked region with a sunset sky" \
+  --mask sky-mask.png -o photo_edited.png
+
+# 同じ編集の 4 バリアント
+swiftmagex edit shot.jpg "add a snowy mountain in the background" -n 4 -o ./out
+```
+
+編集後の出力にも `generate` と同じ `tEXt`/EXIF メタデータが入ります ——
+記録される prompt は編集指示であり、元の生成プロンプトではありません。
 
 ### `swiftmagex resize` — ローカルのリサイズ / クロップ / 変換
 
@@ -366,13 +402,13 @@ swiftmagex crop photo.jpg --aspect 9:16 -o portrait.jpg --format jpeg --quality 
 
 ## MCP サーバ
 
-`swiftmagex-mcp` は stdio 上で 8 つのツール
-(`generate_image`、`resize_image`、`overlay_text`、`composite_images`、`appstore_screenshots`、`list_frames`、`remove_background`、`smart_crop`)を提供します。
+`swiftmagex-mcp` は stdio 上で 9 つのツール
+(`generate_image`、`edit_image`、`resize_image`、`overlay_text`、`composite_images`、`appstore_screenshots`、`list_frames`、`remove_background`、`smart_crop`)を提供します。
 引数は CLI フラグと対応しており(snake_case のキー、例: `font_size`、`screen_rect`、`devices`)、結果は絶対パスを返すので、呼び出
 し側エージェントはサーバの作業ディレクトリを知る必要がありません。
-`generate_image` は加えて、生成された画像のバイト列を MCP の
-`image` コンテンツとして返し、呼び出し側モデルが出力結果を直接確
-認できます。`list_frames` は同梱されているデバイスフレームを列挙し、
+`generate_image` と `edit_image` は加えて、生成された画像のバイト列を
+MCP の `image` コンテンツとして返し、呼び出し側モデルが出力結果を直接
+確認できます。`list_frames` は同梱されているデバイスフレームを列挙し、
 その id は `appstore_screenshots` の `frame` 引数で受け付けられます。
 
 ### Claude Code を設定する

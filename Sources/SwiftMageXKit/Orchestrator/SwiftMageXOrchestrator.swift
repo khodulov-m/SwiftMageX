@@ -94,6 +94,121 @@ public enum SwiftMageXOrchestrator {
         }
     }
 
+    /// Run an image-to-image edit through Gemini (`:generateContent` with
+    /// `inlineData` parts). `input` is the source image; an optional `mask`
+    /// is sent as a second image part (white = edit region, black = preserve).
+    ///
+    /// Mirrors the production / testable split that ``generate(request:output:environment:engine:timestamp:currentDirectoryPath:)``
+    /// uses: this overload resolves the API key from the environment and
+    /// constructs a provider; the variant below accepts an injected provider.
+    ///
+    /// - Throws: ``SwiftMageXError/configuration(_:)`` when no API key is set,
+    ///   ``SwiftMageXError/invalidInput(_:)`` for a non-Gemini model or an
+    ///   unsupported input format, ``SwiftMageXError/io(_:)`` when an input
+    ///   file is missing, and provider / raster errors otherwise.
+    public static func edit(
+        input: String,
+        mask: String?,
+        request: GenerationRequest,
+        output: String?,
+        environment: [String: String] = ProcessInfo.processInfo.environment,
+        engine: any RasterEngine = CoreImageRasterEngine(),
+        timestamp: Date = Date(),
+        currentDirectoryPath: String = FileManager.default.currentDirectoryPath
+    ) async throws -> [WrittenImage] {
+        guard let apiKey = Configuration.resolvedAPIKey(in: environment) else {
+            throw SwiftMageXError.configuration(
+                "missing \(Configuration.EnvironmentKey.primaryAPIKey)"
+            )
+        }
+        let provider = makeProvider(for: request.model, apiKey: apiKey)
+        return try await edit(
+            input: input,
+            mask: mask,
+            request: request,
+            output: output,
+            provider: provider,
+            engine: engine,
+            timestamp: timestamp,
+            currentDirectoryPath: currentDirectoryPath
+        )
+    }
+
+    /// Variant with an injectable ``ImageProvider`` — used by the kit's own
+    /// tests and by the MCP server.
+    public static func edit(
+        input: String,
+        mask: String?,
+        request: GenerationRequest,
+        output: String?,
+        provider: any ImageProvider,
+        engine: any RasterEngine = CoreImageRasterEngine(),
+        timestamp: Date = Date(),
+        currentDirectoryPath: String = FileManager.default.currentDirectoryPath
+    ) async throws -> [WrittenImage] {
+        guard ModelCatalog.family(for: request.model) == .gemini else {
+            throw SwiftMageXError.invalidInput(
+                "edit requires a Gemini model (got \(request.model))"
+            )
+        }
+
+        let inputURL = absoluteFileURL(input, currentDirectoryPath: currentDirectoryPath)
+        guard FileManager.default.fileExists(atPath: inputURL.path) else {
+            throw SwiftMageXError.io("input file not found: \(inputURL.path)")
+        }
+        guard let inputFormat = ImageFormat.detect(at: inputURL) else {
+            throw SwiftMageXError.invalidInput(
+                "unsupported edit input format at \(inputURL.path); use PNG or JPEG"
+            )
+        }
+        let inputData = try readImageBytes(at: inputURL)
+
+        var maskData: Data?
+        var maskMime: String?
+        if let mask = mask {
+            let maskURL = absoluteFileURL(mask, currentDirectoryPath: currentDirectoryPath)
+            guard FileManager.default.fileExists(atPath: maskURL.path) else {
+                throw SwiftMageXError.io("mask file not found: \(maskURL.path)")
+            }
+            guard let format = ImageFormat.detect(at: maskURL) else {
+                throw SwiftMageXError.invalidInput(
+                    "unsupported mask format at \(maskURL.path); use PNG or JPEG"
+                )
+            }
+            maskData = try readImageBytes(at: maskURL)
+            maskMime = format.mimeType
+        }
+
+        var augmented = request
+        augmented.referenceImage = inputData
+        augmented.referenceImageMimeType = inputFormat.mimeType
+        augmented.mask = maskData
+        augmented.maskMimeType = maskMime
+
+        let images = try await provider.generate(augmented)
+        guard !images.isEmpty else {
+            throw SwiftMageXError.provider("provider returned no images")
+        }
+
+        let urls = try OutputPath.resolve(
+            target: output,
+            count: images.count,
+            format: .png,
+            timestamp: timestamp,
+            currentDirectoryPath: currentDirectoryPath
+        )
+
+        return try zip(images, urls).map { image, url in
+            try writeOne(
+                image: image,
+                to: url,
+                request: augmented,
+                engine: engine,
+                timestamp: timestamp
+            )
+        }
+    }
+
     /// Run a single local resize/crop/conversion through the raster engine.
     ///
     /// Mirrors `swiftmagex resize` (spec §6.2). `input` is interpreted relative
@@ -468,6 +583,16 @@ public enum SwiftMageXOrchestrator {
     ) -> URL {
         let cwd = URL(fileURLWithPath: currentDirectoryPath, isDirectory: true)
         return URL(fileURLWithPath: raw, relativeTo: cwd).standardizedFileURL
+    }
+
+    private static func readImageBytes(at url: URL) throws -> Data {
+        do {
+            return try Data(contentsOf: url)
+        } catch {
+            throw SwiftMageXError.io(
+                "could not read \(url.path): \(error.localizedDescription)"
+            )
+        }
     }
 
     private static func writeOne(

@@ -80,7 +80,7 @@ export GEMINI_API_KEY="…"
 
 ## 빠른 매뉴얼
 
-일곱 개의 서브커맨드가 동일한 글로벌 플래그를 공유합니다:
+여덟 개의 서브커맨드가 동일한 글로벌 플래그를 공유합니다:
 
 | 글로벌 플래그 | 효과 |
 |---|---|
@@ -130,6 +130,42 @@ swiftmagex generate "A simple red apple on a white background, test image" \
 
 각 출력 PNG는 `tEXt` 청크에 prompt, 모델, seed, 타임스탬프,
 도구 버전을 담습니다(JPEG는 EXIF `UserComment` 필드 사용).
+
+### `swiftmagex edit` — Gemini를 통한 이미지-투-이미지 / 인페인팅
+
+소스 이미지(및 선택적 마스크)를 텍스트 프롬프트와 함께 Gemini 모델에
+보냅니다. 이미지는 `generate`가 사용하는 것과 동일한 `:generateContent`
+호출의 `inlineData` 파트로 함께 전송됩니다 —— 새 엔드포인트도, 새
+의존성도 없습니다.
+
+```
+swiftmagex edit <input> <prompt> [옵션]
+```
+
+| 옵션 | 기본값 | 설명 |
+|---|---|---|
+| `<input>` | — | 필수. 소스 이미지(PNG 또는 JPEG). |
+| `<prompt>` | — | 필수. 편집을 설명하는 텍스트 지시. |
+| `--mask <경로>` | — | 선택적인 그레이스케일/이진 마스크(PNG 또는 JPEG). 흰색은 편집할 영역을, 검정색은 보존할 영역을 표시. |
+| `-o`, `--output <경로>` | `./` | 파일 또는 디렉터리. 디렉터리인 경우 파일명은 `swiftmagex_{timestamp}_{index}.png`. |
+| `-n`, `--count <1–4>` | `1` | 변형 수. 각 변형은 별도 요청. |
+| `--seed <uint64>` | — | 프로바이더가 무시하더라도 메타데이터에 기록됩니다. |
+| `--model <id>` | `gemini-2.5-flash-image` | Gemini 모델이어야 합니다 —— Imagen의 `:predict` 형식은 inline 이미지 입력을 받지 않으며 종료 코드 2로 거부됩니다. |
+
+```sh
+# 피사체 색상 바꾸기
+swiftmagex edit apple.png "make the apple green instead of red" -o edited.png
+
+# 마스크로 영역 인페인팅
+swiftmagex edit photo.png "replace the marked region with a sunset sky" \
+  --mask sky-mask.png -o photo_edited.png
+
+# 동일한 편집의 네 가지 변형
+swiftmagex edit shot.jpg "add a snowy mountain in the background" -n 4 -o ./out
+```
+
+편집된 출력에는 `generate`와 동일한 `tEXt`/EXIF 메타데이터가 담깁니다 ——
+기록된 prompt는 원래의 생성 프롬프트가 아니라 편집 지시입니다.
 
 ### `swiftmagex resize` — 로컬 리사이즈 / 크롭 / 포맷 변환
 
@@ -361,12 +397,12 @@ nil 필드는 완전히 생략됩니다(`null` 자리표시 없음).
 
 ## MCP 서버
 
-`swiftmagex-mcp`는 stdio로 여덟 가지 도구
-(`generate_image`, `resize_image`, `overlay_text`, `composite_images`, `appstore_screenshots`, `list_frames`, `remove_background`, `smart_crop`)를 노출합니다.
+`swiftmagex-mcp`는 stdio로 아홉 가지 도구
+(`generate_image`, `edit_image`, `resize_image`, `overlay_text`, `composite_images`, `appstore_screenshots`, `list_frames`, `remove_background`, `smart_crop`)를 노출합니다.
 도구 인자는 CLI 플래그와 동일하며(snake_case 키, 예: `font_size`, `screen_rect`, `devices`), 결과는 절대 경로를 반환해 호
 출 에이전트가 서버의 작업 디렉터리를 알 필요가 없습니다.
-`generate_image`는 추가로 이미지 바이트를 MCP `image` 콘텐츠로
-함께 반환하여 호출 모델이 결과물을 직접 확인할 수 있습니다.
+`generate_image`와 `edit_image`는 추가로 이미지 바이트를 MCP `image`
+콘텐츠로 함께 반환하여 호출 모델이 결과물을 직접 확인할 수 있습니다.
 `list_frames`는 `appstore_screenshots`의 `frame` 인자가 id로 받아들이는
 내장 디바이스 프레임을 열거합니다.
 

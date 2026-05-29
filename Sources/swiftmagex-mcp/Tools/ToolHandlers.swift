@@ -53,6 +53,50 @@ enum ToolHandlers {
         }
     }
 
+    // MARK: - edit_image
+
+    static func edit(
+        arguments: [String: Value]?,
+        provider: any ImageProvider
+    ) async throws -> CallTool.Result {
+        let input = try EditImageTool.parse(arguments)
+
+        do {
+            let request = GenerationRequest(
+                prompt: input.prompt,
+                size: .square,
+                count: input.count,
+                seed: input.seed,
+                model: input.model
+            )
+            let written = try await SwiftMageXOrchestrator.edit(
+                input: input.image,
+                mask: input.mask,
+                request: request,
+                output: input.output,
+                provider: provider
+            )
+            var content: [Tool.Content] = [
+                .text(text: summaryText(for: written, provider: provider.id), annotations: nil, _meta: nil)
+            ]
+            // Spec §7: include the edited bytes as MCP image content so the
+            // calling model can inspect what was produced.
+            for image in written {
+                if let data = try? Data(contentsOf: image.path) {
+                    content.append(.image(
+                        data: data.base64EncodedString(),
+                        mimeType: image.format.mimeType,
+                        annotations: nil,
+                        _meta: nil
+                    ))
+                }
+            }
+            return CallTool.Result(content: content, isError: false)
+        } catch let error as SwiftMageXError {
+            return errorResult(error)
+        }
+    }
+
     // MARK: - resize_image
 
     static func resize(arguments: [String: Value]?) throws -> CallTool.Result {

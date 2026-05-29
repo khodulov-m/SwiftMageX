@@ -84,7 +84,7 @@ stampa, non logga e non scrive mai la chiave su disco — neanche con
 
 ## Manuale rapido
 
-Sette sottocomandi, tutti con gli stessi flag globali:
+Otto sottocomandi, tutti con gli stessi flag globali:
 
 | Flag globale | Effetto |
 |---|---|
@@ -136,6 +136,43 @@ swiftmagex generate "A simple red apple on a white background, test image" \
 Ogni PNG di output porta prompt, modello, seed, timestamp e versione
 dello strumento nei chunk `tEXt` (i JPEG usano il campo EXIF
 `UserComment`).
+
+### `swiftmagex edit` — image-to-image / inpainting via Gemini
+
+Invia un'immagine sorgente (e una maschera opzionale) a un modello Gemini
+insieme al prompt testuale. L'immagine viaggia come parte `inlineData` nella
+stessa chiamata `:generateContent` che usa `generate` — nessun endpoint
+nuovo, nessuna dipendenza nuova.
+
+```
+swiftmagex edit <input> <prompt> [opzioni]
+```
+
+| Opzione | Predefinito | Note |
+|---|---|---|
+| `<input>` | — | Obbligatorio. Immagine sorgente (PNG o JPEG). |
+| `<prompt>` | — | Obbligatorio. Istruzione testuale che descrive la modifica. |
+| `--mask <percorso>` | — | Maschera opzionale in scala di grigi o binaria (PNG o JPEG). Il bianco indica l'area da modificare, il nero preserva l'originale. |
+| `-o`, `--output <percorso>` | `./` | File o directory. Se directory, i file sono nominati `swiftmagex_{timestamp}_{index}.png`. |
+| `-n`, `--count <1–4>` | `1` | Numero di varianti. Ciascuna è una richiesta separata. |
+| `--seed <uint64>` | — | Registrato nei metadati anche quando il provider lo ignora. |
+| `--model <id>` | `gemini-2.5-flash-image` | Deve essere un modello Gemini — la forma `:predict` di Imagen non accetta input immagine inline e viene rifiutata con codice di uscita 2. |
+
+```sh
+# Cambia il colore di un soggetto
+swiftmagex edit apple.png "make the apple green instead of red" -o edited.png
+
+# Inpainting di una regione con maschera
+swiftmagex edit photo.png "replace the marked region with a sunset sky" \
+  --mask sky-mask.png -o photo_edited.png
+
+# Quattro varianti della stessa modifica
+swiftmagex edit shot.jpg "add a snowy mountain in the background" -n 4 -o ./out
+```
+
+Gli output modificati portano gli stessi metadati `tEXt`/EXIF di `generate` —
+il prompt registrato è l'istruzione di modifica, non quello originale di
+generazione.
 
 ### `swiftmagex resize` — resize / crop / conversione di formato locale
 
@@ -372,17 +409,17 @@ Politica di retry sui 429: fino a 5 tentativi con backoff esponenziale
 
 ## Server MCP
 
-`swiftmagex-mcp` espone otto strumenti — `generate_image`,
+`swiftmagex-mcp` espone nove strumenti — `generate_image`, `edit_image`,
 `resize_image`, `overlay_text`, `composite_images`, `appstore_screenshots`,
 `list_frames`, `remove_background` e `smart_crop` — su stdio. Gli argomenti rispecchiano
 i flag della CLI (chiavi in snake_case, es. `font_size`, `screen_rect`,
 `devices`); i risultati riportano percorsi assoluti così che
 l'agente chiamante non debba sapere la directory di lavoro del
-server. `generate_image` restituisce inoltre i byte dell'immagine come
-contenuto MCP `image`, in modo che il modello che ha invocato lo
-strumento possa ispezionare quanto prodotto. `list_frames` enumera le
-cornici dispositivo incluse i cui id sono accettati dall'argomento
-`frame` di `appstore_screenshots`.
+server. `generate_image` ed `edit_image` restituiscono inoltre i byte
+dell'immagine come contenuto MCP `image`, in modo che il modello che ha
+invocato lo strumento possa ispezionare quanto prodotto. `list_frames`
+enumera le cornici dispositivo incluse i cui id sono accettati
+dall'argomento `frame` di `appstore_screenshots`.
 
 ### Configurare Claude Code
 

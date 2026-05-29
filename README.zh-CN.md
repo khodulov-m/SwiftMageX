@@ -75,7 +75,7 @@ export GEMINI_API_KEY="…"
 
 ## 快速手册
 
-七个子命令共享同一组全局标志:
+八个子命令共享同一组全局标志:
 
 | 全局标志 | 作用 |
 |---|---|
@@ -125,6 +125,41 @@ swiftmagex generate "A simple red apple on a white background, test image" \
 
 每个输出的 PNG 会在 `tEXt` 块中携带 prompt、模型、seed、时间戳和
 工具版本;JPEG 写入 EXIF 的 `UserComment` 字段。
+
+### `swiftmagex edit` — 通过 Gemini 进行图生图 / 局部修复
+
+将一张源图像(以及可选的蒙版)与文本提示一起发送给 Gemini 模型。图像
+以 `inlineData` 部分随 `generate` 使用的同一个 `:generateContent` 调用一起
+传递 —— 没有新端点,没有新依赖。
+
+```
+swiftmagex edit <input> <prompt> [选项]
+```
+
+| 选项 | 默认值 | 说明 |
+|---|---|---|
+| `<input>` | — | 必填。源图像(PNG 或 JPEG)。 |
+| `<prompt>` | — | 必填。描述编辑动作的文本指令。 |
+| `--mask <路径>` | — | 可选的灰度/二值蒙版(PNG 或 JPEG)。白色标记要编辑的区域,黑色保留原图。 |
+| `-o`、`--output <路径>` | `./` | 文件或目录。若是目录,文件名为 `swiftmagex_{timestamp}_{index}.png`。 |
+| `-n`、`--count <1–4>` | `1` | 生成的变体数。每个变体都是一个独立请求。 |
+| `--seed <uint64>` | — | 即便提供商忽略,也会写入元数据。 |
+| `--model <id>` | `gemini-2.5-flash-image` | 必须是 Gemini 模型 —— Imagen 的 `:predict` 形态不接受 inline 图像输入,会以退出码 2 被拒绝。 |
+
+```sh
+# 改变物体颜色
+swiftmagex edit apple.png "make the apple green instead of red" -o edited.png
+
+# 用蒙版做局部修复
+swiftmagex edit photo.png "replace the marked region with a sunset sky" \
+  --mask sky-mask.png -o photo_edited.png
+
+# 同一次编辑的四个变体
+swiftmagex edit shot.jpg "add a snowy mountain in the background" -n 4 -o ./out
+```
+
+编辑后的输出携带与 `generate` 相同的 `tEXt`/EXIF 元数据 —— 记录的 prompt 是
+编辑指令本身,而非原始的生成 prompt。
 
 ### `swiftmagex resize` — 本地缩放 / 裁剪 / 格式转换
 
@@ -347,12 +382,12 @@ swiftmagex crop photo.jpg --aspect 9:16 -o portrait.jpg --format jpeg --quality 
 
 ## MCP 服务器
 
-`swiftmagex-mcp` 通过 stdio 暴露八个工具:`generate_image`、
+`swiftmagex-mcp` 通过 stdio 暴露九个工具:`generate_image`、`edit_image`、
 `resize_image`、`overlay_text`、`composite_images`、`appstore_screenshots`、`list_frames`、`remove_background`、`smart_crop`。工具参数与 CLI 标志保持一致(snake_case 键名,如 `font_size`、`screen_rect`、`devices`);返回的
 文件路径都是绝对路径,调用方代理无需知道服务器的工作目录。
-`generate_image` 还会以 MCP `image` 内容形式返回图像字节,便于调用
-模型直接检视产物。`list_frames` 列出 `appstore_screenshots` 的 `frame`
-参数可接受作为 id 的内置设备外框。
+`generate_image` 与 `edit_image` 还会以 MCP `image` 内容形式返回图像字节,
+便于调用模型直接检视产物。`list_frames` 列出 `appstore_screenshots` 的
+`frame` 参数可接受作为 id 的内置设备外框。
 
 ### 配置 Claude Code
 
