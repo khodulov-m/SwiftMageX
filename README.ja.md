@@ -167,6 +167,14 @@ swiftmagex edit photo.png "replace the marked region with a sunset sky" \
 swiftmagex edit shot.jpg "add a snowy mountain in the background" -n 4 -o ./out
 ```
 
+例 —— 3 つの編集前/編集後ペア(ソースと編集結果は [`examples/`](examples) に):
+
+| ソース | 編集後 | 編集プロンプト |
+|---|---|---|
+| <img src="examples/apple.png" alt="白い背景の赤いリンゴ" width="200"> | <img src="examples/apple-edited.png" alt="鮮やかな緑に塗り替えたリンゴ" width="200"> | `"Change the apple's color from red to bright green, keep everything else identical"` |
+| <img src="examples/mountain.png" alt="日の出の山岳湖" width="200"> | <img src="examples/mountain-edited.png" alt="同じシーンに熱気球が浮かぶ" width="200"> | `"Add a single colorful hot-air balloon floating in the sky above the mountains"` |
+| <img src="examples/cabin.png" alt="夏の森の木製キャビン" width="200"> | <img src="examples/cabin-edited.png" alt="雪に覆われた同じキャビン" width="200"> | `"Transform the scene from a sunny summer day to a snowy winter day"` |
+
 編集後の出力にも `generate` と同じ `tEXt`/EXIF メタデータが入ります ——
 記録される prompt は編集指示であり、元の生成プロンプトではありません。
 

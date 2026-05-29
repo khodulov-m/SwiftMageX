@@ -170,6 +170,15 @@ swiftmagex edit photo.png "replace the marked region with a sunset sky" \
 swiftmagex edit shot.jpg "add a snowy mountain in the background" -n 4 -o ./out
 ```
 
+Esempi — tre coppie prima / dopo (sorgenti e modifiche in
+[`examples/`](examples)):
+
+| Sorgente | Modificata | Prompt di modifica |
+|---|---|---|
+| <img src="examples/apple.png" alt="Mela rossa su sfondo bianco" width="200"> | <img src="examples/apple-edited.png" alt="Mela ricolorata di verde brillante" width="200"> | `"Change the apple's color from red to bright green, keep everything else identical"` |
+| <img src="examples/mountain.png" alt="Lago di montagna all'alba" width="200"> | <img src="examples/mountain-edited.png" alt="Stessa scena con mongolfiera sopra le vette" width="200"> | `"Add a single colorful hot-air balloon floating in the sky above the mountains"` |
+| <img src="examples/cabin.png" alt="Baita di legno in un bosco estivo" width="200"> | <img src="examples/cabin-edited.png" alt="Stessa baita coperta di neve" width="200"> | `"Transform the scene from a sunny summer day to a snowy winter day"` |
+
 Gli output modificati portano gli stessi metadati `tEXt`/EXIF di `generate` —
 il prompt registrato è l'istruzione di modifica, non quello originale di
 generazione.

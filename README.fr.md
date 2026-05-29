@@ -171,6 +171,15 @@ swiftmagex edit photo.png "replace the marked region with a sunset sky" \
 swiftmagex edit shot.jpg "add a snowy mountain in the background" -n 4 -o ./out
 ```
 
+Exemples — trois paires avant / après (sources et éditions dans
+[`examples/`](examples)) :
+
+| Source | Éditée | Prompt d'édition |
+|---|---|---|
+| <img src="examples/apple.png" alt="Pomme rouge sur fond blanc" width="200"> | <img src="examples/apple-edited.png" alt="Pomme recolorée en vert vif" width="200"> | `"Change the apple's color from red to bright green, keep everything else identical"` |
+| <img src="examples/mountain.png" alt="Lac de montagne à l'aube" width="200"> | <img src="examples/mountain-edited.png" alt="Même scène avec une montgolfière au-dessus des sommets" width="200"> | `"Add a single colorful hot-air balloon floating in the sky above the mountains"` |
+| <img src="examples/cabin.png" alt="Cabane en bois dans une forêt en été" width="200"> | <img src="examples/cabin-edited.png" alt="Même cabane sous la neige" width="200"> | `"Transform the scene from a sunny summer day to a snowy winter day"` |
+
 Les sorties éditées transportent les mêmes métadonnées `tEXt`/EXIF que
 `generate` — le prompt enregistré est l'instruction d'édition, pas le prompt
 initial de génération.
