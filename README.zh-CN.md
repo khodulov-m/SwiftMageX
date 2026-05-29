@@ -158,6 +158,14 @@ swiftmagex edit photo.png "replace the marked region with a sunset sky" \
 swiftmagex edit shot.jpg "add a snowy mountain in the background" -n 4 -o ./out
 ```
 
+示例 —— 三组前后对比(源图与编辑结果在 [`examples/`](examples) 中):
+
+| 原图 | 编辑后 | 编辑指令 |
+|---|---|---|
+| <img src="examples/apple.png" alt="白色背景上的红色苹果" width="200"> | <img src="examples/apple-edited.png" alt="重新着色为亮绿色的苹果" width="200"> | `"Change the apple's color from red to bright green, keep everything else identical"` |
+| <img src="examples/mountain.png" alt="日出时的高山湖泊" width="200"> | <img src="examples/mountain-edited.png" alt="同一场景中山峰上方多了一只热气球" width="200"> | `"Add a single colorful hot-air balloon floating in the sky above the mountains"` |
+| <img src="examples/cabin.png" alt="夏日森林中的木屋" width="200"> | <img src="examples/cabin-edited.png" alt="覆雪后的同一栋木屋" width="200"> | `"Transform the scene from a sunny summer day to a snowy winter day"` |
+
 编辑后的输出携带与 `generate` 相同的 `tEXt`/EXIF 元数据 —— 记录的 prompt 是
 编辑指令本身,而非原始的生成 prompt。
 

@@ -164,6 +164,15 @@ swiftmagex edit photo.png "replace the marked region with a sunset sky" \
 swiftmagex edit shot.jpg "add a snowy mountain in the background" -n 4 -o ./out
 ```
 
+예시 —— 세 가지 편집 전/후 쌍(원본과 편집 결과는
+[`examples/`](examples) 에 있습니다):
+
+| 소스 | 편집 후 | 편집 프롬프트 |
+|---|---|---|
+| <img src="examples/apple.png" alt="흰 배경의 빨간 사과" width="200"> | <img src="examples/apple-edited.png" alt="밝은 초록색으로 다시 칠한 사과" width="200"> | `"Change the apple's color from red to bright green, keep everything else identical"` |
+| <img src="examples/mountain.png" alt="일출 무렵의 산악 호수" width="200"> | <img src="examples/mountain-edited.png" alt="봉우리 위로 열기구가 떠 있는 같은 장면" width="200"> | `"Add a single colorful hot-air balloon floating in the sky above the mountains"` |
+| <img src="examples/cabin.png" alt="여름 숲속의 통나무집" width="200"> | <img src="examples/cabin-edited.png" alt="눈에 덮인 같은 통나무집" width="200"> | `"Transform the scene from a sunny summer day to a snowy winter day"` |
+
 편집된 출력에는 `generate`와 동일한 `tEXt`/EXIF 메타데이터가 담깁니다 ——
 기록된 prompt는 원래의 생성 프롬프트가 아니라 편집 지시입니다.
 
