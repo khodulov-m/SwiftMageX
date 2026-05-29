@@ -180,6 +180,18 @@ swiftmagex edit shot.jpg "add a snowy mountain in the background" -n 4 -o ./out
 | <img src="examples/mountain.png" alt="日の出の山岳湖" width="200"> | <img src="examples/mountain-edited.png" alt="同じシーンに熱気球が浮かぶ" width="200"> | `"Add a single colorful hot-air balloon floating in the sky above the mountains"` |
 | <img src="examples/cabin.png" alt="夏の森の木製キャビン" width="200"> | <img src="examples/cabin-edited.png" alt="雪に覆われた同じキャビン" width="200"> | `"Transform the scene from a sunny summer day to a snowy winter day"` |
 
+マルチ画像コンポジション — `--reference` で被写体とシーンを組み合わせる:
+
+| 入力(被写体) | 参照(シーン) | 結果 |
+|---|---|---|
+| <img src="examples/canoe.png" alt="白い背景の木製カヌー" width="200"> | <img src="examples/mountain.png" alt="日の出の山岳湖" width="200"> | <img src="examples/canoe-on-mountain-lake.png" alt="山岳湖の水面に浮かぶカヌー" width="200"> |
+
+```sh
+swiftmagex edit examples/canoe.png \
+  "Place the canoe from image 1 onto the lake from image 2, match the lighting and add reflections" \
+  --reference examples/mountain.png -o examples/canoe-on-mountain-lake.png
+```
+
 編集後の出力にも `generate` と同じ `tEXt`/EXIF メタデータが入ります ——
 記録される prompt は編集指示であり、元の生成プロンプトではありません。
 

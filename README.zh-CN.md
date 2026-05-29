@@ -171,6 +171,18 @@ swiftmagex edit shot.jpg "add a snowy mountain in the background" -n 4 -o ./out
 | <img src="examples/mountain.png" alt="日出时的高山湖泊" width="200"> | <img src="examples/mountain-edited.png" alt="同一场景中山峰上方多了一只热气球" width="200"> | `"Add a single colorful hot-air balloon floating in the sky above the mountains"` |
 | <img src="examples/cabin.png" alt="夏日森林中的木屋" width="200"> | <img src="examples/cabin-edited.png" alt="覆雪后的同一栋木屋" width="200"> | `"Transform the scene from a sunny summer day to a snowy winter day"` |
 
+多图合成 —— 用 `--reference` 把主体和场景结合在一起:
+
+| 输入(主体) | 参考(场景) | 结果 |
+|---|---|---|
+| <img src="examples/canoe.png" alt="白色背景上的木质独木舟" width="200"> | <img src="examples/mountain.png" alt="日出时的高山湖泊" width="200"> | <img src="examples/canoe-on-mountain-lake.png" alt="漂浮在高山湖面上的独木舟" width="200"> |
+
+```sh
+swiftmagex edit examples/canoe.png \
+  "Place the canoe from image 1 onto the lake from image 2, match the lighting and add reflections" \
+  --reference examples/mountain.png -o examples/canoe-on-mountain-lake.png
+```
+
 编辑后的输出携带与 `generate` 相同的 `tEXt`/EXIF 元数据 —— 记录的 prompt 是
 编辑指令本身,而非原始的生成 prompt。
 

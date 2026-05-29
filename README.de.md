@@ -181,6 +181,18 @@ Beispiele — drei Vorher/Nachher-Paare (Quellen und Bearbeitungen in
 | <img src="examples/mountain.png" alt="Bergsee bei Sonnenaufgang" width="200"> | <img src="examples/mountain-edited.png" alt="Dieselbe Szene mit Heißluftballon über den Gipfeln" width="200"> | `"Add a single colorful hot-air balloon floating in the sky above the mountains"` |
 | <img src="examples/cabin.png" alt="Holzhütte im Sommerwald" width="200"> | <img src="examples/cabin-edited.png" alt="Dieselbe Hütte unter Schnee" width="200"> | `"Transform the scene from a sunny summer day to a snowy winter day"` |
 
+Multi-Bild-Komposition — Motiv und Szene über `--reference` kombinieren:
+
+| Eingabe (Motiv) | Referenz (Szene) | Ergebnis |
+|---|---|---|
+| <img src="examples/canoe.png" alt="Holzkanu auf weißem Hintergrund" width="200"> | <img src="examples/mountain.png" alt="Bergsee bei Sonnenaufgang" width="200"> | <img src="examples/canoe-on-mountain-lake.png" alt="Kanu, das auf dem Bergsee schwimmt" width="200"> |
+
+```sh
+swiftmagex edit examples/canoe.png \
+  "Place the canoe from image 1 onto the lake from image 2, match the lighting and add reflections" \
+  --reference examples/mountain.png -o examples/canoe-on-mountain-lake.png
+```
+
 Bearbeitete Ausgaben tragen dieselben `tEXt`/EXIF-Metadaten wie `generate` —
 der aufgezeichnete Prompt ist die Bearbeitungsanweisung, nicht der
 ursprüngliche Generierungs-Prompt.

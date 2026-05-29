@@ -185,6 +185,18 @@ Esempi — tre coppie prima / dopo (sorgenti e modifiche in
 | <img src="examples/mountain.png" alt="Lago di montagna all'alba" width="200"> | <img src="examples/mountain-edited.png" alt="Stessa scena con mongolfiera sopra le vette" width="200"> | `"Add a single colorful hot-air balloon floating in the sky above the mountains"` |
 | <img src="examples/cabin.png" alt="Baita di legno in un bosco estivo" width="200"> | <img src="examples/cabin-edited.png" alt="Stessa baita coperta di neve" width="200"> | `"Transform the scene from a sunny summer day to a snowy winter day"` |
 
+Composizione multi-immagine — combina un soggetto con una scena via `--reference`:
+
+| Input (soggetto) | Riferimento (scena) | Risultato |
+|---|---|---|
+| <img src="examples/canoe.png" alt="Canoa in legno su sfondo bianco" width="200"> | <img src="examples/mountain.png" alt="Lago di montagna all'alba" width="200"> | <img src="examples/canoe-on-mountain-lake.png" alt="Canoa che galleggia sul lago di montagna" width="200"> |
+
+```sh
+swiftmagex edit examples/canoe.png \
+  "Place the canoe from image 1 onto the lake from image 2, match the lighting and add reflections" \
+  --reference examples/mountain.png -o examples/canoe-on-mountain-lake.png
+```
+
 Gli output modificati portano gli stessi metadati `tEXt`/EXIF di `generate` —
 il prompt registrato è l'istruzione di modifica, non quello originale di
 generazione.

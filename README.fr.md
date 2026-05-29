@@ -186,6 +186,18 @@ Exemples — trois paires avant / après (sources et éditions dans
 | <img src="examples/mountain.png" alt="Lac de montagne à l'aube" width="200"> | <img src="examples/mountain-edited.png" alt="Même scène avec une montgolfière au-dessus des sommets" width="200"> | `"Add a single colorful hot-air balloon floating in the sky above the mountains"` |
 | <img src="examples/cabin.png" alt="Cabane en bois dans une forêt en été" width="200"> | <img src="examples/cabin-edited.png" alt="Même cabane sous la neige" width="200"> | `"Transform the scene from a sunny summer day to a snowy winter day"` |
 
+Composition multi-images — assembler un sujet avec une scène via `--reference` :
+
+| Entrée (sujet) | Référence (scène) | Résultat |
+|---|---|---|
+| <img src="examples/canoe.png" alt="Canoë en bois sur fond blanc" width="200"> | <img src="examples/mountain.png" alt="Lac de montagne à l'aube" width="200"> | <img src="examples/canoe-on-mountain-lake.png" alt="Canoë flottant sur le lac de montagne" width="200"> |
+
+```sh
+swiftmagex edit examples/canoe.png \
+  "Place the canoe from image 1 onto the lake from image 2, match the lighting and add reflections" \
+  --reference examples/mountain.png -o examples/canoe-on-mountain-lake.png
+```
+
 Les sorties éditées transportent les mêmes métadonnées `tEXt`/EXIF que
 `generate` — le prompt enregistré est l'instruction d'édition, pas le prompt
 initial de génération.

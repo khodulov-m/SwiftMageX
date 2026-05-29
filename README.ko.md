@@ -178,6 +178,18 @@ swiftmagex edit shot.jpg "add a snowy mountain in the background" -n 4 -o ./out
 | <img src="examples/mountain.png" alt="일출 무렵의 산악 호수" width="200"> | <img src="examples/mountain-edited.png" alt="봉우리 위로 열기구가 떠 있는 같은 장면" width="200"> | `"Add a single colorful hot-air balloon floating in the sky above the mountains"` |
 | <img src="examples/cabin.png" alt="여름 숲속의 통나무집" width="200"> | <img src="examples/cabin-edited.png" alt="눈에 덮인 같은 통나무집" width="200"> | `"Transform the scene from a sunny summer day to a snowy winter day"` |
 
+다중 이미지 합성 —— `--reference`로 피사체와 장면을 결합합니다:
+
+| 입력(피사체) | 참조(장면) | 결과 |
+|---|---|---|
+| <img src="examples/canoe.png" alt="흰 배경의 목조 카누" width="200"> | <img src="examples/mountain.png" alt="일출 무렵의 산악 호수" width="200"> | <img src="examples/canoe-on-mountain-lake.png" alt="산악 호수 위에 떠 있는 카누" width="200"> |
+
+```sh
+swiftmagex edit examples/canoe.png \
+  "Place the canoe from image 1 onto the lake from image 2, match the lighting and add reflections" \
+  --reference examples/mountain.png -o examples/canoe-on-mountain-lake.png
+```
+
 편집된 출력에는 `generate`와 동일한 `tEXt`/EXIF 메타데이터가 담깁니다 ——
 기록된 prompt는 원래의 생성 프롬프트가 아니라 편집 지시입니다.
 

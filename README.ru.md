@@ -178,6 +178,19 @@ swiftmagex edit shot.jpg "add a snowy mountain in the background" -n 4 -o ./out
 | <img src="examples/mountain.png" alt="Горное озеро на рассвете" width="200"> | <img src="examples/mountain-edited.png" alt="Та же сцена с воздушным шаром над вершинами" width="200"> | `"Add a single colorful hot-air balloon floating in the sky above the mountains"` |
 | <img src="examples/cabin.png" alt="Деревянная хижина в летнем лесу" width="200"> | <img src="examples/cabin-edited.png" alt="Та же хижина под снегом" width="200"> | `"Transform the scene from a sunny summer day to a snowy winter day"` |
 
+Композиция из нескольких изображений — объединить объект и сцену через
+`--reference`:
+
+| Вход (объект) | Референс (сцена) | Результат |
+|---|---|---|
+| <img src="examples/canoe.png" alt="Деревянное каноэ на белом фоне" width="200"> | <img src="examples/mountain.png" alt="Горное озеро на рассвете" width="200"> | <img src="examples/canoe-on-mountain-lake.png" alt="Каноэ на поверхности горного озера" width="200"> |
+
+```sh
+swiftmagex edit examples/canoe.png \
+  "Place the canoe from image 1 onto the lake from image 2, match the lighting and add reflections" \
+  --reference examples/mountain.png -o examples/canoe-on-mountain-lake.png
+```
+
 Отредактированные выходы несут те же метаданные `tEXt`/EXIF, что и
 `generate` — записанный prompt является инструкцией правки, а не исходным
 промтом генерации.
