@@ -79,7 +79,7 @@ export GEMINI_API_KEY="…"
 
 ## Краткий мануал
 
-Семь подкоманд; глобальные флаги общие:
+Восемь подкоманд; глобальные флаги общие:
 
 | Флаг | Эффект |
 |---|---|
@@ -129,6 +129,43 @@ swiftmagex generate "A simple red apple on a white background, test image" \
 
 Каждый выходной PNG содержит prompt, модель, seed, метку времени и
 версию утилиты в `tEXt`-чанках (для JPEG — в EXIF-поле `UserComment`).
+
+### `swiftmagex edit` — image-to-image / инпейнтинг через Gemini
+
+Отправляет исходное изображение (и опциональную маску) в модель Gemini
+вместе с текстовым промтом. Изображение передаётся как `inlineData`-часть
+того же вызова `:generateContent`, который использует `generate` — без
+нового эндпоинта и без новой зависимости.
+
+```
+swiftmagex edit <input> <prompt> [options]
+```
+
+| Опция | По умолчанию | Примечания |
+|---|---|---|
+| `<input>` | — | Обязательно. Исходное изображение (PNG или JPEG). |
+| `<prompt>` | — | Обязательно. Текстовая инструкция, описывающая правку. |
+| `--mask <путь>` | — | Опциональная маска в градациях серого или бинарная (PNG или JPEG). Белый отмечает область для правки, чёрный сохраняет оригинал. |
+| `-o`, `--output <путь>` | `./` | Файл или директория. Для директории файлы именуются `swiftmagex_{timestamp}_{index}.png`. |
+| `-n`, `--count <1–4>` | `1` | Количество вариантов. Каждый — отдельный запрос. |
+| `--seed <uint64>` | — | Записывается в метаданные, даже если провайдер его игнорирует. |
+| `--model <id>` | `gemini-2.5-flash-image` | Должна быть модель Gemini — форма `:predict` у Imagen не принимает inline-входы изображения и отклоняется с кодом выхода 2. |
+
+```sh
+# Сменить цвет объекта
+swiftmagex edit apple.png "make the apple green instead of red" -o edited.png
+
+# Инпейнтинг области с маской
+swiftmagex edit photo.png "replace the marked region with a sunset sky" \
+  --mask sky-mask.png -o photo_edited.png
+
+# Четыре варианта одной и той же правки
+swiftmagex edit shot.jpg "add a snowy mountain in the background" -n 4 -o ./out
+```
+
+Отредактированные выходы несут те же метаданные `tEXt`/EXIF, что и
+`generate` — записанный prompt является инструкцией правки, а не исходным
+промтом генерации.
 
 ### `swiftmagex resize` — локальный ресайз / кроп / смена формата
 
@@ -363,16 +400,17 @@ JSON-ошибка под `--json` тоже пишется в stdout — чтоб
 
 ## MCP-сервер
 
-`swiftmagex-mcp` предоставляет восемь инструментов — `generate_image`,
-`resize_image`, `overlay_text`, `composite_images`, `appstore_screenshots`,
-`list_frames`, `remove_background` и `smart_crop` — через stdio. Аргументы
-инструментов повторяют флаги CLI (ключи в snake_case, напр. `font_size`,
-`screen_rect`, `devices`); в результатах возвращаются абсолютные пути,
-так что агенту не нужно знать рабочую директорию сервера.
-`generate_image` дополнительно возвращает байты изображения как MCP
-`image`-контент, чтобы вызывающая модель могла увидеть, что получилось.
-`list_frames` перечисляет встроенные рамки устройств, чьи id принимает
-аргумент `frame` инструмента `appstore_screenshots`.
+`swiftmagex-mcp` предоставляет девять инструментов — `generate_image`,
+`edit_image`, `resize_image`, `overlay_text`, `composite_images`,
+`appstore_screenshots`, `list_frames`, `remove_background` и `smart_crop` —
+через stdio. Аргументы инструментов повторяют флаги CLI (ключи в
+snake_case, напр. `font_size`, `screen_rect`, `devices`); в результатах
+возвращаются абсолютные пути, так что агенту не нужно знать рабочую
+директорию сервера. `generate_image` и `edit_image` дополнительно
+возвращают байты изображения как MCP `image`-контент, чтобы вызывающая
+модель могла увидеть, что получилось. `list_frames` перечисляет
+встроенные рамки устройств, чьи id принимает аргумент `frame`
+инструмента `appstore_screenshots`.
 
 ### Подключение Claude Code
 

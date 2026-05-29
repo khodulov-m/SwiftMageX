@@ -1,5 +1,31 @@
 # SwiftMageX
 
+## Post-0.1.0 — Image-to-image edit via Gemini
+
+The first slice of the 0.2 `edit` work
+([spec §3.1](SwiftMageX-MVP-0.1-spec.md), [§17](SwiftMageX-MVP-0.1-spec.md)) —
+image-to-image and inpainting against the same Gemini `:generateContent`
+endpoint `generate` already uses, with the source image (and optional mask)
+sent as `inlineData` parts alongside the text prompt:
+
+- New `swiftmagex edit <input> <prompt>` command / `edit_image` MCP tool.
+  Required args: source image (PNG or JPEG) and a text instruction. Optional:
+  `--mask` (grayscale/binary PNG/JPEG — white marks the region to edit),
+  `--count 1–4`, `--seed`, `-o/--output`.
+- Gemini-only: the CLI gates non-Gemini models in `validate()` (exit 2);
+  `ImagenProvider` has a defensive guard that rejects any request carrying
+  image bytes. Imagen's `:predict` shape has no inline-image slot.
+- Wire-level changes are private to `GeminiProvider`: the request `parts[]`
+  schema gained a sum-type entry (`{text}` *or* `{inlineData: {mimeType, data}}`)
+  so each part encodes cleanly with no `null` keys. No new package dependency.
+- `GenerationRequest` gained optional `referenceImage` / `referenceImageMimeType` /
+  `mask` / `maskMimeType` fields with `nil` defaults — existing text-to-image
+  call sites compile unchanged.
+- Edited outputs carry the same `tEXt`/EXIF metadata as `generate` (prompt,
+  model, seed, timestamp, tool version); the recorded prompt is the edit
+  instruction.
+- The MCP server now exposes nine tools.
+
 ## Post-0.1.0 — Saliency-aware smart crop
 
 A new local raster command that crops to a user-supplied aspect ratio with the
@@ -111,8 +137,9 @@ MCP server that exposes the same capabilities to AI agents. macOS arm64 only.
 | Absolute-path output, indexed file naming, embedded PNG/JPEG metadata (prompt, model, seed, timestamp, tool version) | [§12](SwiftMageX-MVP-0.1-spec.md#12-output-file-naming-metadata) |
 | Structured `--json` envelope and exit codes (0/1/2/3/4) | [§12](SwiftMageX-MVP-0.1-spec.md#12-output-file-naming-metadata), [§13](SwiftMageX-MVP-0.1-spec.md#13-error-handling-and-exit-codes) |
 
-Out of scope in this release — `edit`/inpainting, local providers (Ollama/ComfyUI),
-config file, Keychain key storage, Homebrew distribution. See
+Out of scope in this release — local providers (Ollama/ComfyUI), config file,
+Keychain key storage, Homebrew distribution. (`edit`/inpainting was originally
+listed here too; it now ships in a post-0.1 entry above.) See
 [§2 Scope of version 0.1](SwiftMageX-MVP-0.1-spec.md#2-scope-of-version-01).
 
 ## Install

@@ -237,6 +237,6 @@ final class CLIArgumentTests: XCTestCase {
 
     func testRootRegistersAllSubcommands() {
         let names = SwiftMageX.configuration.subcommands.map { $0.configuration.commandName }
-        XCTAssertEqual(Set(names), ["generate", "resize", "text", "composite", "appstore", "remove-bg", "crop"])
+        XCTAssertEqual(Set(names), ["generate", "edit", "resize", "text", "composite", "appstore", "remove-bg", "crop"])
     }
 }

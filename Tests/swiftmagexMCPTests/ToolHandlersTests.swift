@@ -329,6 +329,7 @@ final class ToolHandlersTests: XCTestCase {
         let names = Set(SwiftMageXTools.all.map(\.name))
         XCTAssertEqual(names, [
             GenerateImageTool.name,
+            EditImageTool.name,
             ResizeImageTool.name,
             OverlayTextTool.name,
             CompositeImagesTool.name,

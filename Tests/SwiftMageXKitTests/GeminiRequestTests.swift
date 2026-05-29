@@ -105,10 +105,90 @@ final class GeminiRequestTests: XCTestCase {
         let firstContent = try XCTUnwrap(contents.first)
         XCTAssertEqual(firstContent["role"] as? String, "user")
         let parts = try XCTUnwrap(firstContent["parts"] as? [[String: Any]])
+        XCTAssertEqual(parts.count, 1, "Text-only request should have exactly one part")
         XCTAssertEqual(parts.first?["text"] as? String, Self.testPrompt)
+        XCTAssertNil(parts.first?["inlineData"], "Text part must not carry an inlineData key")
 
         let generationConfig = try XCTUnwrap(json["generationConfig"] as? [String: Any])
         XCTAssertEqual(generationConfig["responseModalities"] as? [String], ["IMAGE"])
+    }
+
+    // MARK: - Edit request assembly
+
+    func testGeminiEditRequestIncludesInlineDataPart() async throws {
+        let body = try Self.makeResponseJSON(imageBytes: Self.sampleImageBytes)
+        let mock = MockHTTPClient(stubs: [.init(data: body, statusCode: 200)])
+        let provider = Self.makeProvider(httpClient: mock)
+
+        let inputBytes = Data([0x89, 0x50, 0x4E, 0x47, 0x01, 0x02, 0x03])
+        let request = GenerationRequest(
+            prompt: Self.testPrompt,
+            size: .square,
+            count: 1,
+            seed: nil,
+            model: Self.testModel,
+            referenceImage: inputBytes,
+            referenceImageMimeType: "image/png"
+        )
+
+        _ = try await provider.generate(request)
+
+        let recorded = try XCTUnwrap(mock.receivedRequests.first)
+        let httpBody = try XCTUnwrap(recorded.httpBody)
+        let json = try XCTUnwrap(
+            try JSONSerialization.jsonObject(with: httpBody) as? [String: Any]
+        )
+        let contents = try XCTUnwrap(json["contents"] as? [[String: Any]])
+        let parts = try XCTUnwrap(contents.first?["parts"] as? [[String: Any]])
+        XCTAssertEqual(parts.count, 2, "Edit request should have text + image parts")
+
+        XCTAssertEqual(parts[0]["text"] as? String, Self.testPrompt)
+        XCTAssertNil(parts[0]["inlineData"], "Sum-type encoding must not emit null inlineData")
+
+        let inlineData = try XCTUnwrap(parts[1]["inlineData"] as? [String: Any])
+        XCTAssertNil(parts[1]["text"], "Sum-type encoding must not emit null text")
+        XCTAssertEqual(inlineData["mimeType"] as? String, "image/png")
+        let encoded = try XCTUnwrap(inlineData["data"] as? String)
+        XCTAssertEqual(Data(base64Encoded: encoded), inputBytes)
+    }
+
+    func testGeminiEditRequestIncludesMaskPart() async throws {
+        let body = try Self.makeResponseJSON(imageBytes: Self.sampleImageBytes)
+        let mock = MockHTTPClient(stubs: [.init(data: body, statusCode: 200)])
+        let provider = Self.makeProvider(httpClient: mock)
+
+        let inputBytes = Data([0xAA, 0xBB, 0xCC])
+        let maskBytes = Data([0x11, 0x22, 0x33, 0x44])
+        let request = GenerationRequest(
+            prompt: Self.testPrompt,
+            size: .square,
+            count: 1,
+            seed: nil,
+            model: Self.testModel,
+            referenceImage: inputBytes,
+            referenceImageMimeType: "image/png",
+            mask: maskBytes,
+            maskMimeType: "image/jpeg"
+        )
+
+        _ = try await provider.generate(request)
+
+        let recorded = try XCTUnwrap(mock.receivedRequests.first)
+        let httpBody = try XCTUnwrap(recorded.httpBody)
+        let json = try XCTUnwrap(
+            try JSONSerialization.jsonObject(with: httpBody) as? [String: Any]
+        )
+        let contents = try XCTUnwrap(json["contents"] as? [[String: Any]])
+        let parts = try XCTUnwrap(contents.first?["parts"] as? [[String: Any]])
+        XCTAssertEqual(parts.count, 3, "Edit request with mask should have text + image + mask parts")
+
+        let imagePart = try XCTUnwrap(parts[1]["inlineData"] as? [String: Any])
+        XCTAssertEqual(imagePart["mimeType"] as? String, "image/png")
+        XCTAssertEqual(Data(base64Encoded: imagePart["data"] as? String ?? ""), inputBytes)
+
+        let maskPart = try XCTUnwrap(parts[2]["inlineData"] as? [String: Any])
+        XCTAssertEqual(maskPart["mimeType"] as? String, "image/jpeg")
+        XCTAssertEqual(Data(base64Encoded: maskPart["data"] as? String ?? ""), maskBytes)
     }
 
     // MARK: - Response decoding
