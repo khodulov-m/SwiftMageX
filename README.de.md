@@ -88,6 +88,7 @@ Acht Unterbefehle, alle teilen sich dieselben globalen Flags:
 |---|---|
 | `--json` | Strukturierte JSON-Hülle auf stdout statt menschenlesbarem Text. |
 | `-v`, `--verbose` | Diagnose-Meldungen auf stderr. Enthält den API-Key **nicht**. |
+| `--cache-dir <pfad>` | Cached `generate`/`edit`-Antworten unter `<pfad>`, sodass identische Anfragen die bereits aufgezeichneten Provider-Bytes replayen statt die API zu rufen. Opt-in — siehe Cache-Abschnitt unten. |
 | `--version` | Gibt `0.1.0` aus und endet. |
 | `-h`, `--help` | Zeigt Hilfe für den Befehl. |
 
@@ -196,6 +197,39 @@ swiftmagex edit examples/canoe.png \
 Bearbeitete Ausgaben tragen dieselben `tEXt`/EXIF-Metadaten wie `generate` —
 der aufgezeichnete Prompt ist die Bearbeitungsanweisung, nicht der
 ursprüngliche Generierungs-Prompt.
+
+### Antwort-Cache
+
+`--cache-dir <pfad>` an `generate` oder `edit` weitergeben, um den
+Netzwerkaufruf kurzzuschließen, wenn eine identische Anfrage schon einmal
+beantwortet wurde. Der Cache ist content-addressed: der Schlüssel ist ein
+SHA-256 über Model, Prompt, Size, Count, Seed plus SHA-256 jeder
+Referenzbild- und Mask-Bytefolge. Bei einem Hit werden die Bytes von der
+Platte replayed und trotzdem eine frische Output-Datei mit aktuellen
+`tEXt`/EXIF-Metadaten (Timestamp, Tool-Version) geschrieben — nachgelagerte
+Pipelines verhalten sich identisch.
+
+```sh
+# Erster Aufruf trifft die API; zweiter replayed aus /tmp/sx-cache.
+swiftmagex generate "a red apple on white" --cache-dir /tmp/sx-cache
+swiftmagex generate "a red apple on white" --cache-dir /tmp/sx-cache --json
+# → "cached": true im JSON für jedes replayte Bild
+```
+
+Hinweise:
+
+- **Bewusst Opt-in.** Gemini honoriert `--seed` nicht, identische Eingaben
+  sind also *gedacht* zu variieren — ein Cache-Hit verwandelt diese
+  beabsichtigte Nicht-Determiniertheit lautlos in „jedes Mal dieselben
+  Bytes". Nur `--cache-dir` setzen, wenn das gewollt ist.
+- **Best-Effort.** Cache-I/O-Fehler (nicht beschreibbares Verzeichnis,
+  korrupter Eintrag) führen zu einem normalen Netzwerkaufruf statt zum
+  Abbruch des Kommandos.
+- **Keine Eviction.** Der Cache wächst, bis `rm -rf` auf das Verzeichnis
+  läuft.
+- Caching wirkt nur auf `generate` / `edit` (lokale Raster-Kommandos
+  rufen keinen Provider). Der MCP-Server stellt Caching in 0.1 nicht
+  bereit; das CLI-Flag ist heute der einzige Einstieg.
 
 ### `swiftmagex resize` — lokales Resize / Crop / Formatwechsel
 

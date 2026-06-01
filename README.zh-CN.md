@@ -81,6 +81,7 @@ export GEMINI_API_KEY="…"
 |---|---|
 | `--json` | 以结构化 JSON 写到 stdout,而非人类可读文本。 |
 | `-v`、`--verbose` | 把诊断信息写到 stderr。**不包含** API 密钥。 |
+| `--cache-dir <路径>` | 将 `generate`/`edit` 的响应缓存到 `<路径>`,相同输入会回放此前记录的提供方字节而不再调用 API。需显式开启 — 详见下文缓存小节。 |
 | `--version` | 打印 `0.1.0` 并退出。 |
 | `-h`、`--help` | 显示该命令的帮助。 |
 
@@ -185,6 +186,34 @@ swiftmagex edit examples/canoe.png \
 
 编辑后的输出携带与 `generate` 相同的 `tEXt`/EXIF 元数据 —— 记录的 prompt 是
 编辑指令本身,而非原始的生成 prompt。
+
+### 响应缓存
+
+给 `generate` 或 `edit` 加上 `--cache-dir <路径>`,当一个完全相同的请求
+已经被服务过时,就直接短路网络调用。缓存采用 content-addressed 方式:
+键是 model、prompt、size、count、seed,以及每个 reference 图像和 mask
+字节的 SHA-256 共同算出的 SHA-256。命中时从磁盘回放字节,并依然写入一份
+带有新的 `tEXt`/EXIF 元数据(时间戳、工具版本)的输出文件,下游流水线
+行为完全一致。
+
+```sh
+# 第一次调用打 API;第二次从 /tmp/sx-cache 回放。
+swiftmagex generate "a red apple on white" --cache-dir /tmp/sx-cache
+swiftmagex generate "a red apple on white" --cache-dir /tmp/sx-cache --json
+# → 每个被回放的图像在 JSON 输出中都带 "cached": true
+```
+
+注意事项:
+
+- **刻意 opt-in。** Gemini 并不遵从 `--seed`,所以相同输入*本来就该*在
+  不同调用之间产生差异 —— 一旦命中缓存,这种刻意的非确定性就会被悄无
+  声息地变成"每次都是同样的字节"。只在你确实想要这种行为时才传
+  `--cache-dir`。
+- **尽力而为。** 缓存 I/O 失败(目录不可写、条目损坏)会回退到一次
+  正常的网络调用,而不会中断命令。
+- **无淘汰策略。** 缓存会一直增长,直到你 `rm -rf` 该目录。
+- 缓存只作用于 `generate` / `edit`(本地光栅命令不调用任何提供方)。
+  MCP 服务端在 0.1 中不暴露缓存,CLI 标志是今天唯一的入口。
 
 ### `swiftmagex resize` — 本地缩放 / 裁剪 / 格式转换
 

@@ -90,6 +90,7 @@ Otto sottocomandi, tutti con gli stessi flag globali:
 |---|---|
 | `--json` | Emette un envelope JSON strutturato su stdout al posto del testo umano. |
 | `-v`, `--verbose` | Stampa diagnostica su stderr. **Non** include la chiave API. |
+| `--cache-dir <percorso>` | Memorizza le risposte di `generate`/`edit` in `<percorso>`, così richieste identiche riproducono i byte del provider già registrati invece di chiamare l'API. Opt-in — vedi la sezione cache più sotto. |
 | `--version` | Stampa `0.1.0` ed esce. |
 | `-h`, `--help` | Mostra l'aiuto del comando. |
 
@@ -200,6 +201,40 @@ swiftmagex edit examples/canoe.png \
 Gli output modificati portano gli stessi metadati `tEXt`/EXIF di `generate` —
 il prompt registrato è l'istruzione di modifica, non quello originale di
 generazione.
+
+### Cache delle risposte
+
+Passa `--cache-dir <percorso>` a `generate` o `edit` per cortocircuitare
+la chiamata di rete quando una richiesta identica è già stata servita.
+La cache è content-addressed: la chiave è uno SHA-256 su model, prompt,
+size, count, seed più lo SHA-256 dei byte di ogni immagine di referenza
+e della mask. In caso di hit i byte sono riprodotti dal disco e viene
+comunque scritto un file di output con metadati `tEXt`/EXIF aggiornati
+(timestamp, versione strumento), così le pipeline a valle si comportano
+allo stesso modo.
+
+```sh
+# Prima chiamata: API; seconda: replay da /tmp/sx-cache.
+swiftmagex generate "a red apple on white" --cache-dir /tmp/sx-cache
+swiftmagex generate "a red apple on white" --cache-dir /tmp/sx-cache --json
+# → "cached": true nell'output JSON per ogni immagine riprodotta
+```
+
+Note:
+
+- **Opt-in per scelta.** Gemini non rispetta `--seed`, quindi input
+  identici sono *pensati* per variare tra una chiamata e l'altra — un
+  cache hit converte silenziosamente quel non-determinismo intenzionale
+  in "stessi byte ogni volta". Passa `--cache-dir` solo se è quello che
+  vuoi.
+- **Best-effort.** I fallimenti di I/O della cache (directory non
+  scrivibile, entry corrotta) degradano a una normale chiamata di rete
+  invece di abortire il comando.
+- **Niente eviction.** La cache cresce finché non fai `rm -rf` della
+  directory.
+- La cache si applica solo a `generate` / `edit` (i comandi raster
+  locali non chiamano alcun provider). Il server MCP non espone la cache
+  in 0.1; il flag CLI è oggi l'unico punto d'ingresso.
 
 ### `swiftmagex resize` — resize / crop / conversione di formato locale
 

@@ -86,6 +86,7 @@ export GEMINI_API_KEY="…"
 |---|---|
 | `--json` | 사람이 읽기 좋은 텍스트 대신 구조화된 JSON을 stdout으로 출력. |
 | `-v`, `--verbose` | 진단 메시지를 stderr로 출력. API 키는 **포함되지 않습니다**. |
+| `--cache-dir <경로>` | `generate`/`edit` 응답을 `<경로>` 아래에 캐싱해, 동일한 입력은 API를 호출하는 대신 이전에 기록한 프로바이더 바이트를 그대로 재생합니다. 명시적 opt-in — 아래 캐시 절 참고. |
 | `--version` | `0.1.0`을 출력하고 종료. |
 | `-h`, `--help` | 해당 명령의 도움말을 표시. |
 
@@ -192,6 +193,36 @@ swiftmagex edit examples/canoe.png \
 
 편집된 출력에는 `generate`와 동일한 `tEXt`/EXIF 메타데이터가 담깁니다 ——
 기록된 prompt는 원래의 생성 프롬프트가 아니라 편집 지시입니다.
+
+### 응답 캐시
+
+`generate`나 `edit`에 `--cache-dir <경로>`를 넘기면, 같은 요청이 이미
+서비스된 경우 네트워크 호출을 우회합니다. 캐시는 content-addressed
+방식입니다: 키는 model, prompt, size, count, seed에 더해 각 reference
+이미지와 mask 바이트의 SHA-256까지 합쳐 다시 SHA-256으로 산출합니다.
+히트 시에는 디스크에서 바이트를 재생하고, 그래도 출력 파일은 새로운
+`tEXt`/EXIF 메타데이터(타임스탬프, 도구 버전)와 함께 새로 작성되므로
+하위 파이프라인은 동일하게 동작합니다.
+
+```sh
+# 첫 호출은 API, 두 번째는 /tmp/sx-cache에서 재생.
+swiftmagex generate "a red apple on white" --cache-dir /tmp/sx-cache
+swiftmagex generate "a red apple on white" --cache-dir /tmp/sx-cache --json
+# → 재생된 이미지마다 JSON 출력에 "cached": true
+```
+
+유의 사항:
+
+- **의도적인 opt-in입니다.** Gemini는 `--seed`를 존중하지 않으므로 같은
+  입력이 호출마다 *달라지도록* 설계되어 있습니다 — 캐시 히트는 그
+  의도된 비결정성을 조용히 "매번 같은 바이트"로 바꿔 버립니다. 그
+  동작이 정말 원하는 것일 때만 `--cache-dir`를 넘기세요.
+- **Best-effort.** 캐시 I/O 실패(쓰기 권한 없는 디렉터리, 손상된
+  엔트리)는 명령을 중단하지 않고 평소처럼 네트워크 호출로 폴백합니다.
+- **Eviction 없음.** 캐시는 디렉터리를 `rm -rf`할 때까지 계속 커집니다.
+- 캐시는 `generate` / `edit`에만 적용됩니다(로컬 래스터 명령은
+  프로바이더를 호출하지 않습니다). MCP 서버는 0.1에서 캐시를 노출하지
+  않으며, CLI 플래그가 오늘의 유일한 진입점입니다.
 
 ### `swiftmagex resize` — 로컬 리사이즈 / 크롭 / 포맷 변환
 

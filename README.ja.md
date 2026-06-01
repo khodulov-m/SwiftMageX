@@ -87,6 +87,7 @@ export GEMINI_API_KEY="…"
 |---|---|
 | `--json` | 構造化 JSON エンベロープを stdout に出力します(人間向けテキストの代わり)。 |
 | `-v`、`--verbose` | 診断メッセージを stderr に出します。API キーは**含まれません**。 |
+| `--cache-dir <パス>` | `generate`/`edit` のレスポンスを `<パス>` にキャッシュし、同一入力では API を呼ばずに記録済みのプロバイダバイトを再生します。オプトイン — 下のキャッシュ節を参照。 |
 | `--version` | `0.1.0` を出力して終了します。 |
 | `-h`、`--help` | コマンドのヘルプを表示します。 |
 
@@ -194,6 +195,38 @@ swiftmagex edit examples/canoe.png \
 
 編集後の出力にも `generate` と同じ `tEXt`/EXIF メタデータが入ります ——
 記録される prompt は編集指示であり、元の生成プロンプトではありません。
+
+### レスポンスキャッシュ
+
+`generate` または `edit` に `--cache-dir <パス>` を渡すと、同じリクエストが
+すでに処理されている場合にネットワーク呼び出しをショートカットできます。
+キャッシュは content-addressed で、キーは model・prompt・size・count・seed
+と、各 reference 画像・mask のバイト列の SHA-256 を合わせた SHA-256 です。
+ヒット時にはディスクからバイトを再生し、それでも出力ファイルは新しい
+`tEXt`/EXIF メタデータ(タイムスタンプ、ツールバージョン)とともに書き
+出されるので、下流のパイプラインの挙動は変わりません。
+
+```sh
+# 1 回目は API を叩き、2 回目は /tmp/sx-cache から再生されます。
+swiftmagex generate "a red apple on white" --cache-dir /tmp/sx-cache
+swiftmagex generate "a red apple on white" --cache-dir /tmp/sx-cache --json
+# → 再生された画像ごとに JSON 出力で "cached": true
+```
+
+注意点:
+
+- **あえて opt-in。** Gemini は `--seed` を尊重しないので、同じ入力でも
+  呼び出しごとに*変化することが意図されています*。キャッシュヒットは
+  その意図的な非決定性を「毎回同じバイト」に黙って置き換えてしまいます。
+  それが望む挙動のときだけ `--cache-dir` を渡してください。
+- **ベストエフォート。** キャッシュの I/O 失敗(書き込めないディレクトリ、
+  破損エントリ)はコマンドを中断せず、通常のネットワーク呼び出しに
+  フォールバックします。
+- **eviction なし。** キャッシュはディレクトリを `rm -rf` するまで成長
+  し続けます。
+- キャッシュが効くのは `generate` / `edit` のみ(ローカルラスター系
+  コマンドはプロバイダを呼びません)。MCP サーバーは 0.1 ではキャッシュ
+  を公開せず、CLI フラグが唯一の入口です。
 
 ### `swiftmagex resize` — ローカルのリサイズ / クロップ / 変換
 
