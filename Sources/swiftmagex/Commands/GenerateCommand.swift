@@ -60,19 +60,18 @@ struct GenerateCommand: AsyncParsableCommand {
         )
         let outputTarget = output.isEmpty ? nil : output
 
+        let cache = CacheOption.makeCache(from: globals.cacheDir)
+
         do {
             let written = try await SwiftMageXOrchestrator.generate(
                 request: request,
-                output: outputTarget
+                output: outputTarget,
+                cache: cache
             )
-            let outputs = written.map { image in
-                JSONResultEnvelope.Output(
-                    path: image.path.path,
-                    format: image.format,
-                    width: image.width,
-                    height: image.height
-                )
+            for image in written where image.wasCached {
+                printer.diagnostic("cache hit: \(image.path.path)")
             }
+            let outputs = CacheOption.makeOutputs(from: written, cacheConfigured: cache != nil)
             printer.printSuccess(
                 command: "generate",
                 outputs: outputs,

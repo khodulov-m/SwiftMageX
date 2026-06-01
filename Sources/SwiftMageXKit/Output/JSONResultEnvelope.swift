@@ -22,12 +22,25 @@ public struct JSONResultEnvelope: Encodable, Equatable, Sendable {
         public let format: String
         public let width: Int?
         public let height: Int?
+        /// True when the bytes for this image were served from a local
+        /// response cache rather than a fresh provider call. Omitted from
+        /// the JSON when nil — i.e. when no cache was configured for the
+        /// invocation — so commands that don't use the cache (or local-only
+        /// ops) don't grow a meaningless `"cached": false` field.
+        public let cached: Bool?
 
-        public init(path: String, format: ImageFormat, width: Int?, height: Int?) {
+        public init(
+            path: String,
+            format: ImageFormat,
+            width: Int?,
+            height: Int?,
+            cached: Bool? = nil
+        ) {
             self.path = path
             self.format = format.rawValue
             self.width = width
             self.height = height
+            self.cached = cached
         }
 
         public func encode(to encoder: Encoder) throws {
@@ -36,10 +49,11 @@ public struct JSONResultEnvelope: Encodable, Equatable, Sendable {
             try c.encode(format, forKey: .format)
             try c.encodeIfPresent(width, forKey: .width)
             try c.encodeIfPresent(height, forKey: .height)
+            try c.encodeIfPresent(cached, forKey: .cached)
         }
 
         private enum CodingKeys: String, CodingKey {
-            case path, format, width, height
+            case path, format, width, height, cached
         }
     }
 
