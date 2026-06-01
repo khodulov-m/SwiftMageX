@@ -12,12 +12,24 @@ public struct WrittenImage: Sendable, Equatable {
     public let format: ImageFormat
     public let width: Int
     public let height: Int
+    /// True when this image was served from a ``ResponseCache`` hit rather
+    /// than a fresh provider call. Always `false` for local-only ops
+    /// (`resize`, `text`, `composite`, `appstore`, `remove-bg`, `crop`) and
+    /// for `generate` / `edit` runs without a cache configured.
+    public let wasCached: Bool
 
-    public init(path: URL, format: ImageFormat, width: Int, height: Int) {
+    public init(
+        path: URL,
+        format: ImageFormat,
+        width: Int,
+        height: Int,
+        wasCached: Bool = false
+    ) {
         self.path = path
         self.format = format
         self.width = width
         self.height = height
+        self.wasCached = wasCached
     }
 }
 
@@ -38,6 +50,7 @@ public enum SwiftMageXOrchestrator {
     public static func generate(
         request: GenerationRequest,
         output: String?,
+        cache: (any ResponseCache)? = nil,
         environment: [String: String] = ProcessInfo.processInfo.environment,
         engine: any RasterEngine = CoreImageRasterEngine(),
         timestamp: Date = Date(),
@@ -53,6 +66,7 @@ public enum SwiftMageXOrchestrator {
             request: request,
             output: output,
             provider: provider,
+            cache: cache,
             engine: engine,
             timestamp: timestamp,
             currentDirectoryPath: currentDirectoryPath
@@ -66,30 +80,29 @@ public enum SwiftMageXOrchestrator {
         request: GenerationRequest,
         output: String?,
         provider: any ImageProvider,
+        cache: (any ResponseCache)? = nil,
         engine: any RasterEngine = CoreImageRasterEngine(),
         timestamp: Date = Date(),
         currentDirectoryPath: String = FileManager.default.currentDirectoryPath
     ) async throws -> [WrittenImage] {
-        let images = try await provider.generate(request)
-        guard !images.isEmpty else {
-            throw SwiftMageXError.provider("provider returned no images")
-        }
+        let resolved = try await fetchOrCache(request: request, provider: provider, cache: cache)
 
         let urls = try OutputPath.resolve(
             target: output,
-            count: images.count,
+            count: resolved.images.count,
             format: .png,
             timestamp: timestamp,
             currentDirectoryPath: currentDirectoryPath
         )
 
-        return try zip(images, urls).map { (image, url) in
+        return try zip(resolved.images, urls).map { (image, url) in
             try writeOne(
                 image: image,
                 to: url,
                 request: request,
                 engine: engine,
-                timestamp: timestamp
+                timestamp: timestamp,
+                wasCached: resolved.wasCached
             )
         }
     }
@@ -114,6 +127,7 @@ public enum SwiftMageXOrchestrator {
         mask: String?,
         request: GenerationRequest,
         output: String?,
+        cache: (any ResponseCache)? = nil,
         environment: [String: String] = ProcessInfo.processInfo.environment,
         engine: any RasterEngine = CoreImageRasterEngine(),
         timestamp: Date = Date(),
@@ -132,6 +146,7 @@ public enum SwiftMageXOrchestrator {
             request: request,
             output: output,
             provider: provider,
+            cache: cache,
             engine: engine,
             timestamp: timestamp,
             currentDirectoryPath: currentDirectoryPath
@@ -147,6 +162,7 @@ public enum SwiftMageXOrchestrator {
         request: GenerationRequest,
         output: String?,
         provider: any ImageProvider,
+        cache: (any ResponseCache)? = nil,
         engine: any RasterEngine = CoreImageRasterEngine(),
         timestamp: Date = Date(),
         currentDirectoryPath: String = FileManager.default.currentDirectoryPath
@@ -193,26 +209,24 @@ public enum SwiftMageXOrchestrator {
         augmented.mask = maskData
         augmented.maskMimeType = maskMime
 
-        let images = try await provider.generate(augmented)
-        guard !images.isEmpty else {
-            throw SwiftMageXError.provider("provider returned no images")
-        }
+        let resolved = try await fetchOrCache(request: augmented, provider: provider, cache: cache)
 
         let urls = try OutputPath.resolve(
             target: output,
-            count: images.count,
+            count: resolved.images.count,
             format: .png,
             timestamp: timestamp,
             currentDirectoryPath: currentDirectoryPath
         )
 
-        return try zip(images, urls).map { image, url in
+        return try zip(resolved.images, urls).map { image, url in
             try writeOne(
                 image: image,
                 to: url,
                 request: augmented,
                 engine: engine,
-                timestamp: timestamp
+                timestamp: timestamp,
+                wasCached: resolved.wasCached
             )
         }
     }
@@ -629,7 +643,8 @@ public enum SwiftMageXOrchestrator {
         to url: URL,
         request: GenerationRequest,
         engine: any RasterEngine,
-        timestamp: Date
+        timestamp: Date,
+        wasCached: Bool = false
     ) throws -> WrittenImage {
         let raster = try decodeProviderImage(image)
         // The seed is recorded as user intent even when the provider did not
@@ -653,8 +668,49 @@ public enum SwiftMageXOrchestrator {
             path: url,
             format: .png,
             width: raster.width,
-            height: raster.height
+            height: raster.height,
+            wasCached: wasCached
         )
+    }
+
+    /// Returns provider images for `request`, served from `cache` on hit and
+    /// recorded into `cache` on miss. Cache I/O is best-effort: any read
+    /// failure is treated as a miss; any write failure is swallowed so a
+    /// broken cache never aborts a real generation. The `wasCached` flag
+    /// flows back to ``WrittenImage`` so frontends can surface it (JSON
+    /// `cached: true`, `--verbose` diagnostics, etc.).
+    private static func fetchOrCache(
+        request: GenerationRequest,
+        provider: any ImageProvider,
+        cache: (any ResponseCache)?
+    ) async throws -> (images: [GeneratedImage], wasCached: Bool) {
+        if let cache, let hit = try? cache.lookup(CacheKey.compute(from: request)) {
+            let images = hit.images.map { cached in
+                GeneratedImage(
+                    data: cached.data,
+                    format: cached.format,
+                    prompt: request.prompt,
+                    model: request.model,
+                    seed: request.seed
+                )
+            }
+            guard !images.isEmpty else {
+                throw SwiftMageXError.provider("cache hit contained no images")
+            }
+            return (images, true)
+        }
+
+        let images = try await provider.generate(request)
+        guard !images.isEmpty else {
+            throw SwiftMageXError.provider("provider returned no images")
+        }
+        if let cache {
+            let response = CachedResponse(images: images.map {
+                CachedImage(data: $0.data, format: $0.format)
+            })
+            try? cache.store(CacheKey.compute(from: request), response: response)
+        }
+        return (images, false)
     }
 
     private static func decodeProviderImage(_ image: GeneratedImage) throws -> RasterImage {

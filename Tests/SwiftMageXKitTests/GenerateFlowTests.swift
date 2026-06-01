@@ -116,6 +116,81 @@ final class GenerateFlowTests: XCTestCase {
         }
     }
 
+    // MARK: - Cache
+
+    func testGenerateServesSecondCallFromCacheWithoutInvokingProvider() async throws {
+        let outputDir = try Self.makeTempDir()
+        let cacheDir = try Self.makeTempDir()
+        defer {
+            try? FileManager.default.removeItem(at: outputDir)
+            try? FileManager.default.removeItem(at: cacheDir)
+        }
+
+        let pngBytes = try Self.makeSolidPNGData(width: 8, height: 8)
+        let request = Self.makeRequest(prompt: "a cached prompt", seed: 42)
+        let provider = MockImageProvider(images: [
+            Self.makeImage(data: pngBytes, request: request)
+        ])
+        let cache = FileSystemResponseCache(directory: cacheDir)
+
+        // First call: cache miss → provider invoked once → bytes persisted.
+        let first = try await SwiftMageXOrchestrator.generate(
+            request: request,
+            output: outputDir.path,
+            provider: provider,
+            cache: cache
+        )
+        XCTAssertEqual(provider.receivedRequests.count, 1)
+        XCTAssertEqual(first.first?.wasCached, false)
+
+        // Second call: identical request → cache hit → provider untouched.
+        let second = try await SwiftMageXOrchestrator.generate(
+            request: request,
+            output: outputDir.path,
+            provider: provider,
+            cache: cache
+        )
+        XCTAssertEqual(
+            provider.receivedRequests.count,
+            1,
+            "Provider must not be invoked on cache hit"
+        )
+        XCTAssertEqual(second.first?.wasCached, true)
+
+        // Cache hits still produce a real, freshly-written file with
+        // embedded metadata — downstream pipeline behaviour stays identical.
+        let image = try XCTUnwrap(second.first)
+        XCTAssertTrue(FileManager.default.fileExists(atPath: image.path.path))
+        let payload = try Self.readEmbeddedMetadata(at: image.path, format: .png)
+        XCTAssertEqual(payload["prompt"] as? String, "a cached prompt")
+        XCTAssertEqual(payload["seed"] as? String, "42")
+    }
+
+    func testGenerateCacheMissWhenAnyMaterialFieldDiffers() async throws {
+        let outputDir = try Self.makeTempDir()
+        let cacheDir = try Self.makeTempDir()
+        defer {
+            try? FileManager.default.removeItem(at: outputDir)
+            try? FileManager.default.removeItem(at: cacheDir)
+        }
+
+        let pngBytes = try Self.makeSolidPNGData(width: 8, height: 8)
+        let first = Self.makeRequest(prompt: "first")
+        let second = Self.makeRequest(prompt: "second")
+        let provider = MockImageProvider(images: [
+            Self.makeImage(data: pngBytes, request: first)
+        ])
+        let cache = FileSystemResponseCache(directory: cacheDir)
+
+        _ = try await SwiftMageXOrchestrator.generate(
+            request: first, output: outputDir.path, provider: provider, cache: cache
+        )
+        _ = try await SwiftMageXOrchestrator.generate(
+            request: second, output: outputDir.path, provider: provider, cache: cache
+        )
+        XCTAssertEqual(provider.receivedRequests.count, 2)
+    }
+
     func testGenerateFailsWhenProviderReturnsNoImages() async {
         let provider = MockImageProvider(images: [])
         do {

@@ -192,6 +192,84 @@ final class EditFlowTests: XCTestCase {
         XCTAssertEqual(recorded.maskMimeType, "image/png")
     }
 
+    // MARK: - Cache
+
+    func testEditServesSecondCallFromCacheWithoutInvokingProvider() async throws {
+        let dir = try Self.makeTempDir()
+        let cacheDir = try Self.makeTempDir()
+        defer {
+            try? FileManager.default.removeItem(at: dir)
+            try? FileManager.default.removeItem(at: cacheDir)
+        }
+
+        let inputURL = try Self.writePNG(in: dir, name: "src.png")
+        let pngBytes = try Self.makeSolidPNGData(width: 8, height: 8)
+        let request = Self.makeRequest(prompt: "make it green")
+        let provider = MockImageProvider(images: [
+            Self.makeImage(data: pngBytes, request: request)
+        ])
+        let cache = FileSystemResponseCache(directory: cacheDir)
+
+        let first = try await SwiftMageXOrchestrator.edit(
+            input: inputURL.path,
+            mask: nil,
+            request: request,
+            output: dir.path,
+            provider: provider,
+            cache: cache
+        )
+        XCTAssertEqual(provider.receivedRequests.count, 1)
+        XCTAssertEqual(first.first?.wasCached, false)
+
+        let second = try await SwiftMageXOrchestrator.edit(
+            input: inputURL.path,
+            mask: nil,
+            request: request,
+            output: dir.path,
+            provider: provider,
+            cache: cache
+        )
+        XCTAssertEqual(provider.receivedRequests.count, 1, "Provider must not run on cache hit")
+        XCTAssertEqual(second.first?.wasCached, true)
+    }
+
+    func testEditCacheMissWhenInputImageBytesChange() async throws {
+        let dir = try Self.makeTempDir()
+        let cacheDir = try Self.makeTempDir()
+        defer {
+            try? FileManager.default.removeItem(at: dir)
+            try? FileManager.default.removeItem(at: cacheDir)
+        }
+
+        // Two different PNGs with the same filename slot — bytes differ, so
+        // the cache key must differ even when prompt + model + size match.
+        let firstInput = dir.appendingPathComponent("src1.png")
+        try (try Self.makeSolidPNGData(width: 4, height: 4)).write(to: firstInput)
+        let secondInput = dir.appendingPathComponent("src2.png")
+        try (try Self.makeSolidPNGData(width: 6, height: 6)).write(to: secondInput)
+
+        let pngBytes = try Self.makeSolidPNGData(width: 8, height: 8)
+        let request = Self.makeRequest()
+        let provider = MockImageProvider(images: [
+            Self.makeImage(data: pngBytes, request: request)
+        ])
+        let cache = FileSystemResponseCache(directory: cacheDir)
+
+        _ = try await SwiftMageXOrchestrator.edit(
+            input: firstInput.path, mask: nil, request: request,
+            output: dir.path, provider: provider, cache: cache
+        )
+        _ = try await SwiftMageXOrchestrator.edit(
+            input: secondInput.path, mask: nil, request: request,
+            output: dir.path, provider: provider, cache: cache
+        )
+        XCTAssertEqual(
+            provider.receivedRequests.count,
+            2,
+            "Different input bytes must hash to a different cache key"
+        )
+    }
+
     // MARK: - Validation
 
     func testEditRejectsImagenModel() async throws {

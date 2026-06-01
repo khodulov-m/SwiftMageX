@@ -1,5 +1,43 @@
 # SwiftMageX
 
+## Post-0.1.0 — Local response cache for `generate` / `edit`
+
+A content-addressed cache that short-circuits the Gemini/Imagen network call
+when the same request comes in twice. Opt-in via a single CLI flag; the rest
+of the pipeline (output paths, embedded metadata, JSON envelope) is
+unchanged on a hit:
+
+- New `--cache-dir <path>` global flag wired into `generate` and `edit`. When
+  set, identical requests replay previously-recorded provider bytes from the
+  given directory instead of calling the API; the output file is still
+  written with fresh `tEXt`/EXIF metadata (timestamp, tool version) so
+  downstream commands see no behavioural difference.
+- Cache key is SHA-256 over a canonical JSON of `(model, prompt, size,
+  count, seed)` plus the SHA-256 of every `referenceImages[]` byte payload
+  and the mask bytes — different reference images / different mask hashes
+  to a different key even when the prompt is identical.
+- On-disk layout is one subdirectory per key: `meta.json` (count,
+  createdAt, toolVersion, per-image format) alongside raw provider bytes
+  (`0.png`, `1.png`, …). Writes stage into a `<key>.tmp.<uuid>` directory
+  and rename into place atomically; an existing entry for the same key is
+  left alone because content addressing guarantees its bytes satisfy any
+  caller of the same key.
+- `JSONResultEnvelope.Output` gains an optional `"cached": true|false`
+  field, emitted only when `--cache-dir` was set. Plain mode is unchanged;
+  `--verbose` prints `cache hit: <path>` per replayed image.
+- `WrittenImage.wasCached` is the kit-level surface; `SwiftMageXOrchestrator`
+  exposes a new `cache: ResponseCache?` parameter on `generate` / `edit`
+  (default `nil`, so the MCP frontend and other callers stay source-compatible).
+- Cache I/O is **best-effort** — a missing or corrupt entry, an unwritable
+  directory, or a parse failure all degrade to a normal network call rather
+  than aborting the command (verified by `ResponseCacheTests` + new
+  `GenerateFlowTests` / `EditFlowTests` cache cases).
+- Behavioural caveat documented in `--help` and the README: Gemini does not
+  honor `--seed`, so identical requests are *meant* to vary across calls.
+  A cache hit turns that intentional non-determinism into "same bytes every
+  time" — which is why the cache is strictly opt-in. No new package
+  dependency (SHA-256 comes from `CryptoKit`, a system framework).
+
 ## Post-0.1.0 — Image-to-image / multi-image edit via Gemini
 
 The first slice of the 0.2 `edit` work
