@@ -85,6 +85,7 @@ Eight subcommands, all sharing the same global flags:
 |---|---|
 | `--json` | Emit a structured JSON envelope to stdout instead of human-readable text. |
 | `-v`, `--verbose` | Print diagnostic messages to stderr. Does **not** include the API key. |
+| `--cache-dir <path>` | Cache `generate`/`edit` responses under `<path>` so identical inputs replay previously-recorded provider bytes instead of calling the API. Opt-in — see [Response caching](#response-caching). |
 | `--version` | Print `0.1.0` and exit. |
 | `-h`, `--help` | Show help for the command. |
 
@@ -191,6 +192,36 @@ swiftmagex edit examples/canoe.png \
 
 Edited outputs carry the same `tEXt`/EXIF metadata as `generate` — the prompt
 recorded is the edit instruction, not the original generation prompt.
+
+### Response caching
+
+Pass `--cache-dir <path>` to `generate` or `edit` to short-circuit the network
+call when an identical request has already been served. The cache is
+content-addressed: the key is a SHA-256 over model, prompt, size, count,
+seed, plus the SHA-256 of every reference image and mask byte payload. On a
+hit, the bytes are replayed from disk and a fresh output file is still
+written with up-to-date `tEXt`/EXIF metadata (timestamp, tool version), so
+downstream pipelines behave identically.
+
+```sh
+# First call hits the API; second call replays from /tmp/sx-cache.
+swiftmagex generate "a red apple on white" --cache-dir /tmp/sx-cache
+swiftmagex generate "a red apple on white" --cache-dir /tmp/sx-cache --json
+# → "cached": true in the JSON output for every replayed image
+```
+
+Caveats:
+
+- **Opt-in by design.** Gemini does not honor `--seed`, so identical inputs
+  are meant to vary across calls — a cache hit silently turns that
+  intentional non-determinism into "same bytes every time." Only pass
+  `--cache-dir` when you want that.
+- **Best-effort.** Cache I/O failures (unwritable directory, corrupt entry)
+  degrade to a normal network call rather than aborting the command.
+- **No eviction.** The cache grows until you `rm -rf` the directory.
+- Cache surface lives on `generate` / `edit` only (the local raster commands
+  don't hit a provider). The MCP server doesn't expose caching in 0.1; the
+  CLI flag is the only entry point today.
 
 ### `swiftmagex resize` — local resize / crop / format conversion
 
