@@ -64,6 +64,14 @@ public struct ImagenProvider: ImageProvider {
                 "Imagen models do not support image-to-image edit; use a gemini-* model"
             )
         }
+        // Ultra variants accept only a single sample per `:predict` call. Reject
+        // a multi-sample request up front (exit code 2) instead of paying a
+        // network round-trip for a server-side HTTP 400.
+        guard !(Self.isUltra(request.model) && request.count > 1) else {
+            throw SwiftMageXError.invalidInput(
+                "\(request.model) supports only a single image per request (got count \(request.count)); use --count 1"
+            )
+        }
 
         let urlRequest = try buildURLRequest(for: request)
         let (data, response) = try await sendWithRetry(urlRequest)
@@ -173,6 +181,14 @@ public struct ImagenProvider: ImageProvider {
         default:
             throw SwiftMageXError.provider("Unsupported Imagen image MIME type: \(mime)")
         }
+    }
+
+    /// Whether `model` is an Imagen *ultra* variant, which the API caps at a
+    /// single sample per `:predict` call. Matched by substring so a future
+    /// `imagen-*-ultra-*` build is covered without a catalog change, mirroring
+    /// the prefix routing in ``ModelCatalog``.
+    private static func isUltra(_ model: String) -> Bool {
+        model.lowercased().contains("ultra")
     }
 
     private static func aspectRatio(for size: ImageSize) -> String {

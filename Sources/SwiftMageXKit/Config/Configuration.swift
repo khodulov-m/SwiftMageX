@@ -36,19 +36,35 @@ public enum Configuration {
         return nil
     }
 
-    /// Resolves the default output directory.
+    /// Resolves the effective `--output` target for the generation commands
+    /// (`generate` / `edit` / `appstore`) per spec §10 / §12.
     ///
-    /// - Returns: The URL pointed to by ``EnvironmentKey/outputDirectory``
-    ///   if it is set, otherwise the current working directory.
-    public static func resolvedOutputDirectory(
-        in environment: [String: String] = ProcessInfo.processInfo.environment,
-        currentDirectoryPath: String = FileManager.default.currentDirectoryPath
-    ) -> URL {
-        if let raw = environment[EnvironmentKey.outputDirectory],
-           !raw.trimmingCharacters(in: .whitespaces).isEmpty {
-            return URL(fileURLWithPath: raw, isDirectory: true)
+    /// Precedence: an explicit `--output` always wins; otherwise the
+    /// ``EnvironmentKey/outputDirectory`` (`SWIFTMAGEX_OUTPUT_DIR`) is used
+    /// when set; otherwise `nil`, letting the caller fall back to the current
+    /// working directory through ``OutputPath``.
+    ///
+    /// A directory coming from the environment is returned with a trailing
+    /// slash so ``OutputPath`` always reads it as a directory — without it, an
+    /// extension-less, slash-less path that doesn't yet exist would be
+    /// mistaken for a filename.
+    ///
+    /// - Parameters:
+    ///   - explicit: The user-supplied `--output` value, or `nil` when the
+    ///     flag was omitted.
+    ///   - environment: The environment to inspect. Injectable for tests.
+    public static func resolvedOutputTarget(
+        explicit: String?,
+        in environment: [String: String] = ProcessInfo.processInfo.environment
+    ) -> String? {
+        if let explicit, !explicit.trimmingCharacters(in: .whitespaces).isEmpty {
+            return explicit
         }
-        return URL(fileURLWithPath: currentDirectoryPath, isDirectory: true)
+        guard let raw = environment[EnvironmentKey.outputDirectory],
+              !raw.trimmingCharacters(in: .whitespaces).isEmpty else {
+            return nil
+        }
+        return raw.hasSuffix("/") ? raw : raw + "/"
     }
 
     /// The semantic version of the tool, embedded in output metadata.

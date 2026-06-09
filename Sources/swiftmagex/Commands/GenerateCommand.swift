@@ -14,8 +14,8 @@ struct GenerateCommand: AsyncParsableCommand {
     @Argument(help: "Text prompt describing the image to generate.")
     var prompt: String
 
-    @Option(name: [.customShort("o"), .long], help: "Destination file or directory. Defaults to the current directory.")
-    var output: String = "./"
+    @Option(name: [.customShort("o"), .long], help: "Destination file or directory. Defaults to $SWIFTMAGEX_OUTPUT_DIR or the current directory.")
+    var output: String?
 
     @Option(
         name: [.customShort("s"), .long],
@@ -58,7 +58,7 @@ struct GenerateCommand: AsyncParsableCommand {
             seed: seed,
             model: model
         )
-        let outputTarget = output.isEmpty ? nil : output
+        let outputTarget = Configuration.resolvedOutputTarget(explicit: output)
 
         let cache = CacheOption.makeCache(from: globals.cacheDir)
 

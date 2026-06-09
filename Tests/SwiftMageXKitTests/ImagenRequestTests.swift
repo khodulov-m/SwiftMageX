@@ -210,4 +210,35 @@ final class ImagenRequestTests: XCTestCase {
 
         XCTAssertEqual(mock.receivedRequests.count, 0)
     }
+
+    func testImagenUltraRejectsCountAboveOneWithoutNetworkCall() async throws {
+        let mock = MockHTTPClient()
+        let provider = Self.makeProvider(httpClient: mock)
+
+        do {
+            _ = try await provider.generate(
+                Self.makeRequest(count: 2, model: "imagen-4.0-ultra-generate-001")
+            )
+            XCTFail("Expected ultra count > 1 to throw .invalidInput")
+        } catch let error as SwiftMageXError {
+            guard case .invalidInput = error else {
+                return XCTFail("Expected .invalidInput, got \(error)")
+            }
+        }
+
+        XCTAssertEqual(mock.receivedRequests.count, 0, "ultra cap should be rejected before any network call")
+    }
+
+    func testImagenUltraAllowsSingleSample() async throws {
+        let body = try Self.makeResponseJSON(imageBytes: Self.sampleImageBytes)
+        let mock = MockHTTPClient(stubs: [.init(data: body, statusCode: 200)])
+        let provider = Self.makeProvider(httpClient: mock)
+
+        let images = try await provider.generate(
+            Self.makeRequest(count: 1, model: "imagen-4.0-ultra-generate-001")
+        )
+
+        XCTAssertEqual(images.count, 1)
+        XCTAssertEqual(mock.receivedRequests.count, 1, "count == 1 should reach the provider")
+    }
 }

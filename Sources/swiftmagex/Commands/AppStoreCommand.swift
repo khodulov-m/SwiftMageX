@@ -110,8 +110,8 @@ struct AppStoreCommand: AsyncParsableCommand {
     @Option(name: .customLong("stroke-width"), help: "Caption stroke width in points.")
     var strokeWidth: Double = 0.0
 
-    @Option(name: [.customShort("o"), .long], help: "Output directory. Defaults to the current directory.")
-    var output: String = "./"
+    @Option(name: [.customShort("o"), .long], help: "Output directory. Defaults to $SWIFTMAGEX_OUTPUT_DIR or the current directory.")
+    var output: String?
 
     @OptionGroup var globals: GlobalOptions
 
@@ -186,7 +186,7 @@ struct AppStoreCommand: AsyncParsableCommand {
                 devices: devices,
                 placement: placement,
                 orientation: orientation,
-                output: output.isEmpty ? nil : output
+                output: Configuration.resolvedOutputTarget(explicit: output)
             )
             let outputs = written.map { image in
                 JSONResultEnvelope.Output(

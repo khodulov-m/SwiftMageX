@@ -76,6 +76,6 @@ Both providers hit `generativelanguage.googleapis.com` with the same `x-goog-api
 - Endpoint: `POST /v1beta/models/{model}:predict`
 - Request: `instances: [{prompt}], parameters: { sampleCount, aspectRatio }`. `aspectRatio` is `"1:1"` / `"9:16"` / `"16:9"` derived from `ImageSize`.
 - Response: base64 images in `predictions[].bytesBase64Encoded` (one prediction per `sampleCount`).
-- Multi-image: a single `:predict` call with `sampleCount: count`. `imagen-*-ultra-*` caps `sampleCount` at 1 server-side; overrun surfaces as HTTP 400 mapped to `[provider]`.
+- Multi-image: a single `:predict` call with `sampleCount: count`. `imagen-*-ultra-*` caps `sampleCount` at 1 server-side; `ImagenProvider` rejects `count > 1` for ultra up front as `invalidInput` (exit 2) — no network round-trip — so the server-side HTTP 400 is never reached.
 
 Don't leak Gemini- or Imagen-shaped types out of `Providers/`; the orchestrator and frontends only see `GenerationRequest` / `GeneratedImage`.
