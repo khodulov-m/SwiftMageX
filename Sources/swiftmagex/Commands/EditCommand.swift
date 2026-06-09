@@ -31,8 +31,8 @@ struct EditCommand: AsyncParsableCommand {
     )
     var mask: String?
 
-    @Option(name: [.customShort("o"), .long], help: "Destination file or directory. Defaults to the current directory.")
-    var output: String = "./"
+    @Option(name: [.customShort("o"), .long], help: "Destination file or directory. Defaults to $SWIFTMAGEX_OUTPUT_DIR or the current directory.")
+    var output: String?
 
     @Option(name: [.customShort("n"), .long], help: "Number of variants to generate (1–4).")
     var count: Int = 1
@@ -74,7 +74,7 @@ struct EditCommand: AsyncParsableCommand {
             seed: seed,
             model: model
         )
-        let outputTarget = output.isEmpty ? nil : output
+        let outputTarget = Configuration.resolvedOutputTarget(explicit: output)
 
         let cache = CacheOption.makeCache(from: globals.cacheDir)
 

@@ -219,6 +219,12 @@ final class ToolHandlersTests: XCTestCase {
         let path = String(line.split(separator: " ").first ?? "")
         XCTAssertTrue(path.hasPrefix("/"), "absolute path required, got \(path)")
         XCTAssertTrue(FileManager.default.fileExists(atPath: path))
+
+        // The composed bytes are echoed back so the agent can inspect them.
+        let images = result.imageContents
+        XCTAssertEqual(images.count, 1, "expected the composited image inline")
+        XCTAssertEqual(images.first?.mimeType, "image/png")
+        XCTAssertFalse(images.first?.data.isEmpty ?? true)
     }
 
     func testCompositeImagesToolMissingOverlayReturnsInvalidParams() {
@@ -265,6 +271,12 @@ final class ToolHandlersTests: XCTestCase {
         XCTAssertTrue(path.hasPrefix("/"), "absolute path required, got \(path)")
         XCTAssertTrue(FileManager.default.fileExists(atPath: path))
         XCTAssertTrue(text.contains("1242x2208"), "summary should report ASC pixel size: \(text)")
+
+        // Each produced asset is echoed back inline so the agent can see it.
+        let images = result.imageContents
+        XCTAssertEqual(images.count, 1, "expected one screenshot image inline")
+        XCTAssertEqual(images.first?.mimeType, "image/png")
+        XCTAssertFalse(images.first?.data.isEmpty ?? true)
     }
 
     func testAppStoreScreenshotsToolMissingBackgroundReturnsInvalidParams() {
