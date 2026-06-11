@@ -2,14 +2,28 @@
 
 [English](README.md) · [Español](README.es.md) · [Français](README.fr.md) · [Deutsch](README.de.md) · [简体中文](README.zh-CN.md) · [日本語](README.ja.md) · [한국어](README.ko.md) · [Português (BR)](README.pt-BR.md) · [Italiano](README.it.md) · [Русский](README.ru.md)
 
-A macOS-only image generation and processing CLI. SwiftMageX is an
-*orchestrator* — it calls the Google AI image API (Gemini or Imagen) for
-generation and performs local raster operations (resize, text overlay,
-compositing, App Store screenshots, background removal, saliency-aware
-crop) with CoreImage / CoreText / ImageIO / Vision, all from a small Swift
-package with exactly two external dependencies. The same core library backs a Model Context
-Protocol server (`swiftmagex-mcp`) so AI agents can use the same capabilities
-as tools.
+**Generate, edit, and polish images straight from your terminal — and teach
+your AI agent to do the same.** SwiftMageX is a native macOS CLI that talks
+to Google's image models (Gemini and Imagen) for generation and editing, and
+does the everyday raster work right on your Mac.
+
+What you get:
+
+- 🎨 **Generation and editing in one command** — text-to-image,
+  image-to-image, multi-image composition, and mask-based inpainting, with
+  the model selectable per call to match your quality needs.
+- 🤖 **Claude Code that can make pictures** — the bundled MCP server
+  (`swiftmagex-mcp`) exposes every capability as a tool, so Claude Code,
+  Claude Desktop, or any MCP client learns to generate, edit, and process
+  images as part of its workflow.
+- 📱 **App Store screenshots in one run** — frame a screenshot in a device
+  bezel, drop it onto a background, add a caption, and batch-resize to App
+  Store Connect sizes.
+- 🔒 **Private and free where it counts** — resize, text overlay,
+  compositing, background removal, and smart crop run fully on-device with
+  CoreImage / CoreText / Vision. No API key, nothing leaves your Mac.
+- 🪶 **Tiny footprint** — one small Swift package, exactly two external
+  dependencies, two self-contained binaries.
 
 See `SwiftMageX-MVP-0.1-spec.md` for the authoritative specification and
 `RELEASE_NOTES.md` for what shipped in v0.2.0.

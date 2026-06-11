@@ -2,15 +2,29 @@
 
 [English](README.md) · [Español](README.es.md) · [Français](README.fr.md) · [Deutsch](README.de.md) · [简体中文](README.zh-CN.md) · [日本語](README.ja.md) · [한국어](README.ko.md) · [Português (BR)](README.pt-BR.md) · [Italiano](README.it.md) · [Русский](README.ru.md)
 
-CLI de generación y procesamiento de imágenes solo para macOS. SwiftMageX
-es un *orquestador*: invoca la API de imágenes de Google AI (Gemini o Imagen) para generar y realiza
-operaciones rasterizadas locales (resize, superposición de texto,
-composición, capturas para App Store, eliminación de fondo, recorte
-sensible a la saliencia) con CoreImage / CoreText / ImageIO / Vision,
-todo desde un pequeño paquete Swift con exactamente dos dependencias
-externas. La misma biblioteca central
-respalda un servidor Model Context Protocol (`swiftmagex-mcp`) para que
-los agentes de IA puedan usar esas capacidades como herramientas.
+**Genera, edita y pule imágenes directamente desde tu terminal — y enseña
+a tu agente de IA a hacer lo mismo.** SwiftMageX es un CLI nativo de macOS:
+para generar y editar habla con los modelos de imágenes de Google (Gemini
+e Imagen), y el trabajo rasterizado cotidiano lo hace tu propio Mac.
+
+Lo que obtienes:
+
+- 🎨 **Generación y edición en un solo comando** — texto a imagen, imagen a
+  imagen, composición multi-imagen e inpainting con máscara; el modelo se
+  elige en cada llamada según tus requisitos de calidad.
+- 🤖 **Un Claude Code que sabe de imágenes** — el servidor MCP incluido
+  (`swiftmagex-mcp`) expone cada capacidad como herramienta, de modo que
+  Claude Code, Claude Desktop o cualquier cliente MCP aprende a generar,
+  editar y procesar imágenes dentro de su flujo de trabajo.
+- 📱 **Capturas para el App Store en una sola pasada** — enmarca una
+  captura en el bisel de un dispositivo, ponla sobre un fondo, añade un
+  rótulo y redimensiona en lote a los tamaños de App Store Connect.
+- 🔒 **Privado y gratis donde importa** — resize, superposición de texto,
+  composición, eliminación de fondo y recorte inteligente corren por
+  completo en el dispositivo con CoreImage / CoreText / Vision. Sin clave
+  de API, nada sale de tu Mac.
+- 🪶 **Huella mínima** — un pequeño paquete Swift, exactamente dos
+  dependencias externas, dos binarios autocontenidos.
 
 La especificación autorizada está en `SwiftMageX-MVP-0.1-spec.md` y lo
 que se publicó en la v0.2.0 está en `RELEASE_NOTES.md`.

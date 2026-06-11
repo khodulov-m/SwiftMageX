@@ -2,13 +2,29 @@
 
 [English](README.md) · [Español](README.es.md) · [Français](README.fr.md) · [Deutsch](README.de.md) · [简体中文](README.zh-CN.md) · [日本語](README.ja.md) · [한국어](README.ko.md) · [Português (BR)](README.pt-BR.md) · [Italiano](README.it.md) · [Русский](README.ru.md)
 
-macOS 전용 이미지 생성/처리 CLI. SwiftMageX는 *오케스트레이터*로,
-이미지 생성은 Google AI 이미지 API(Gemini 또는 Imagen)에 위임하고 리사이즈, 텍스트 오버레이,
-합성, App Store 스크린샷, 배경 제거, 살리언시 기반 크롭 같은 로컬 래스터 작업은 CoreImage / CoreText / ImageIO /
-Vision으로 처리합니다. 모든 것이 외부 의존성이 정확히 두 개뿐인 작은 Swift 패키지
-안에 들어 있습니다. 같은 코어 라이브러리가 Model Context
-Protocol 서버(`swiftmagex-mcp`)를 구동하므로, AI 에이전트도 동일
-기능을 도구로 호출할 수 있습니다.
+**터미널에서 바로 이미지를 생성·편집·다듬고, 같은 일을 AI 에이전트에게도
+가르치세요.** SwiftMageX는 네이티브 macOS CLI입니다. 생성과 편집은
+Google의 이미지 모델(Gemini와 Imagen)이 맡고, 일상적인 래스터 작업은
+여러분의 Mac에서 직접 처리합니다.
+
+얻을 수 있는 것:
+
+- 🎨 **명령 하나로 생성과 편집** — 텍스트-투-이미지, 이미지-투-이미지,
+  다중 이미지 합성, 마스크 기반 인페인팅. 모델은 품질 요구사항에 맞춰
+  호출마다 선택할 수 있습니다.
+- 🤖 **이미지를 다룰 줄 아는 Claude Code** — 동봉된 MCP 서버
+  (`swiftmagex-mcp`)가 모든 기능을 도구로 노출하므로 Claude Code,
+  Claude Desktop 또는 어떤 MCP 클라이언트든 워크플로 안에서 이미지를
+  생성·편집·가공하는 법을 배웁니다.
+- 📱 **App Store 스크린샷을 한 번에** — 스크린샷을 기기 베젤에 끼우고,
+  배경 위에 얹고, 캡션을 더한 뒤 App Store Connect 크기로 일괄
+  리사이즈합니다.
+- 🔒 **중요한 곳에서는 프라이빗하고 무료** — 리사이즈, 텍스트 오버레이,
+  합성, 배경 제거, 스마트 크롭은 CoreImage / CoreText / Vision으로 완전히
+  온디바이스에서 동작합니다. API 키 불필요, 어떤 것도 Mac 밖으로 나가지
+  않습니다.
+- 🪶 **최소한의 흔적** — 작은 Swift 패키지 하나, 외부 의존성 정확히 두 개,
+  자체 완결형 바이너리 두 개.
 
 권위 있는 사양은 `SwiftMageX-MVP-0.1-spec.md`이고, v0.2.0에 포함
 된 내용은 `RELEASE_NOTES.md`를 참고하세요.

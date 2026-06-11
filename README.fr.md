@@ -2,16 +2,30 @@
 
 [English](README.md) · [Español](README.es.md) · [Français](README.fr.md) · [Deutsch](README.de.md) · [简体中文](README.zh-CN.md) · [日本語](README.ja.md) · [한국어](README.ko.md) · [Português (BR)](README.pt-BR.md) · [Italiano](README.it.md) · [Русский](README.ru.md)
 
-CLI de génération et de traitement d'images uniquement pour macOS.
-SwiftMageX est un *orchestrateur* : il appelle l'API d'images Google AI (Gemini ou Imagen) pour la
-génération et effectue des opérations raster locales (resize,
-superposition de texte, composition, captures App Store, suppression
-d'arrière-plan, recadrage sensible à la saillance) via CoreImage /
-CoreText / ImageIO / Vision, depuis un petit paquet Swift avec
-exactement deux dépendances externes. La même
-bibliothèque centrale alimente un serveur Model Context Protocol
-(`swiftmagex-mcp`) afin que les agents IA puissent utiliser ces
-capacités comme outils.
+**Générez, éditez et peaufinez des images directement depuis votre
+terminal — et apprenez à votre agent IA à en faire autant.** SwiftMageX
+est un CLI natif macOS : la génération et l'édition passent par les
+modèles d'images de Google (Gemini et Imagen), tandis que le travail
+raster du quotidien s'effectue directement sur votre Mac.
+
+Ce que vous y gagnez :
+
+- 🎨 **Génération et édition en une seule commande** — texte vers image,
+  image vers image, composition multi-images et inpainting par masque ; le
+  modèle se choisit à chaque appel selon vos exigences de qualité.
+- 🤖 **Un Claude Code qui sait faire des images** — le serveur MCP fourni
+  (`swiftmagex-mcp`) expose chaque capacité comme un outil, si bien que
+  Claude Code, Claude Desktop ou tout client MCP apprend à générer, éditer
+  et traiter des images dans son flux de travail.
+- 📱 **Des captures App Store en un seul passage** — encadrez une capture
+  dans le contour d'un appareil, posez-la sur un fond, ajoutez une légende
+  et redimensionnez en lot aux tailles App Store Connect.
+- 🔒 **Privé et gratuit là où ça compte** — resize, superposition de texte,
+  composition, suppression d'arrière-plan et recadrage intelligent
+  s'exécutent entièrement sur l'appareil via CoreImage / CoreText / Vision.
+  Pas de clé d'API, rien ne quitte votre Mac.
+- 🪶 **Empreinte minimale** — un petit paquet Swift, exactement deux
+  dépendances externes, deux binaires autonomes.
 
 La spécification de référence est `SwiftMageX-MVP-0.1-spec.md` ; ce qui
 a été livré dans la v0.2.0 figure dans `RELEASE_NOTES.md`.

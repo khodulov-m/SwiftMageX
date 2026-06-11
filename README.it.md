@@ -2,16 +2,32 @@
 
 [English](README.md) · [Español](README.es.md) · [Français](README.fr.md) · [Deutsch](README.de.md) · [简体中文](README.zh-CN.md) · [日本語](README.ja.md) · [한국어](README.ko.md) · [Português (BR)](README.pt-BR.md) · [Italiano](README.it.md) · [Русский](README.ru.md)
 
-CLI per la generazione e l'elaborazione di immagini solo per macOS.
-SwiftMageX è un *orchestratore*: invoca l'API immagini di Google AI (Gemini o Imagen) per la
-generazione ed esegue operazioni raster locali (resize, overlay di
-testo, composizione, screenshot per App Store, rimozione dello sfondo,
-ritaglio sensibile alla salienza) tramite CoreImage / CoreText / ImageIO /
-Vision, tutto in un piccolo pacchetto Swift con esattamente due
-dipendenze esterne. La stessa
-libreria centrale alimenta un server Model Context Protocol
-(`swiftmagex-mcp`) così che gli agenti AI possano usare le stesse
-capacità come strumenti.
+**Genera, modifica e rifinisci immagini direttamente dal terminale — e
+insegna al tuo agente AI a fare lo stesso.** SwiftMageX è un CLI nativo
+per macOS: per generazione e modifica dialoga con i modelli di immagini
+di Google (Gemini e Imagen), mentre il lavoro raster di tutti i giorni lo
+svolge direttamente il tuo Mac.
+
+Cosa ottieni:
+
+- 🎨 **Generazione e modifica in un solo comando** — testo-a-immagine,
+  immagine-a-immagine, composizione multi-immagine e inpainting con
+  maschera; il modello si sceglie a ogni chiamata in base ai tuoi requisiti
+  di qualità.
+- 🤖 **Un Claude Code che sa lavorare con le immagini** — il server MCP
+  incluso (`swiftmagex-mcp`) espone ogni capacità come strumento, così
+  Claude Code, Claude Desktop o qualsiasi client MCP impara a generare,
+  modificare ed elaborare immagini nel proprio flusso di lavoro.
+- 📱 **Screenshot per l'App Store in un'unica passata** — incornicia uno
+  screenshot nel bezel di un dispositivo, appoggialo su uno sfondo,
+  aggiungi una didascalia e ridimensiona in batch alle misure di App Store
+  Connect.
+- 🔒 **Privato e gratuito dove conta** — resize, overlay di testo,
+  composizione, rimozione dello sfondo e ritaglio intelligente girano
+  interamente sul dispositivo con CoreImage / CoreText / Vision. Nessuna
+  chiave API, nulla lascia il tuo Mac.
+- 🪶 **Ingombro minimo** — un piccolo pacchetto Swift, esattamente due
+  dipendenze esterne, due binari autosufficienti.
 
 La specifica autorevole è in `SwiftMageX-MVP-0.1-spec.md`; ciò che è
 stato rilasciato nella v0.2.0 è in `RELEASE_NOTES.md`.

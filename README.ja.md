@@ -2,13 +2,29 @@
 
 [English](README.md) · [Español](README.es.md) · [Français](README.fr.md) · [Deutsch](README.de.md) · [简体中文](README.zh-CN.md) · [日本語](README.ja.md) · [한국어](README.ko.md) · [Português (BR)](README.pt-BR.md) · [Italiano](README.it.md) · [Русский](README.ru.md)
 
-macOS 専用の画像生成・処理 CLI。SwiftMageX は*オーケストレータ*で
-あり、生成は Google AI 画像 API(Gemini または Imagen)を呼び出し、ローカルなラスター処理(リ
-サイズ、テキスト合成、画像合成、App Store スクリーンショット、背景除去、サリエンシー対応クロップ)は
-CoreImage / CoreText / ImageIO / Vision で実行します。すべてが外部依存ちょうど 2 つの小さな Swift パッケージに収
-まっています。同じコアライブラリが Model Context Protocol サーバ
-(`swiftmagex-mcp`)を支え、AI エージェントが同じ機能をツールとし
-て呼び出せます。
+**ターミナルから直接、画像の生成・編集・仕上げを — そして同じことを
+AI エージェントにも教えましょう。** SwiftMageX はネイティブな macOS
+CLI です。生成と編集は Google の画像モデル(Gemini と Imagen)が担い、
+日常的なラスター処理はあなたの Mac 上で直接実行されます。
+
+得られるもの:
+
+- 🎨 **生成も編集もコマンド 1 つで** — テキストから画像、画像から画像、
+  複数画像の合成、マスクによるインペインティング。モデルは呼び出しごと
+  に品質要件へ合わせて選べます。
+- 🤖 **画像を扱える Claude Code** — 同梱の MCP サーバ
+  (`swiftmagex-mcp`)がすべての機能をツールとして公開するので、Claude
+  Code、Claude Desktop、任意の MCP クライアントがワークフローの中で
+  画像の生成・編集・加工を行えるようになります。
+- 📱 **App Store スクリーンショットをワンランで** — スクリーンショット
+  をデバイスベゼルにはめ込み、背景に載せ、キャプションを添えて、App
+  Store Connect の各サイズへ一括リサイズ。
+- 🔒 **大事なところはプライベートかつ無料** — リサイズ、テキスト合成、
+  画像合成、背景除去、スマートクロップは CoreImage / CoreText / Vision
+  により完全にオンデバイスで動作。API キー不要、データは Mac の外に
+  出ません。
+- 🪶 **フットプリントは最小限** — 小さな Swift パッケージ 1 つ、外部
+  依存はちょうど 2 つ、自己完結したバイナリ 2 本。
 
 公式仕様は `SwiftMageX-MVP-0.1-spec.md`、v0.2.0 でリリースされた
 内容は `RELEASE_NOTES.md` を参照してください。

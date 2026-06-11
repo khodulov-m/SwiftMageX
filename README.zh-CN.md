@@ -2,11 +2,24 @@
 
 [English](README.md) · [Español](README.es.md) · [Français](README.fr.md) · [Deutsch](README.de.md) · [简体中文](README.zh-CN.md) · [日本語](README.ja.md) · [한국어](README.ko.md) · [Português (BR)](README.pt-BR.md) · [Italiano](README.it.md) · [Русский](README.ru.md)
 
-仅 macOS 的图像生成与处理 CLI。SwiftMageX 是一个*编排器*:调用
-Google AI 图像 API(Gemini 或 Imagen)进行图像生成,并使用 CoreImage / CoreText / ImageIO / Vision 完成
-本地光栅操作(缩放、文字叠加、合成、App Store 截图、抠图去背、显著性感知裁剪),全部封装在一个仅有两个外部依赖的小
-Swift 包中。同一个核心库还驱动一个 Model Context Protocol 服务器
-(`swiftmagex-mcp`),让 AI 代理可以把这些能力当作工具来调用。
+**在终端里直接生成、编辑、打磨图像——并教会你的 AI 代理做同样的事。**
+SwiftMageX 是一个原生 macOS CLI:生成与编辑交给 Google 的图像模型
+(Gemini 和 Imagen),日常的光栅处理则直接在你的 Mac 上完成。
+
+你将获得:
+
+- 🎨 **一条命令搞定生成与编辑** — 文生图、图生图、多图合成、基于蒙版的
+  局部修复;每次调用都可按质量需求自由选择模型。
+- 🤖 **会处理图像的 Claude Code** — 内置的 MCP 服务器(`swiftmagex-mcp`)
+  把全部能力以工具形式暴露出来,让 Claude Code、Claude Desktop 或任意
+  MCP 客户端在自己的工作流中学会生成、编辑和处理图像。
+- 📱 **一次运行产出 App Store 截图** — 把截图嵌入设备边框、放上背景、
+  加上标题文案,再批量缩放到 App Store Connect 的各个尺寸。
+- 🔒 **关键之处私密且免费** — 缩放、文字叠加、合成、抠图去背和智能裁剪
+  全部通过 CoreImage / CoreText / Vision 在本地完成。无需 API 密钥,
+  数据不会离开你的 Mac。
+- 🪶 **极小的体积** — 一个小巧的 Swift 包、恰好两个外部依赖、两个自包含
+  的二进制文件。
 
 权威规范见 `SwiftMageX-MVP-0.1-spec.md`,v0.2.0 发布内容见
 `RELEASE_NOTES.md`。

@@ -2,14 +2,29 @@
 
 [English](README.md) · [Español](README.es.md) · [Français](README.fr.md) · [Deutsch](README.de.md) · [简体中文](README.zh-CN.md) · [日本語](README.ja.md) · [한국어](README.ko.md) · [Português (BR)](README.pt-BR.md) · [Italiano](README.it.md) · [Русский](README.ru.md)
 
-CLI für Bildgenerierung und Bildverarbeitung — nur für macOS. SwiftMageX
-ist ein *Orchestrator*: er ruft die Google-AI-Bild-API (Gemini oder Imagen) zur Generierung auf und
-führt lokale Rasteroperationen (Resize, Text-Overlay, Compositing,
-App-Store-Screenshots, Hintergrundentfernung, salienz-basierter
-Zuschnitt) mit CoreImage / CoreText / ImageIO / Vision durch — alles
-aus einem kleinen Swift-Paket mit genau zwei externen Abhängigkeiten. Dieselbe Kernbibliothek bedient
-einen Model-Context-Protocol-Server (`swiftmagex-mcp`), damit
-KI-Agenten dieselben Fähigkeiten als Tools nutzen können.
+**Bilder direkt im Terminal generieren, bearbeiten und veredeln — und das
+Gleiche Ihrem KI-Agenten beibringen.** SwiftMageX ist ein natives
+macOS-CLI: Für Generierung und Bearbeitung sprechen Googles Bildmodelle
+(Gemini und Imagen), die alltägliche Rasterarbeit erledigt Ihr Mac selbst.
+
+Was Sie bekommen:
+
+- 🎨 **Generieren und Bearbeiten mit einem Befehl** — Text-zu-Bild,
+  Bild-zu-Bild, Multi-Bild-Komposition und maskenbasiertes Inpainting; das
+  Modell ist pro Aufruf wählbar, passend zu Ihren Qualitätsanforderungen.
+- 🤖 **Claude Code, das Bilder kann** — der mitgelieferte MCP-Server
+  (`swiftmagex-mcp`) stellt jede Fähigkeit als Tool bereit, sodass Claude
+  Code, Claude Desktop oder jeder MCP-Client lernt, Bilder im eigenen
+  Workflow zu generieren, zu bearbeiten und zu verarbeiten.
+- 📱 **App-Store-Screenshots in einem Durchlauf** — Screenshot in einen
+  Geräterahmen setzen, auf einen Hintergrund legen, Caption hinzufügen und
+  auf alle App-Store-Connect-Größen skalieren.
+- 🔒 **Privat und kostenlos, wo es zählt** — Resize, Text-Overlay,
+  Compositing, Hintergrundentfernung und Smart Crop laufen vollständig auf
+  dem Gerät via CoreImage / CoreText / Vision. Kein API-Key, nichts
+  verlässt Ihren Mac.
+- 🪶 **Winziger Fußabdruck** — ein kleines Swift-Paket, genau zwei externe
+  Abhängigkeiten, zwei eigenständige Binaries.
 
 Die maßgebliche Spezifikation liegt in `SwiftMageX-MVP-0.1-spec.md`;
 was in v0.2.0 ausgeliefert wurde, steht in `RELEASE_NOTES.md`.
