@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project status
 
-SwiftMageX is an image generation/processing CLI (macOS-only). The 0.1 MVP is **feature-complete** — all nine milestones in `IMPLEMENTATION_PLAN.md` have shipped, the test suite is green, and `RELEASE_NOTES.md` maps each delivered capability to its spec section. The spec (`SwiftMageX-MVP-0.1-spec.md`) is still the authoritative blueprint; consult it before designing anything, and any divergence needs an explicit reason. `IMPLEMENTATION_PLAN.md` is now historical — useful for context on how the codebase was built, not for new work.
+SwiftMageX is an image generation/processing CLI (macOS-only). The 0.1 MVP is **feature-complete** — the test suite is green, and `RELEASE_NOTES.md` maps each delivered capability to its spec section. The spec (`SwiftMageX-MVP-0.1-spec.md`) is still the authoritative blueprint; consult it before designing anything, and any divergence needs an explicit reason.
 
 ## Build / test / run
 
