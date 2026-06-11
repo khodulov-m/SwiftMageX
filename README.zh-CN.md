@@ -127,6 +127,21 @@ swiftmagex generate "A simple red apple on a white background, test image" \
 每个输出的 PNG 会在 `tEXt` 块中携带 prompt、模型、seed、时间戳和
 工具版本;JPEG 写入 EXIF 的 `UserComment` 字段。
 
+**请按质量需求选择模型。** 模型可在每次调用中通过 `--model` 自由切换,
+命令的其他部分完全不变。默认的 `gemini-2.5-flash-image` 是稳定的全能型
+模型;最新的 `gemini-3.1-flash-image-preview` 生成的结果细节明显更丰富,
+并会自行选择更宽的非正方形构图;Imagen 系列支持显式控制宽高比
+(`--size` 会映射为 `aspectRatio`),其中 `imagen-4.0-fast-generate-001`
+侧重速度,`imagen-4.0-ultra-generate-001` 侧重最高保真度(每次调用一张)。
+例如,下面这帧 1408×768 的图像就由 `gemini-3.1-flash-image-preview` 生成:
+
+```sh
+swiftmagex generate "A red fox curled up on a mossy rock in a misty autumn forest, golden leaves falling, soft photorealistic style" \
+  --model gemini-3.1-flash-image-preview -o fox.png
+```
+
+<img src="docs/images/example-generate-fox-gemini31.png" alt="由 gemini-3.1-flash-image-preview 生成的秋日森林中的狐狸,细节丰富" width="480" />
+
 ### `swiftmagex edit` — 通过 Gemini 进行图生图 / 多图合成 / 局部修复
 
 将一张源图像(以及任意数量的额外参考图与可选的蒙版)与文本提示一起发送给

@@ -131,6 +131,24 @@ swiftmagex generate "A simple red apple on a white background, test image" \
 Каждый выходной PNG содержит prompt, модель, seed, метку времени и
 версию утилиты в `tEXt`-чанках (для JPEG — в EXIF-поле `UserComment`).
 
+**Выбирайте модель под свои требования к качеству.** Модели взаимозаменяемы
+в каждом вызове через `--model` — всё остальное в команде не меняется.
+Дефолтная `gemini-2.5-flash-image` — стабильная «рабочая лошадка»; новейшая
+`gemini-3.1-flash-image-preview` даёт заметно более детализированный
+результат и сама выбирает широкие, неквадратные кадры; семейство Imagen
+даёт явный контроль соотношения сторон (`--size` транслируется в
+`aspectRatio`): `imagen-4.0-fast-generate-001` оптимизирована по скорости,
+`imagen-4.0-ultra-generate-001` — по максимальному качеству (одно
+изображение за вызов). Например, `gemini-3.1-flash-image-preview`
+сгенерировала этот кадр 1408×768:
+
+```sh
+swiftmagex generate "A red fox curled up on a mossy rock in a misty autumn forest, golden leaves falling, soft photorealistic style" \
+  --model gemini-3.1-flash-image-preview -o fox.png
+```
+
+<img src="docs/images/example-generate-fox-gemini31.png" alt="Детализированная лиса в осеннем лесу, сгенерирована gemini-3.1-flash-image-preview" width="480" />
+
 ### `swiftmagex edit` — image-to-image / мультиизображение / инпейнтинг через Gemini
 
 Отправляет исходное изображение (плюс любые дополнительные референсы и

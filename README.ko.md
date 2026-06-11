@@ -132,6 +132,23 @@ swiftmagex generate "A simple red apple on a white background, test image" \
 각 출력 PNG는 `tEXt` 청크에 prompt, 모델, seed, 타임스탬프,
 도구 버전을 담습니다(JPEG는 EXIF `UserComment` 필드 사용).
 
+**품질 요구사항에 맞게 모델을 선택하세요.** 모델은 `--model`로 호출마다
+교체할 수 있으며 명령의 다른 부분은 그대로입니다. 기본값인
+`gemini-2.5-flash-image`는 안정적인 만능 모델입니다. 최신
+`gemini-3.1-flash-image-preview`는 눈에 띄게 더 디테일한 결과를 만들고
+스스로 더 넓은 비정사각형 프레이밍을 선택합니다. Imagen 계열은 종횡비를
+명시적으로 제어할 수 있고(`--size`가 `aspectRatio`로 변환됨),
+`imagen-4.0-fast-generate-001`은 속도, `imagen-4.0-ultra-generate-001`은
+최고 품질에 최적화되어 있습니다(호출당 1장). 예를 들어
+`gemini-3.1-flash-image-preview`가 생성한 1408×768 프레임입니다:
+
+```sh
+swiftmagex generate "A red fox curled up on a mossy rock in a misty autumn forest, golden leaves falling, soft photorealistic style" \
+  --model gemini-3.1-flash-image-preview -o fox.png
+```
+
+<img src="docs/images/example-generate-fox-gemini31.png" alt="gemini-3.1-flash-image-preview가 생성한 가을 숲의 디테일한 여우" width="480" />
+
 ### `swiftmagex edit` — Gemini를 통한 이미지-투-이미지 / 다중 이미지 / 인페인팅
 
 소스 이미지(추가 참조 이미지 및 선택적 마스크 포함)를 텍스트 프롬프트와

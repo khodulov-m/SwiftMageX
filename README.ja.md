@@ -135,6 +135,24 @@ swiftmagex generate "A simple red apple on a white background, test image" \
 タイムスタンプ、ツールバージョンが埋め込まれます(JPEG は EXIF の
 `UserComment` フィールドを使用)。
 
+**品質要件に合わせてモデルを選んでください。** モデルは `--model` で
+呼び出しごとに切り替えられ、コマンドの他の部分は一切変わりません。
+デフォルトの `gemini-2.5-flash-image` は安定したオールラウンダーです。
+最新の `gemini-3.1-flash-image-preview` は明らかにディテールの豊かな
+結果を生成し、横長の非正方形フレーミングを自律的に選びます。Imagen
+ファミリーはアスペクト比を明示的に制御できます(`--size` が
+`aspectRatio` に変換されます)。`imagen-4.0-fast-generate-001` は速度
+重視、`imagen-4.0-ultra-generate-001` は最高品質重視です(1 回の呼び
+出しにつき 1 枚)。例えば、`gemini-3.1-flash-image-preview` は次の
+1408×768 のフレームを生成しました:
+
+```sh
+swiftmagex generate "A red fox curled up on a mossy rock in a misty autumn forest, golden leaves falling, soft photorealistic style" \
+  --model gemini-3.1-flash-image-preview -o fox.png
+```
+
+<img src="docs/images/example-generate-fox-gemini31.png" alt="gemini-3.1-flash-image-preview が生成した秋の森のキツネの詳細な画像" width="480" />
+
 ### `swiftmagex edit` — Gemini による image-to-image / マルチ画像 / インペインティング
 
 ソース画像(さらに追加の参照画像とオプションのマスク)を、テキスト
