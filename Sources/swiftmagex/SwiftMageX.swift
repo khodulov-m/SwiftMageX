@@ -12,7 +12,7 @@ struct SwiftMageX: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "swiftmagex",
         abstract: "Generate and process images from the terminal.",
-        version: "0.1.0",
+        version: "0.2.0",
         subcommands: [
             GenerateCommand.self,
             EditCommand.self,

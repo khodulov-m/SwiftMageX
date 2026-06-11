@@ -6,4 +6,3 @@ DerivedData/
 dist/
 *.xcodeproj
 xcuserdata/
-Package.resolved

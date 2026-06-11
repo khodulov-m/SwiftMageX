@@ -12,7 +12,7 @@ sustenta um servidor Model Context Protocol (`swiftmagex-mcp`) para
 que agentes de IA usem essas capacidades como ferramentas.
 
 A especificação autoritativa está em `SwiftMageX-MVP-0.1-spec.md`; o
-que foi entregue na v0.1.0 está em `RELEASE_NOTES.md`.
+que foi entregue na v0.2.0 está em `RELEASE_NOTES.md`.
 
 ## Requisitos
 
@@ -28,14 +28,14 @@ que foi entregue na v0.1.0 está em `RELEASE_NOTES.md`.
 ### Binário pré-compilado (recomendado)
 
 Baixe `swiftmagex`, `swiftmagex-mcp` e `SHA256SUMS` da
-[release v0.1.0](https://github.com/khodulov-m/SwiftMageX/releases/tag/v0.1.0),
+[release v0.2.0](https://github.com/khodulov-m/SwiftMageX/releases/tag/v0.2.0),
 verifique as somas e coloque os binários no `PATH`:
 
 ```sh
 shasum -a 256 -c SHA256SUMS
 chmod +x swiftmagex swiftmagex-mcp
 sudo mv swiftmagex swiftmagex-mcp /usr/local/bin/
-swiftmagex --version    # 0.1.0
+swiftmagex --version    # 0.2.0
 ```
 
 Se o Gatekeeper colocar os downloads em quarentena, remova o atributo:
@@ -88,7 +88,7 @@ Oito subcomandos, todos compartilhando as mesmas flags globais:
 | `--json` | Emite um envelope JSON estruturado em stdout no lugar de texto humano. |
 | `-v`, `--verbose` | Envia diagnósticos para stderr. **Não** inclui a chave de API. |
 | `--cache-dir <caminho>` | Faz cache de respostas de `generate`/`edit` em `<caminho>`, então entradas idênticas reproduzem os bytes do provedor já gravados em vez de chamar a API. Opt-in — veja a seção de cache mais abaixo. |
-| `--version` | Imprime `0.1.0` e termina. |
+| `--version` | Imprime `0.2.0` e termina. |
 | `-h`, `--help` | Mostra a ajuda do comando. |
 
 Caminhos de saída são sempre **absolutos** na saída `--json` e nos
@@ -540,4 +540,4 @@ arquivo de configuração, Keychain, …).
 
 ## Licença
 
-TBD.
+MIT. Consulte [LICENSE](LICENSE) para o texto completo.

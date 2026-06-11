@@ -8,7 +8,7 @@ Google AI 图像 API(Gemini 或 Imagen)进行图像生成,并使用 CoreImage / 
 Swift 包中。同一个核心库还驱动一个 Model Context Protocol 服务器
 (`swiftmagex-mcp`),让 AI 代理可以把这些能力当作工具来调用。
 
-权威规范见 `SwiftMageX-MVP-0.1-spec.md`,v0.1.0 发布内容见
+权威规范见 `SwiftMageX-MVP-0.1-spec.md`,v0.2.0 发布内容见
 `RELEASE_NOTES.md`。
 
 ## 环境要求
@@ -23,7 +23,7 @@ Swift 包中。同一个核心库还驱动一个 Model Context Protocol 服务�
 
 ### 预编译二进制(推荐)
 
-从 [v0.1.0 release](https://github.com/khodulov-m/SwiftMageX/releases/tag/v0.1.0)
+从 [v0.2.0 release](https://github.com/khodulov-m/SwiftMageX/releases/tag/v0.2.0)
 下载 `swiftmagex`、`swiftmagex-mcp` 和 `SHA256SUMS`,校验后放入
 `PATH`:
 
@@ -31,7 +31,7 @@ Swift 包中。同一个核心库还驱动一个 Model Context Protocol 服务�
 shasum -a 256 -c SHA256SUMS
 chmod +x swiftmagex swiftmagex-mcp
 sudo mv swiftmagex swiftmagex-mcp /usr/local/bin/
-swiftmagex --version    # 0.1.0
+swiftmagex --version    # 0.2.0
 ```
 
 若 Gatekeeper 隔离了下载文件,清除隔离属性:
@@ -82,7 +82,7 @@ export GEMINI_API_KEY="…"
 | `--json` | 以结构化 JSON 写到 stdout,而非人类可读文本。 |
 | `-v`、`--verbose` | 把诊断信息写到 stderr。**不包含** API 密钥。 |
 | `--cache-dir <路径>` | 将 `generate`/`edit` 的响应缓存到 `<路径>`,相同输入会回放此前记录的提供方字节而不再调用 API。需显式开启 — 详见下文缓存小节。 |
-| `--version` | 打印 `0.1.0` 并退出。 |
+| `--version` | 打印 `0.2.0` 并退出。 |
 | `-h`、`--help` | 显示该命令的帮助。 |
 
 `--json` 输出和 MCP 工具返回的路径**始终是绝对路径**——调用方代理
@@ -508,4 +508,4 @@ Keychain 等)。
 
 ## 许可证
 
-TBD。
+MIT。完整文本见 [LICENSE](LICENSE)。

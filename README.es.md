@@ -13,7 +13,7 @@ respalda un servidor Model Context Protocol (`swiftmagex-mcp`) para que
 los agentes de IA puedan usar esas capacidades como herramientas.
 
 La especificación autorizada está en `SwiftMageX-MVP-0.1-spec.md` y lo
-que se publicó en la v0.1.0 está en `RELEASE_NOTES.md`.
+que se publicó en la v0.2.0 está en `RELEASE_NOTES.md`.
 
 ## Requisitos
 
@@ -29,14 +29,14 @@ que se publicó en la v0.1.0 está en `RELEASE_NOTES.md`.
 ### Binario precompilado (recomendado)
 
 Descarga `swiftmagex`, `swiftmagex-mcp` y `SHA256SUMS` desde la
-[release v0.1.0](https://github.com/khodulov-m/SwiftMageX/releases/tag/v0.1.0),
+[release v0.2.0](https://github.com/khodulov-m/SwiftMageX/releases/tag/v0.2.0),
 verifica las sumas y coloca los binarios en tu `PATH`:
 
 ```sh
 shasum -a 256 -c SHA256SUMS
 chmod +x swiftmagex swiftmagex-mcp
 sudo mv swiftmagex swiftmagex-mcp /usr/local/bin/
-swiftmagex --version    # 0.1.0
+swiftmagex --version    # 0.2.0
 ```
 
 Si Gatekeeper marca las descargas en cuarentena, elimina el atributo:
@@ -89,7 +89,7 @@ Ocho subcomandos, todos comparten los mismos flags globales:
 | `--json` | Emite un sobre JSON estructurado en stdout en lugar de texto humano. |
 | `-v`, `--verbose` | Imprime mensajes de diagnóstico en stderr. **No** incluye la clave de API. |
 | `--cache-dir <ruta>` | Cachea respuestas de `generate`/`edit` en `<ruta>` para que entradas idénticas reproduzcan los bytes del proveedor ya registrados en lugar de llamar a la API. Opt-in — ver la sección de caché más abajo. |
-| `--version` | Imprime `0.1.0` y termina. |
+| `--version` | Imprime `0.2.0` y termina. |
 | `-h`, `--help` | Muestra ayuda del comando. |
 
 Las rutas de salida son siempre **absolutas** en la salida `--json` y en
@@ -540,4 +540,4 @@ de configuración, Keychain, …).
 
 ## Licencia
 
-TBD.
+MIT. Consulta [LICENSE](LICENSE) para el texto completo.

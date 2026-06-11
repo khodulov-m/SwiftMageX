@@ -68,5 +68,5 @@ public enum Configuration {
     }
 
     /// The semantic version of the tool, embedded in output metadata.
-    public static let toolVersion = "0.1.0"
+    public static let toolVersion = "0.2.0"
 }

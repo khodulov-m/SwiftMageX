@@ -12,7 +12,7 @@ Protocol server (`swiftmagex-mcp`) so AI agents can use the same capabilities
 as tools.
 
 See `SwiftMageX-MVP-0.1-spec.md` for the authoritative specification and
-`RELEASE_NOTES.md` for what shipped in v0.1.0.
+`RELEASE_NOTES.md` for what shipped in v0.2.0.
 
 ## Requirements
 
@@ -27,14 +27,14 @@ See `SwiftMageX-MVP-0.1-spec.md` for the authoritative specification and
 ### Prebuilt binary (recommended)
 
 Grab `swiftmagex`, `swiftmagex-mcp`, and `SHA256SUMS` from the
-[v0.1.0 release](https://github.com/khodulov-m/SwiftMageX/releases/tag/v0.1.0),
+[v0.2.0 release](https://github.com/khodulov-m/SwiftMageX/releases/tag/v0.2.0),
 verify the checksums, then drop the binaries on your `PATH`:
 
 ```sh
 shasum -a 256 -c SHA256SUMS
 chmod +x swiftmagex swiftmagex-mcp
 sudo mv swiftmagex swiftmagex-mcp /usr/local/bin/
-swiftmagex --version    # 0.1.0
+swiftmagex --version    # 0.2.0
 ```
 
 If macOS Gatekeeper quarantines the downloads, clear the flag:
@@ -86,7 +86,7 @@ Eight subcommands, all sharing the same global flags:
 | `--json` | Emit a structured JSON envelope to stdout instead of human-readable text. |
 | `-v`, `--verbose` | Print diagnostic messages to stderr. Does **not** include the API key. |
 | `--cache-dir <path>` | Cache `generate`/`edit` responses under `<path>` so identical inputs replay previously-recorded provider bytes instead of calling the API. Opt-in — see [Response caching](#response-caching). |
-| `--version` | Print `0.1.0` and exit. |
+| `--version` | Print `0.2.0` and exit. |
 | `-h`, `--help` | Show help for the command. |
 
 Output file paths are always **absolute** in `--json` output and in MCP tool
@@ -525,4 +525,4 @@ distribution, config file, Keychain, …).
 
 ## License
 
-TBD.
+MIT. See [LICENSE](LICENSE) for the full text.

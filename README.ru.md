@@ -12,7 +12,7 @@ Model Context Protocol (`swiftmagex-mcp`), благодаря чему AI-аге
 вызывать те же возможности в виде инструментов.
 
 Авторитативная спецификация — `SwiftMageX-MVP-0.1-spec.md`; описание того,
-что вошло в v0.1.0, — в `RELEASE_NOTES.md`.
+что вошло в v0.2.0, — в `RELEASE_NOTES.md`.
 
 ## Требования
 
@@ -27,14 +27,14 @@ Model Context Protocol (`swiftmagex-mcp`), благодаря чему AI-аге
 ### Готовый бинарник (рекомендуется)
 
 Скачайте `swiftmagex`, `swiftmagex-mcp` и `SHA256SUMS` из
-[релиза v0.1.0](https://github.com/khodulov-m/SwiftMageX/releases/tag/v0.1.0),
+[релиза v0.2.0](https://github.com/khodulov-m/SwiftMageX/releases/tag/v0.2.0),
 проверьте контрольные суммы и поместите бинарники в `PATH`:
 
 ```sh
 shasum -a 256 -c SHA256SUMS
 chmod +x swiftmagex swiftmagex-mcp
 sudo mv swiftmagex swiftmagex-mcp /usr/local/bin/
-swiftmagex --version    # 0.1.0
+swiftmagex --version    # 0.2.0
 ```
 
 Если Gatekeeper заблокирует скачанные файлы, снимите карантинный флаг:
@@ -86,7 +86,7 @@ export GEMINI_API_KEY="…"
 | `--json` | Выдаёт структурированный JSON-конверт в stdout вместо человекочитаемого текста. |
 | `-v`, `--verbose` | Печатает диагностику в stderr. API-ключ **не** включается. |
 | `--cache-dir <путь>` | Кэширует ответы `generate`/`edit` в `<путь>`, чтобы одинаковые запросы воспроизводили ранее записанные байты провайдера вместо обращения к API. Опционально — см. раздел про кэш ниже. |
-| `--version` | Печатает `0.1.0` и завершает работу. |
+| `--version` | Печатает `0.2.0` и завершает работу. |
 | `-h`, `--help` | Показывает справку по команде. |
 
 Пути в `--json`-выводе и в результатах MCP-инструментов всегда
@@ -539,4 +539,4 @@ claude mcp add -s user swiftmagex /usr/local/bin/swiftmagex-mcp \
 
 ## Лицензия
 
-TBD.
+MIT. Полный текст — в файле [LICENSE](LICENSE).

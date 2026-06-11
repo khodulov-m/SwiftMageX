@@ -1,5 +1,57 @@
 # SwiftMageX
 
+# v0.2.0
+
+Everything that landed after the 0.1 MVP, rolled into one release. The
+detailed entries below (each headed "Post-0.1.0 — …") are the changelog for
+this version; they are kept as written when each capability shipped.
+
+## Highlights
+
+- `swiftmagex edit` — image-to-image, multi-image composition (repeatable
+  `--reference`), and mask-based inpainting via Gemini; `edit_image` MCP tool.
+- `swiftmagex appstore` — App Store Connect screenshot pipeline (bezel
+  framing, background, caption, ASC iPhone sizes), with a bundled CC0 iPhone
+  bezel and a `list_frames` discovery tool.
+- `swiftmagex composite`, `remove-bg` (Vision foreground segmentation), and
+  `crop` (Vision attention saliency) — all local, no API key.
+- Imagen model family support (`imagen-4.0-*`) alongside Gemini via
+  `ModelCatalog` routing; MCP `generate_image` exposes the model enum.
+- Opt-in local response cache for `generate` / `edit` via `--cache-dir`.
+- The MCP server now exposes nine tools.
+- License: the project is now released under the MIT License (see `LICENSE`).
+
+## Install
+
+Download the binaries from the release assets, then:
+
+```sh
+shasum -a 256 -c SHA256SUMS
+chmod +x swiftmagex swiftmagex-mcp
+sudo mv swiftmagex swiftmagex-mcp /usr/local/bin/
+swiftmagex --version    # 0.2.0
+```
+
+Or build from source:
+
+```sh
+swift build -c release
+```
+
+## Requirements
+
+- macOS 14+ on Apple silicon (arm64).
+- Swift 6.0+ toolchain to build from source.
+- A Google AI API key in `SWIFTMAGEX_GEMINI_API_KEY` (or `GEMINI_API_KEY`)
+  for `generate` / `edit` — used for both Gemini and Imagen models. All
+  other commands are local and need no key.
+
+## Assets
+
+- `swiftmagex` — CLI
+- `swiftmagex-mcp` — MCP server (stdio transport)
+- `SHA256SUMS` — checksums for both binaries
+
 ## Post-0.1.0 — Local response cache for `generate` / `edit`
 
 A content-addressed cache that short-circuits the Gemini/Imagen network call

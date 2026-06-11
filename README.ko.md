@@ -10,7 +10,7 @@ Vision으로 처리합니다. 모든 것이 외부 의존성이 정확히 두 �
 Protocol 서버(`swiftmagex-mcp`)를 구동하므로, AI 에이전트도 동일
 기능을 도구로 호출할 수 있습니다.
 
-권위 있는 사양은 `SwiftMageX-MVP-0.1-spec.md`이고, v0.1.0에 포함
+권위 있는 사양은 `SwiftMageX-MVP-0.1-spec.md`이고, v0.2.0에 포함
 된 내용은 `RELEASE_NOTES.md`를 참고하세요.
 
 ## 요구 사항
@@ -26,7 +26,7 @@ Protocol 서버(`swiftmagex-mcp`)를 구동하므로, AI 에이전트도 동일
 
 ### 사전 빌드 바이너리(권장)
 
-[v0.1.0 릴리스](https://github.com/khodulov-m/SwiftMageX/releases/tag/v0.1.0)
+[v0.2.0 릴리스](https://github.com/khodulov-m/SwiftMageX/releases/tag/v0.2.0)
 에서 `swiftmagex`, `swiftmagex-mcp`, `SHA256SUMS`를 받은 뒤 체크
 섬을 검증하고 `PATH`에 배치하세요:
 
@@ -34,7 +34,7 @@ Protocol 서버(`swiftmagex-mcp`)를 구동하므로, AI 에이전트도 동일
 shasum -a 256 -c SHA256SUMS
 chmod +x swiftmagex swiftmagex-mcp
 sudo mv swiftmagex swiftmagex-mcp /usr/local/bin/
-swiftmagex --version    # 0.1.0
+swiftmagex --version    # 0.2.0
 ```
 
 Gatekeeper가 다운로드를 격리하면 속성을 제거합니다:
@@ -87,7 +87,7 @@ export GEMINI_API_KEY="…"
 | `--json` | 사람이 읽기 좋은 텍스트 대신 구조화된 JSON을 stdout으로 출력. |
 | `-v`, `--verbose` | 진단 메시지를 stderr로 출력. API 키는 **포함되지 않습니다**. |
 | `--cache-dir <경로>` | `generate`/`edit` 응답을 `<경로>` 아래에 캐싱해, 동일한 입력은 API를 호출하는 대신 이전에 기록한 프로바이더 바이트를 그대로 재생합니다. 명시적 opt-in — 아래 캐시 절 참고. |
-| `--version` | `0.1.0`을 출력하고 종료. |
+| `--version` | `0.2.0`을 출력하고 종료. |
 | `-h`, `--help` | 해당 명령의 도움말을 표시. |
 
 `--json` 출력과 MCP 도구 결과의 출력 경로는 항상 **절대 경로**
@@ -527,4 +527,4 @@ App Store Connect 스크린샷, Vision 기반 배경 제거, 살리언시 기반
 
 ## 라이선스
 
-TBD.
+MIT. 전문은 [LICENSE](LICENSE)를 참조하세요.
