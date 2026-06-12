@@ -30,7 +30,7 @@ SwiftMageX 是一个原生 macOS CLI:生成与编辑交给 Google 的图像模�
 - Swift 6.0+ 工具链(Xcode 16+)——仅在从源码构建时需要
 - 用于 `generate` 命令的 Google AI API 密钥,写入
   `SWIFTMAGEX_GEMINI_API_KEY`(或 `GEMINI_API_KEY`)——同一个密钥
-  适用于 Gemini 和 Imagen 模型。`resize`、`text`、`composite`、`appstore`、`remove-bg` 与 `crop` 不需要密钥。
+  适用于 Gemini 和 Imagen 模型。`resize`、`text`、`composite`、`appstore`、`remove-bg`、`crop` 与 `icon` 不需要密钥。
 
 ## 安装
 
@@ -418,6 +418,48 @@ swiftmagex crop photo.jpg --aspect 9:16 -o portrait.jpg --format jpeg --quality 
 当显著性识别不到任何显著对象(罕见;平坦或均匀图像)时,回退为居中
 裁剪,以保证所请求的宽高比依然成立。
 
+### `swiftmagex icon` — Icon Composer `.icon` 包
+
+用准备好的图层图像组装
+[Icon Composer](https://developer.apple.com/icon-composer/) 的 `.icon`
+包——iOS 26+ / macOS 26+ 的分层 Liquid Glass 应用图标格式。完全本地,
+无需密钥。图层按从下到上的顺序列出,叠放在 Icon Composer 的 1024 pt
+画布上;命令写出 `icon.json` 与 `Assets/`,并返回包的绝对路径。请先用
+`generate`、`remove-bg` 或 `resize` 准备图层。
+
+```
+swiftmagex icon <layer[,key=value...]>... [options]
+```
+
+每个图层的选项以逗号附加在路径后:`name=…`、`glass=true|false`
+(Liquid Glass,默认 true)、`scale=N`(图层自然尺寸的倍率,源图
+1 像素 = 1 点)、`dx=N` / `dy=N`(相对居中位置的点偏移,正值 =
+右/下)、`fill=#RRGGBB[AA]`(纯色着色)、`group=N`(从 1 起;同组图层
+必须连续,每组最多 4 层)。
+
+| 选项 | 默认值 | 说明 |
+|---|---|---|
+| `<layer>...` | — | 从下到上。推荐带透明度的 PNG;其他格式会重编码为 PNG。 |
+| `-o`, `--output <path>` | `AppIcon.icon` | 缺少 `.icon` 时自动补全。 |
+| `--fill <solid:#HEX\|auto:#HEX>` | `solid:#FFFFFF` | 图标背景;`auto:` 为由单色派生的系统渐变。 |
+| `--overwrite` | 关 | 原子替换已存在的包。 |
+| `--flat-preview` | 关 | 额外写出一张扁平 1024×1024 PNG 合成图(`<name>-flat.png`)——无 Liquid Glass、无圆角方形蒙版——供 README 与无 Xcode 的场景使用。 |
+| `--flat-preview-output <path>` | 包旁边 | |
+| `--validate` | 关 | 用 Xcode 的 `actool` 编译校验包(需要 Xcode 26)。缺少 actool 时退出码 4,包编译失败时退出码 2。 |
+
+```sh
+# 背景 + 玻璃标志,渐变填充,带预览与编译校验
+swiftmagex icon bg.png mark.png,scale=0.8,dy=-20 \
+  --fill auto:#7B1FA2 -o AppIcon.icon --flat-preview --validate
+
+# 固定在右下角的徽标,无玻璃,白色着色,独立分组
+swiftmagex icon art.png badge.png,glass=false,fill=#FFFFFF,dx=222,dy=223,group=2
+```
+
+把生成的 `AppIcon.icon` 拖进 Xcode 26 项目(或在 Icon Composer 中
+打开)——Xcode 会渲染 Liquid Glass 效果,并为旧系统自动生成扁平
+回退版本。
+
 ### JSON 输出格式
 
 所有命令在 `--json` 下输出同一信封,键按字母排序,nil 字段完全省略
@@ -464,12 +506,15 @@ swiftmagex crop photo.jpg --aspect 9:16 -o portrait.jpg --format jpeg --quality 
 
 ## MCP 服务器
 
-`swiftmagex-mcp` 通过 stdio 暴露九个工具:`generate_image`、`edit_image`、
-`resize_image`、`overlay_text`、`composite_images`、`appstore_screenshots`、`list_frames`、`remove_background`、`smart_crop`。工具参数与 CLI 标志保持一致(snake_case 键名,如 `font_size`、`screen_rect`、`devices`);返回的
+`swiftmagex-mcp` 通过 stdio 暴露十个工具:`generate_image`、`edit_image`、
+`resize_image`、`overlay_text`、`composite_images`、`appstore_screenshots`、`list_frames`、`remove_background`、`smart_crop`、`compose_icon`。工具参数与 CLI 标志保持一致(snake_case 键名,如 `font_size`、`screen_rect`、`devices`);返回的
 文件路径都是绝对路径,调用方代理无需知道服务器的工作目录。
 `generate_image` 与 `edit_image` 还会以 MCP `image` 内容形式返回图像字节,
 便于调用模型直接检视产物。`list_frames` 列出 `appstore_screenshots` 的
-`frame` 参数可接受作为 id 的内置设备外框。
+`frame` 参数可接受作为 id 的内置设备外框。`compose_icon` 对应
+`swiftmagex icon`(图层为对象数组),传入 `flat_preview` 时会把扁平
+预览作为图像内容返回——代理的自然流程是 `generate_image` →
+`remove_background` → `compose_icon`。
 
 ### 配置 Claude Code
 
@@ -526,9 +571,10 @@ claude mcp add -s user swiftmagex /usr/local/bin/swiftmagex-mcp \
 ## 范围与状态
 
 这是 0.1 MVP——三个命令、两个 Google AI 图像提供商(Gemini 与
-Imagen)、一个 MCP 服务器,外加 0.1 之后新增的四个本地命令
-`composite`、`appstore`、`remove-bg`、`crop`(图像合成、
-App Store Connect 截图、基于 Vision 的抠图去背、显著性感知裁剪)。
+Imagen)、一个 MCP 服务器,外加 0.1 之后新增的五个本地命令
+`composite`、`appstore`、`remove-bg`、`crop`、`icon`(图像合成、
+App Store Connect 截图、基于 Vision 的抠图去背、显著性感知裁剪、
+Icon Composer `.icon` 包)。
 超出该边界的内容均推迟,详见规范
 [§2 Scope of version 0.1](SwiftMageX-MVP-0.1-spec.md#2-scope-of-version-01)
 (edit / inpainting、本地提供商、Homebrew 分发、配置文件、

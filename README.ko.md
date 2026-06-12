@@ -36,7 +36,7 @@ Google의 이미지 모델(Gemini와 Imagen)이 맡고, 일상적인 래스터 �
 - `generate` 명령에 사용할 Google AI API 키를
   `SWIFTMAGEX_GEMINI_API_KEY`(또는 `GEMINI_API_KEY`)에 설정.
   Gemini와 Imagen 모델 모두에 사용됩니다. `resize`, `text`,
-  `composite`, `appstore`, `remove-bg`, `crop`은 키가 필요 없습니다.
+  `composite`, `appstore`, `remove-bg`, `crop`, `icon`은 키가 필요 없습니다.
 
 ## 설치
 
@@ -439,6 +439,50 @@ swiftmagex crop photo.jpg --aspect 9:16 -o portrait.jpg --format jpeg --quality 
 살리언시가 두드러진 객체를 찾지 못하는 경우(드묾; 평평하거나 균일한
 이미지) 중앙 크롭으로 폴백해 요청된 종횡비를 그대로 유지합니다.
 
+### `swiftmagex icon` — Icon Composer `.icon` 패키지
+
+준비된 레이어 이미지로
+[Icon Composer](https://developer.apple.com/icon-composer/)의 `.icon`
+패키지(iOS 26+ / macOS 26+의 레이어드 Liquid Glass 앱 아이콘 형식)를
+조립합니다. 완전히 로컬이며 키가 필요 없습니다. 레이어는 아래에서
+위 순서로 나열되어 Icon Composer의 1024pt 캔버스에 쌓이고, 명령은
+`icon.json`과 `Assets/`를 기록한 뒤 패키지의 절대 경로를 반환합니다.
+레이어는 먼저 `generate`, `remove-bg`, `resize`로 준비하세요.
+
+```
+swiftmagex icon <layer[,key=value...]>... [options]
+```
+
+레이어별 옵션은 경로 뒤에 쉼표로 붙입니다: `name=…`,
+`glass=true|false`(Liquid Glass, 기본 true), `scale=N`(레이어 자연
+크기에 대한 배율, 소스 1픽셀 = 1포인트), `dx=N` / `dy=N`(중앙 배치
+기준 포인트 단위 오프셋, 양수 = 오른쪽/아래), `fill=#RRGGBB[AA]`(단색
+틴트), `group=N`(1부터 시작; 같은 그룹의 레이어는 연속해야 하며 그룹당
+최대 4개).
+
+| 옵션 | 기본값 | 비고 |
+|---|---|---|
+| `<layer>...` | — | 아래에서 위로. 투명도가 있는 PNG 권장; 다른 형식은 PNG로 재인코딩됩니다. |
+| `-o`, `--output <path>` | `AppIcon.icon` | `.icon`이 없으면 자동으로 붙습니다. |
+| `--fill <solid:#HEX\|auto:#HEX>` | `solid:#FFFFFF` | 아이콘 배경; `auto:`는 한 색에서 파생되는 시스템 그라데이션. |
+| `--overwrite` | 꺼짐 | 기존 패키지를 원자적으로 교체. |
+| `--flat-preview` | 꺼짐 | 평면 1024×1024 PNG 합성본(`<name>-flat.png`)도 기록 — Liquid Glass와 스쿼클 마스크 없음 — README와 Xcode 없는 환경용. |
+| `--flat-preview-output <path>` | 패키지 옆 | |
+| `--validate` | 꺼짐 | Xcode의 `actool`로 컴파일 검증(Xcode 26 필요). actool이 없으면 종료 코드 4, 컴파일 실패 시 2. |
+
+```sh
+# 배경 + 유리 마크, 그라데이션 채우기, 미리보기와 컴파일 검증 포함
+swiftmagex icon bg.png mark.png,scale=0.8,dy=-20 \
+  --fill auto:#7B1FA2 -o AppIcon.icon --flat-preview --validate
+
+# 오른쪽 아래에 고정된 배지, 유리 없음, 흰색 틴트, 전용 그룹
+swiftmagex icon art.png badge.png,glass=false,fill=#FFFFFF,dx=222,dy=223,group=2
+```
+
+생성된 `AppIcon.icon`을 Xcode 26 프로젝트에 넣거나 Icon Composer에서
+열면 Xcode가 Liquid Glass 효과를 렌더링하고 이전 OS용 평면 버전을
+자동 생성합니다.
+
 ### JSON 출력 스키마
 
 모든 명령은 `--json`에서 동일한 봉투를 출력합니다. 키는 정렬되며
@@ -487,14 +531,17 @@ nil 필드는 완전히 생략됩니다(`null` 자리표시 없음).
 
 ## MCP 서버
 
-`swiftmagex-mcp`는 stdio로 아홉 가지 도구
-(`generate_image`, `edit_image`, `resize_image`, `overlay_text`, `composite_images`, `appstore_screenshots`, `list_frames`, `remove_background`, `smart_crop`)를 노출합니다.
+`swiftmagex-mcp`는 stdio로 열 가지 도구
+(`generate_image`, `edit_image`, `resize_image`, `overlay_text`, `composite_images`, `appstore_screenshots`, `list_frames`, `remove_background`, `smart_crop`, `compose_icon`)를 노출합니다.
 도구 인자는 CLI 플래그와 동일하며(snake_case 키, 예: `font_size`, `screen_rect`, `devices`), 결과는 절대 경로를 반환해 호
 출 에이전트가 서버의 작업 디렉터리를 알 필요가 없습니다.
 `generate_image`와 `edit_image`는 추가로 이미지 바이트를 MCP `image`
 콘텐츠로 함께 반환하여 호출 모델이 결과물을 직접 확인할 수 있습니다.
 `list_frames`는 `appstore_screenshots`의 `frame` 인자가 id로 받아들이는
-내장 디바이스 프레임을 열거합니다.
+내장 디바이스 프레임을 열거합니다. `compose_icon`은 `swiftmagex icon`을
+그대로 반영하며(레이어는 객체 배열), `flat_preview`를 지정하면 평면
+미리보기를 이미지 콘텐츠로 반환합니다 — 에이전트의 자연스러운 흐름은
+`generate_image` → `remove_background` → `compose_icon`입니다.
 
 ### Claude Code 구성
 
@@ -550,10 +597,10 @@ claude mcp add -s user swiftmagex /usr/local/bin/swiftmagex-mcp \
 ## 범위와 상태
 
 이번은 0.1 MVP — 세 가지 명령, 두 개의 Google AI 이미지 공급자
-(Gemini와 Imagen), 한 MCP 서버이며, 여기에 0.1 이후 추가된 네 가지
-로컬 명령 `composite`, `appstore`, `remove-bg`, `crop`(합성,
-App Store Connect 스크린샷, Vision 기반 배경 제거, 살리언시 기반 크롭)이
-더해졌습니다. 그 경계 밖은 모두 미루어졌으며 전체 제외 항목은 스펙
+(Gemini와 Imagen), 한 MCP 서버이며, 여기에 0.1 이후 추가된 다섯 가지
+로컬 명령 `composite`, `appstore`, `remove-bg`, `crop`, `icon`(합성,
+App Store Connect 스크린샷, Vision 기반 배경 제거, 살리언시 기반 크롭,
+Icon Composer `.icon` 패키지)이 더해졌습니다. 그 경계 밖은 모두 미루어졌으며 전체 제외 항목은 스펙
 [§2 Scope of version 0.1](SwiftMageX-MVP-0.1-spec.md#2-scope-of-version-01)
 을 참조하세요(edit / 인페인팅, 로컬 공급자, Homebrew 배포,
 구성 파일, Keychain 등).
