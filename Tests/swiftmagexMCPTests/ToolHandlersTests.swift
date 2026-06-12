@@ -349,7 +349,86 @@ final class ToolHandlersTests: XCTestCase {
             ListFramesTool.name,
             RemoveBackgroundTool.name,
             SmartCropTool.name,
+            ComposeIconTool.name,
         ])
+    }
+
+    // MARK: - compose_icon
+
+    func testComposeIconToolWritesPackageAndReturnsAbsolutePath() throws {
+        let dir = try Self.makeTempDir()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let layer = try TestPNG.writeFixture(width: 16, height: 16)
+        defer { try? FileManager.default.removeItem(at: layer) }
+
+        let arguments: [String: Value] = [
+            "layers": .array([
+                .object(["path": .string(layer.path), "glass": .bool(false)]),
+            ]),
+            "fill": .string("solid:#102030"),
+            "output": .string(dir.appendingPathComponent("AgentIcon").path),
+        ]
+        let result = try ToolHandlers.composeIcon(arguments: arguments)
+
+        XCTAssertNotEqual(result.isError, true)
+        let text = try XCTUnwrap(result.firstText)
+        XCTAssertTrue(text.hasPrefix("OK\n"))
+        XCTAssertTrue(
+            text.contains("\(dir.path)/AgentIcon.icon"),
+            "summary must carry the absolute package path: \(text)"
+        )
+        XCTAssertTrue(
+            text.contains("icon package"),
+            "summary must identify the output as a package: \(text)"
+        )
+        XCTAssertTrue(
+            FileManager.default.fileExists(
+                atPath: dir.appendingPathComponent("AgentIcon.icon/icon.json").path
+            )
+        )
+    }
+
+    func testComposeIconToolFlatPreviewReturnsImageContent() throws {
+        let dir = try Self.makeTempDir()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let layer = try TestPNG.writeFixture(width: 16, height: 16)
+        defer { try? FileManager.default.removeItem(at: layer) }
+
+        let arguments: [String: Value] = [
+            "layers": .array([.object(["path": .string(layer.path)])]),
+            "output": .string(dir.appendingPathComponent("PreviewIcon").path),
+            "flat_preview": .bool(true),
+        ]
+        let result = try ToolHandlers.composeIcon(arguments: arguments)
+
+        XCTAssertNotEqual(result.isError, true)
+        let text = try XCTUnwrap(result.firstText)
+        XCTAssertTrue(text.contains("flat preview:"), "summary must name the preview: \(text)")
+        let images = result.imageContents
+        XCTAssertEqual(images.count, 1, "the flat preview must come back as image content")
+        XCTAssertEqual(images[0].mimeType, "image/png")
+    }
+
+    func testComposeIconToolMissingLayersReturnsInvalidParams() {
+        XCTAssertThrowsError(try ToolHandlers.composeIcon(arguments: [:])) { error in
+            XCTAssertTrue(error is MCPError)
+        }
+        XCTAssertThrowsError(
+            try ToolHandlers.composeIcon(arguments: ["layers": .array([])])
+        ) { error in
+            XCTAssertTrue(error is MCPError)
+        }
+    }
+
+    func testComposeIconToolMalformedFillReturnsInvalidParams() throws {
+        let layer = try TestPNG.writeFixture(width: 8, height: 8)
+        defer { try? FileManager.default.removeItem(at: layer) }
+        XCTAssertThrowsError(try ToolHandlers.composeIcon(arguments: [
+            "layers": .array([.object(["path": .string(layer.path)])]),
+            "fill": .string("plaid:#FF0000"),
+        ])) { error in
+            XCTAssertTrue(error is MCPError)
+        }
     }
 
     func testListFramesReportsBundledCatalog() {

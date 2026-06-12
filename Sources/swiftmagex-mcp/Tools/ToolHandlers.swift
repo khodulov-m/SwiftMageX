@@ -245,6 +245,50 @@ enum ToolHandlers {
         }
     }
 
+    // MARK: - compose_icon
+
+    static func composeIcon(arguments: [String: Value]?) throws -> CallTool.Result {
+        let input = try ComposeIconTool.parse(arguments)
+
+        do {
+            let package = try SwiftMageXOrchestrator.composeIcon(
+                layers: input.layers,
+                fill: input.fill,
+                output: input.output,
+                overwrite: input.overwrite,
+                flatPreview: input.flatPreview,
+                flatPreviewOutput: input.flatPreviewOutput,
+                validate: input.validate
+            )
+            // The package is a directory, not an image, so the summary is
+            // hand-built; the flat preview (when produced) is echoed back as
+            // image content per spec §7.
+            var lines = [
+                "OK",
+                "\(package.packagePath.path) (icon package, "
+                    + "\(package.layerCount) layers, \(package.groupCount) groups)",
+            ]
+            if let preview = package.flatPreview {
+                lines.append(
+                    "flat preview: \(preview.path.path) "
+                        + "(\(preview.format.rawValue) \(preview.width)x\(preview.height))"
+                )
+            }
+            if package.validation != nil {
+                lines.append("validation: passed (actool)")
+            }
+            var content: [Tool.Content] = [
+                .text(text: lines.joined(separator: "\n"), annotations: nil, _meta: nil)
+            ]
+            if let preview = package.flatPreview {
+                content.append(contentsOf: imageContents(for: [preview]))
+            }
+            return CallTool.Result(content: content, isError: false)
+        } catch let error as SwiftMageXError {
+            return errorResult(error)
+        }
+    }
+
     // MARK: - Helpers
 
     /// Builds a success result for a local raster tool: the text summary plus
