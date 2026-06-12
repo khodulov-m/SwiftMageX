@@ -36,7 +36,7 @@ que foi entregue na v0.2.0 está em `RELEASE_NOTES.md`.
   a partir do código-fonte
 - Uma chave de API do Google AI em `SWIFTMAGEX_GEMINI_API_KEY` (ou
   `GEMINI_API_KEY`) para o comando `generate` — vale tanto para
-  modelos Gemini quanto Imagen. `resize`, `text`, `composite`, `appstore`, `remove-bg` e `crop` não exigem chave.
+  modelos Gemini quanto Imagen. `resize`, `text`, `composite`, `appstore`, `remove-bg`, `crop` e `icon` não exigem chave.
 
 ## Instalação
 
@@ -446,6 +446,52 @@ Quando a saliência não encontra objetos salientes (raro; imagens planas ou
 uniformes), recorre a um recorte central para que a proporção solicitada
 continue valendo.
 
+### `swiftmagex icon` — pacotes `.icon` do Icon Composer
+
+Monta um pacote `.icon` do
+[Icon Composer](https://developer.apple.com/icon-composer/) — o formato
+de ícones de app em camadas com Liquid Glass para iOS 26+ / macOS 26+ —
+a partir de imagens de camada preparadas. Totalmente local, sem chave.
+As camadas são listadas de baixo para cima e empilhadas na tela de
+1024 pt do Icon Composer; o comando grava `icon.json` mais `Assets/` e
+informa o caminho absoluto do pacote. Prepare as camadas antes com
+`generate`, `remove-bg` ou `resize`.
+
+```
+swiftmagex icon <layer[,key=value...]>... [options]
+```
+
+As opções por camada são anexadas ao caminho, separadas por vírgula:
+`name=…`, `glass=true|false` (Liquid Glass, padrão true), `scale=N`
+(multiplicador do tamanho natural da camada, 1 pixel de origem =
+1 ponto), `dx=N` / `dy=N` (deslocamento em pontos a partir do
+posicionamento centralizado, positivo = direita/baixo),
+`fill=#RRGGBB[AA]` (tinta sólida), `group=N` (a partir de 1; camadas de
+um grupo devem ser contíguas, máx. 4 por grupo).
+
+| Opção | Padrão | Notas |
+|---|---|---|
+| `<layer>...` | — | De baixo para cima. PNG com transparência recomendado; outros formatos são recodificados para PNG. |
+| `-o`, `--output <path>` | `AppIcon.icon` | `.icon` é acrescentado quando ausente. |
+| `--fill <solid:#HEX\|auto:#HEX>` | `solid:#FFFFFF` | Fundo do ícone; `auto:` é o gradiente do sistema derivado de uma cor. |
+| `--overwrite` | desligado | Substitui atomicamente um pacote existente. |
+| `--flat-preview` | desligado | Grava também um composto plano PNG 1024×1024 (`<name>-flat.png`) — sem Liquid Glass, sem máscara squircle — para READMEs e consumidores sem Xcode. |
+| `--flat-preview-output <path>` | ao lado do pacote | |
+| `--validate` | desligado | Verifica o pacote compilando com o `actool` do Xcode (requer Xcode 26). Exit 4 se o actool faltar, exit 2 se o pacote não compilar. |
+
+```sh
+# Fundo + marca de vidro, preenchimento em gradiente, com prévia e checagem de compilação
+swiftmagex icon bg.png mark.png,scale=0.8,dy=-20 \
+  --fill auto:#7B1FA2 -o AppIcon.icon --flat-preview --validate
+
+# Selo fixado no canto inferior direito, sem vidro, tinta branca, grupo próprio
+swiftmagex icon art.png badge.png,glass=false,fill=#FFFFFF,dx=222,dy=223,group=2
+```
+
+Arraste o `AppIcon.icon` resultante para um projeto do Xcode 26 (ou
+abra no Icon Composer) — o Xcode renderiza o efeito Liquid Glass e gera
+as variantes planas para versões mais antigas do sistema.
+
 ### Esquema de saída JSON
 
 Cada comando emite o mesmo envelope sob `--json`. Chaves são
@@ -495,9 +541,10 @@ Política de retry em 429: até 5 tentativas, backoff exponencial
 
 ## Servidor MCP
 
-`swiftmagex-mcp` expõe nove ferramentas — `generate_image`, `edit_image`,
+`swiftmagex-mcp` expõe dez ferramentas — `generate_image`, `edit_image`,
 `resize_image`, `overlay_text`, `composite_images`, `appstore_screenshots`,
-`list_frames`, `remove_background` e `smart_crop` — por stdio. Os argumentos espelham as
+`list_frames`, `remove_background`, `smart_crop` e `compose_icon` — por
+stdio. Os argumentos espelham as
 flags da CLI (chaves em snake_case, ex.: `font_size`, `screen_rect`,
 `devices`); os resultados informam caminhos absolutos para que o
 agente que chama não precise saber o diretório de trabalho do
@@ -505,7 +552,10 @@ servidor. `generate_image` e `edit_image` ainda devolvem os bytes da
 imagem como conteúdo MCP `image`, permitindo que o modelo invocador
 inspecione o que foi gerado. `list_frames` enumera as molduras de
 dispositivo incluídas cujos ids são aceitos pelo argumento `frame` de
-`appstore_screenshots`.
+`appstore_screenshots`. `compose_icon` espelha `swiftmagex icon`
+(camadas como array de objetos) e devolve a prévia plana como conteúdo
+de imagem quando `flat_preview` é passado — o fluxo natural do agente é
+`generate_image` → `remove_background` → `compose_icon`.
 
 ### Configurar o Claude Code
 
@@ -562,10 +612,11 @@ não vai parar no ambiente geral do cliente.
 ## Escopo e estado
 
 Este é o MVP 0.1 — três comandos, dois provedores de imagens do
-Google AI (Gemini e Imagen), um servidor MCP — mais quatro adições
-locais pós-0.1: `composite`, `appstore`, `remove-bg` e `crop`
+Google AI (Gemini e Imagen), um servidor MCP — mais cinco adições
+locais pós-0.1: `composite`, `appstore`, `remove-bg`, `crop` e `icon`
 (composição, capturas para App Store Connect, remoção de fundo baseada
-em Vision e recorte sensível à saliência). Qualquer coisa fora desse
+em Vision, recorte sensível à saliência e pacotes `.icon` do Icon
+Composer). Qualquer coisa fora desse
 limite está adiada; veja a lista
 completa fora de escopo na spec
 [§2 Scope of version 0.1](SwiftMageX-MVP-0.1-spec.md#2-scope-of-version-01)
