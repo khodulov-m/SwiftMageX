@@ -43,6 +43,23 @@ public struct JSONResultEnvelope: Encodable, Equatable, Sendable {
             self.cached = cached
         }
 
+        /// For outputs that are not raster files — e.g. the `icon` command's
+        /// `.icon` package directory, reported with `formatName: "icon"` and
+        /// no dimensions.
+        public init(
+            path: String,
+            formatName: String,
+            width: Int? = nil,
+            height: Int? = nil,
+            cached: Bool? = nil
+        ) {
+            self.path = path
+            self.format = formatName
+            self.width = width
+            self.height = height
+            self.cached = cached
+        }
+
         public func encode(to encoder: Encoder) throws {
             var c = encoder.container(keyedBy: CodingKeys.self)
             try c.encode(path, forKey: .path)

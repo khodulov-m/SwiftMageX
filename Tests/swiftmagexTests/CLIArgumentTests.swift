@@ -233,10 +233,79 @@ final class CLIArgumentTests: XCTestCase {
         XCTAssertThrowsError(try CropCommand.parse(["photo.jpg", "--aspect", "abc"]))
     }
 
+    // MARK: - icon
+
+    func testIconRequiresAtLeastOneLayer() {
+        XCTAssertThrowsError(try IconCommand.parse([]))
+    }
+
+    func testIconParsesLayerOptions() throws {
+        let spec = try IconCommand.parseLayer(
+            "mark.png,name=Front Glow,glass=false,scale=0.8,dx=-20,dy=10,fill=#FF0000,group=2"
+        )
+        XCTAssertEqual(spec.path, "mark.png")
+        XCTAssertEqual(spec.name, "Front Glow")
+        XCTAssertEqual(spec.glass, false)
+        XCTAssertEqual(spec.scale, 0.8)
+        XCTAssertEqual(spec.dx, -20)
+        XCTAssertEqual(spec.dy, 10)
+        XCTAssertEqual(spec.fill, "#FF0000")
+        XCTAssertEqual(spec.group, 2)
+    }
+
+    func testIconLayerDefaultsLeaveOptionsUnset() throws {
+        let spec = try IconCommand.parseLayer("bg.png")
+        XCTAssertEqual(spec.path, "bg.png")
+        XCTAssertNil(spec.name)
+        XCTAssertNil(spec.glass)
+        XCTAssertNil(spec.scale)
+        XCTAssertNil(spec.dx)
+        XCTAssertNil(spec.dy)
+        XCTAssertNil(spec.fill)
+        XCTAssertEqual(spec.group, 1)
+    }
+
+    func testIconLayerPathMayContainCommas() throws {
+        XCTAssertEqual(try IconCommand.parseLayer("my,file.png").path, "my,file.png")
+        XCTAssertEqual(
+            try IconCommand.parseLayer("my,file.png,glass=false").path,
+            "my,file.png"
+        )
+    }
+
+    func testIconRejectsMalformedLayerOptions() {
+        XCTAssertThrowsError(try IconCommand.parseLayer("l.png,scale=abc"))
+        XCTAssertThrowsError(try IconCommand.parseLayer("l.png,scale=0"))
+        XCTAssertThrowsError(try IconCommand.parseLayer("l.png,glass=2"))
+        XCTAssertThrowsError(try IconCommand.parseLayer("l.png,group=0"))
+        XCTAssertThrowsError(try IconCommand.parseLayer("l.png,fill=red"))
+        XCTAssertThrowsError(try IconCommand.parseLayer("l.png,bogus=1"))
+        XCTAssertThrowsError(try IconCommand.parseLayer("l.png,glass="))
+    }
+
+    func testIconValidatesFillFlag() throws {
+        XCTAssertThrowsError(try IconCommand.parse(["l.png", "--fill", "nope"]))
+        XCTAssertThrowsError(try IconCommand.parse(["l.png", "--fill", "solid:red"]))
+        let cmd = try IconCommand.parse(["l.png", "--fill", "auto:#7B1FA2"])
+        XCTAssertEqual(cmd.fill, "auto:#7B1FA2")
+    }
+
+    func testIconFlagDefaults() throws {
+        let cmd = try IconCommand.parse(["l.png"])
+        XCTAssertEqual(cmd.fill, "solid:#FFFFFF")
+        XCTAssertFalse(cmd.overwrite)
+        XCTAssertFalse(cmd.flatPreview)
+        XCTAssertFalse(cmd.runValidation)
+        XCTAssertNil(cmd.output)
+    }
+
     // MARK: - root
 
     func testRootRegistersAllSubcommands() {
         let names = SwiftMageX.configuration.subcommands.map { $0.configuration.commandName }
-        XCTAssertEqual(Set(names), ["generate", "edit", "resize", "text", "composite", "appstore", "remove-bg", "crop"])
+        XCTAssertEqual(
+            Set(names),
+            ["generate", "edit", "resize", "text", "composite", "appstore", "remove-bg", "crop", "icon"]
+        )
     }
 }

@@ -70,6 +70,32 @@ struct ToolArguments {
         return d
     }
 
+    func optionalBool(_ key: String) throws -> Bool? {
+        guard let value = raw[key] else { return nil }
+        if case .null = value { return nil }
+        guard case .bool(let b) = value else {
+            throw MCPError.invalidParams("\(toolName): '\(key)' must be a boolean")
+        }
+        return b
+    }
+
+    /// Decodes an array-of-objects argument. Returns `nil` when absent.
+    /// Each element surfaces as a raw dictionary; wrap it in a nested
+    /// ``ToolArguments`` to reuse the typed accessors per object.
+    func optionalObjectArray(_ key: String) throws -> [[String: Value]]? {
+        guard let value = raw[key] else { return nil }
+        if case .null = value { return nil }
+        guard case .array(let items) = value else {
+            throw MCPError.invalidParams("\(toolName): '\(key)' must be an array of objects")
+        }
+        return try items.map { item in
+            guard case .object(let dict) = item else {
+                throw MCPError.invalidParams("\(toolName): '\(key)' must contain only objects")
+            }
+            return dict
+        }
+    }
+
     /// Decodes an array-of-strings argument. Returns `nil` when absent.
     /// Accepts a JSON array of strings; also tolerates a single string so
     /// agents can pass one value without wrapping it in an array.
