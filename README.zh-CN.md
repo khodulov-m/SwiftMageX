@@ -21,7 +21,7 @@ SwiftMageX 是一个原生 macOS CLI:生成与编辑交给 Google 的图像模�
 - 🪶 **极小的体积** — 一个小巧的 Swift 包、恰好两个外部依赖、两个自包含
   的二进制文件。
 
-权威规范见 `SwiftMageX-MVP-0.1-spec.md`,v0.2.0 发布内容见
+权威规范见 `SwiftMageX-MVP-0.1-spec.md`,v0.3.0 发布内容见
 `RELEASE_NOTES.md`。
 
 ## 环境要求
@@ -36,7 +36,7 @@ SwiftMageX 是一个原生 macOS CLI:生成与编辑交给 Google 的图像模�
 
 ### 预编译二进制(推荐)
 
-从 [v0.2.0 release](https://github.com/khodulov-m/SwiftMageX/releases/tag/v0.2.0)
+从 [v0.3.0 release](https://github.com/khodulov-m/SwiftMageX/releases/tag/v0.3.0)
 下载 `swiftmagex`、`swiftmagex-mcp` 和 `SHA256SUMS`,校验后放入
 `PATH`:
 
@@ -44,7 +44,7 @@ SwiftMageX 是一个原生 macOS CLI:生成与编辑交给 Google 的图像模�
 shasum -a 256 -c SHA256SUMS
 chmod +x swiftmagex swiftmagex-mcp
 sudo mv swiftmagex swiftmagex-mcp /usr/local/bin/
-swiftmagex --version    # 0.2.0
+swiftmagex --version    # 0.3.0
 ```
 
 若 Gatekeeper 隔离了下载文件,清除隔离属性:
@@ -95,7 +95,7 @@ export GEMINI_API_KEY="…"
 | `--json` | 以结构化 JSON 写到 stdout,而非人类可读文本。 |
 | `-v`、`--verbose` | 把诊断信息写到 stderr。**不包含** API 密钥。 |
 | `--cache-dir <路径>` | 将 `generate`/`edit` 的响应缓存到 `<路径>`,相同输入会回放此前记录的提供方字节而不再调用 API。需显式开启 — 详见下文缓存小节。 |
-| `--version` | 打印 `0.2.0` 并退出。 |
+| `--version` | 打印 `0.3.0` 并退出。 |
 | `-h`、`--help` | 显示该命令的帮助。 |
 
 `--json` 输出和 MCP 工具返回的路径**始终是绝对路径**——调用方代理

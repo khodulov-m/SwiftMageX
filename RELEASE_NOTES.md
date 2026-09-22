@@ -1,8 +1,64 @@
 # SwiftMageX
 
-# Unreleased
+# v0.3.0
 
-## Model catalog refreshed (2026-09-22)
+Icon Composer packages, and a model catalog that no longer points at retired
+models. The detailed entries below (each headed "Post-0.2.0 — …") are the
+changelog for this version; they are kept as written when each capability
+shipped.
+
+## Highlights
+
+- `swiftmagex icon` — assemble an Apple Icon Composer `.icon` package (layered
+  Liquid Glass icons, iOS 26+ / macOS 26+) from prepared layer images, with
+  `--flat-preview` and `actool` validation; `compose_icon` MCP tool. Fully
+  local, no API key.
+- **The default model is now `gemini-3.1-flash-image`.** The old default,
+  `gemini-2.5-flash-image`, retires on 2026-10-02. A plain `swiftmagex
+  generate` therefore returns 1408×768 instead of 1024×1024: the new model
+  picks its own wider framing, and `--size` was always a hint.
+- **Built-in models are GA-only** — `gemini-3.1-flash-image`,
+  `gemini-3.1-flash-lite-image`, `gemini-3-pro-image`. The `-preview` aliases
+  are no longer advertised.
+- **Imagen is out of the catalog.** Google retired the 4.0 family on
+  2026-08-17 and every `imagen-*` id now returns 404. `--model` still accepts
+  them and surfaces the provider's own error, but nothing advertises them, and
+  the aspect-ratio control that family offered has no replacement here.
+- The MCP server now exposes ten tools.
+
+## Install
+
+Download the binaries from the release assets, then:
+
+```sh
+shasum -a 256 -c SHA256SUMS
+chmod +x swiftmagex swiftmagex-mcp
+sudo mv swiftmagex swiftmagex-mcp /usr/local/bin/
+swiftmagex --version    # 0.3.0
+```
+
+Or build from source:
+
+```sh
+swift build -c release
+```
+
+## Requirements
+
+- macOS 14+ on Apple silicon (arm64).
+- Swift 6.0+ toolchain to build from source.
+- A Google AI API key in `SWIFTMAGEX_GEMINI_API_KEY` (or `GEMINI_API_KEY`)
+  for `generate` / `edit`. All other commands, `icon` included, are local and
+  need no key.
+- `icon --validate` needs Xcode's `actool` (Xcode or the Command Line Tools).
+
+## Assets
+
+- `swiftmagex` — CLI
+- `swiftmagex-mcp` — MCP server (stdio transport)
+- `SHA256SUMS` — checksums for both binaries
+
+## Post-0.2.0 — Image model catalog refresh
 
 Checked against `ListModels` on a live key, and against Google's deprecation
 schedule. The `--model` default and the built-in list changed; nothing else did.
@@ -24,6 +80,33 @@ schedule. The `--model` default and the built-in list changed; nothing else did.
 
 `--model` still accepts any id: retired ones keep routing by prefix and fail
 with the provider's error.
+
+## Post-0.2.0 — Icon Composer `.icon` packages
+
+`swiftmagex icon` / MCP `compose_icon`: assemble an Apple Icon Composer
+`.icon` package (the layered Liquid Glass app-icon format, iOS 26+ /
+macOS 26+) from prepared layer images. Fully local, no API key.
+
+- Layers listed bottom-to-top, each with optional `name`, `glass=false`,
+  `scale`, `dx`/`dy` (points from centered placement on the 1024-pt canvas),
+  solid `fill` tint, and 1-based `group` (contiguous, max 4 layers per
+  group — Icon Composer's limit). The emitted `icon.json` mirrors documents
+  produced by Icon Composer itself (verified against real output: groups
+  front-first, `translation-in-points` as a center offset, `srgb:` color
+  strings).
+- `--fill solid:#HEX | auto:#HEX` icon background (`auto:` maps to Icon
+  Composer's `automatic-gradient`).
+- PNG layers are copied into `Assets/` byte-for-byte; JPEG/HEIC/WebP are
+  re-encoded to PNG. The package is staged in a temp directory and moved
+  into place; `--overwrite` replaces an existing package atomically.
+- `--flat-preview` writes a flat 1024×1024 PNG composite (stacking only —
+  no Liquid Glass, no squircle mask) for READMEs and non-Xcode consumers;
+  the MCP tool returns it as `image` content.
+- `--validate` compile-checks the finished package with Xcode's `actool`
+  (the same step Xcode runs at build time). Success is detected by the
+  produced `Assets.car`, since actool exits 0 even for broken packages.
+  Missing actool → exit 4 (configuration); failed compile → exit 2.
+- The MCP server now exposes ten tools.
 
 # v0.2.0
 
@@ -76,33 +159,6 @@ swift build -c release
 - `swiftmagex` — CLI
 - `swiftmagex-mcp` — MCP server (stdio transport)
 - `SHA256SUMS` — checksums for both binaries
-
-## Post-0.2.0 — Icon Composer `.icon` packages (unreleased)
-
-`swiftmagex icon` / MCP `compose_icon`: assemble an Apple Icon Composer
-`.icon` package (the layered Liquid Glass app-icon format, iOS 26+ /
-macOS 26+) from prepared layer images. Fully local, no API key.
-
-- Layers listed bottom-to-top, each with optional `name`, `glass=false`,
-  `scale`, `dx`/`dy` (points from centered placement on the 1024-pt canvas),
-  solid `fill` tint, and 1-based `group` (contiguous, max 4 layers per
-  group — Icon Composer's limit). The emitted `icon.json` mirrors documents
-  produced by Icon Composer itself (verified against real output: groups
-  front-first, `translation-in-points` as a center offset, `srgb:` color
-  strings).
-- `--fill solid:#HEX | auto:#HEX` icon background (`auto:` maps to Icon
-  Composer's `automatic-gradient`).
-- PNG layers are copied into `Assets/` byte-for-byte; JPEG/HEIC/WebP are
-  re-encoded to PNG. The package is staged in a temp directory and moved
-  into place; `--overwrite` replaces an existing package atomically.
-- `--flat-preview` writes a flat 1024×1024 PNG composite (stacking only —
-  no Liquid Glass, no squircle mask) for READMEs and non-Xcode consumers;
-  the MCP tool returns it as `image` content.
-- `--validate` compile-checks the finished package with Xcode's `actool`
-  (the same step Xcode runs at build time). Success is detected by the
-  produced `Assets.car`, since actool exits 0 even for broken packages.
-  Missing actool → exit 4 (configuration); failed compile → exit 2.
-- The MCP server now exposes ten tools.
 
 ## Post-0.1.0 — Local response cache for `generate` / `edit`
 

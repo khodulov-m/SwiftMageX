@@ -26,7 +26,7 @@ Google의 이미지 모델(Gemini와 Imagen)이 맡고, 일상적인 래스터 �
 - 🪶 **최소한의 흔적** — 작은 Swift 패키지 하나, 외부 의존성 정확히 두 개,
   자체 완결형 바이너리 두 개.
 
-권위 있는 사양은 `SwiftMageX-MVP-0.1-spec.md`이고, v0.2.0에 포함
+권위 있는 사양은 `SwiftMageX-MVP-0.1-spec.md`이고, v0.3.0에 포함
 된 내용은 `RELEASE_NOTES.md`를 참고하세요.
 
 ## 요구 사항
@@ -42,7 +42,7 @@ Google의 이미지 모델(Gemini와 Imagen)이 맡고, 일상적인 래스터 �
 
 ### 사전 빌드 바이너리(권장)
 
-[v0.2.0 릴리스](https://github.com/khodulov-m/SwiftMageX/releases/tag/v0.2.0)
+[v0.3.0 릴리스](https://github.com/khodulov-m/SwiftMageX/releases/tag/v0.3.0)
 에서 `swiftmagex`, `swiftmagex-mcp`, `SHA256SUMS`를 받은 뒤 체크
 섬을 검증하고 `PATH`에 배치하세요:
 
@@ -50,7 +50,7 @@ Google의 이미지 모델(Gemini와 Imagen)이 맡고, 일상적인 래스터 �
 shasum -a 256 -c SHA256SUMS
 chmod +x swiftmagex swiftmagex-mcp
 sudo mv swiftmagex swiftmagex-mcp /usr/local/bin/
-swiftmagex --version    # 0.2.0
+swiftmagex --version    # 0.3.0
 ```
 
 Gatekeeper가 다운로드를 격리하면 속성을 제거합니다:
@@ -103,7 +103,7 @@ export GEMINI_API_KEY="…"
 | `--json` | 사람이 읽기 좋은 텍스트 대신 구조화된 JSON을 stdout으로 출력. |
 | `-v`, `--verbose` | 진단 메시지를 stderr로 출력. API 키는 **포함되지 않습니다**. |
 | `--cache-dir <경로>` | `generate`/`edit` 응답을 `<경로>` 아래에 캐싱해, 동일한 입력은 API를 호출하는 대신 이전에 기록한 프로바이더 바이트를 그대로 재생합니다. 명시적 opt-in — 아래 캐시 절 참고. |
-| `--version` | `0.2.0`을 출력하고 종료. |
+| `--version` | `0.3.0`을 출력하고 종료. |
 | `-h`, `--help` | 해당 명령의 도움말을 표시. |
 
 `--json` 출력과 MCP 도구 결과의 출력 경로는 항상 **절대 경로**
