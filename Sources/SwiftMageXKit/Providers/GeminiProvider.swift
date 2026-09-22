@@ -31,9 +31,11 @@ public struct GeminiProvider: ImageProvider {
         })
     }
 
-    // Spec §17 leaves seed support for `gemini-2.5-flash-image` unconfirmed;
-    // until that is verified by a live call, advertise it as unsupported and
-    // rely on metadata (milestone 5) to preserve the recorded intent.
+    // Spec §17 left seed support for the Gemini image family unconfirmed, and it
+    // still is — the question outlived `gemini-2.5-flash-image`, which the spec
+    // named and which Google retires on 2026-10-02. Until a live call verifies it,
+    // advertise seed as unsupported and rely on metadata (milestone 5) to preserve
+    // the recorded intent.
     init(
         apiKey: String,
         httpClient: any HTTPClient,

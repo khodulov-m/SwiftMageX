@@ -5,7 +5,7 @@ final class GeminiRequestTests: XCTestCase {
     // MARK: - Helpers
 
     private static let testPrompt = "a small red square on a white background"
-    private static let testModel = "gemini-2.5-flash-image"
+    private static let testModel = "gemini-3.1-flash-image"
     private static let testAPIKey = "test-api-key-not-real"
 
     /// Wraps `imageBytes` in a Gemini-shaped JSON response with the given MIME.
@@ -367,7 +367,7 @@ final class GeminiRequestTests: XCTestCase {
             size: .portrait,
             count: 2,
             seed: 42,
-            model: "gemini-2.5-flash-image"
+            model: "gemini-3.1-flash-image"
         )
 
         _ = try await mock.generate(request)

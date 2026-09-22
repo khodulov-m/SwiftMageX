@@ -32,16 +32,36 @@ public struct ImageModelDescriptor: Sendable, Equatable {
 /// so a freshly released Gemini or Imagen variant works without a code
 /// change — but the entries listed below are what the CLI and MCP
 /// surface to users.
+///
+/// **Only GA ids belong here.** A preview alias is retired some time after the
+/// model reaches GA, and nothing in this file would notice: `--model` would keep
+/// resolving through the prefix heuristic until Google switched the alias off,
+/// and the failure would land on the user mid-command. Listing the GA id instead
+/// means the catalog is wrong loudly, at review time, rather than quietly.
+///
+/// Refreshed 2026-09-22 against `ListModels` on a live key. What changed and why:
+///
+/// - The default moved off `gemini-2.5-flash-image`, which Google retires on
+///   2026-10-02. Its documented replacement is `gemini-3.1-flash-image-preview`,
+///   but that preview's own shutdown date (2026-06-25) has already passed, so the
+///   GA `gemini-3.1-flash-image` is the honest target.
+/// - `gemini-3-pro-image-preview` and `gemini-3.1-flash-image-preview` gave way to
+///   their GA ids. Both aliases still resolved when this was written; neither is
+///   advertised any more.
+/// - The whole Imagen 4.0 family was retired on 2026-08-17 and now 404s on both
+///   `v1` and `v1beta` — verified by `GET`, by `:predict`, and by its absence from
+///   `ListModels`. Google's replacement for it is `gemini-3.1-flash-image`, the
+///   default below. ``ImageModelFamily/imagen`` and ``ImagenProvider`` are kept on
+///   purpose: Imagen still exists on Vertex AI, the `:predict` wire shape is
+///   tested, and an `imagen-*` id passed by hand still routes to it and fails with
+///   Google's own error rather than a confusing one of ours.
 public enum ModelCatalog {
-    public static let defaultModelID = "gemini-2.5-flash-image"
+    public static let defaultModelID = "gemini-3.1-flash-image"
 
     public static let all: [ImageModelDescriptor] = [
-        .init(id: "gemini-2.5-flash-image", family: .gemini),
-        .init(id: "gemini-3-pro-image-preview", family: .gemini, isPreview: true),
-        .init(id: "gemini-3.1-flash-image-preview", family: .gemini, isPreview: true),
-        .init(id: "imagen-4.0-generate-001", family: .imagen),
-        .init(id: "imagen-4.0-fast-generate-001", family: .imagen),
-        .init(id: "imagen-4.0-ultra-generate-001", family: .imagen),
+        .init(id: "gemini-3.1-flash-image", family: .gemini),
+        .init(id: "gemini-3.1-flash-lite-image", family: .gemini),
+        .init(id: "gemini-3-pro-image", family: .gemini),
     ]
 
     /// Returns the descriptor for an exact match, or `nil` if unknown.

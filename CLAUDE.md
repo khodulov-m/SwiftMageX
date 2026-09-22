@@ -58,7 +58,8 @@ These are easy to get subtly wrong if you're modifying the code. Cross-check aga
 - **429 retry policy**: up to 5 retries, exponential backoff starting at 1 s, doubling. After exhaustion → exit code 3. (§13)
 - **Exit codes**: 0 success, 1 unexpected, 2 invalid input, 3 provider/API, 4 config (missing key). MCP tool errors must map to the same semantic categories. (§13)
 - **`--count` cap**: 1–4. (§6.1, §17)
-- **Default model**: `gemini-2.5-flash-image` (stable). Built-in alternates listed in `ModelCatalog.all` — Gemini family (`gemini-3-pro-image-preview`, `gemini-3.1-flash-image-preview`) and Imagen family (`imagen-4.0-generate-001`, `imagen-4.0-fast-generate-001`, `imagen-4.0-ultra-generate-001`). Unknown ids route by `imagen-`/`gemini-` prefix. (§8, post-0.1)
+- **Default model**: `gemini-3.1-flash-image` (GA). Built-in alternates in `ModelCatalog.all`: `gemini-3.1-flash-lite-image` and `gemini-3-pro-image`, both GA. Unknown ids route by `imagen-`/`gemini-` prefix. **Only GA ids go in the catalog** — a preview alias is retired some time after its model reaches GA, and the prefix heuristic would hide that until Google switched the alias off. (§8, post-0.1 — this diverges from the spec, which names `gemini-2.5-flash-image`; see below.)
+- **The spec's model choices are out of date, deliberately not rewritten.** `SwiftMageX-MVP-0.1-spec.md` is dated May 2026 and names `gemini-2.5-flash-image` as the default with the Imagen 4.0 family as alternates. Verified against `ListModels` on a live key on 2026-09-22: `gemini-2.5-flash-image` retires 2026-10-02, the two `-preview` aliases were superseded by GA ids (and `gemini-3.1-flash-image-preview`'s own shutdown, 2026-06-25, has already passed), and **the whole Imagen 4.0 family was retired on 2026-08-17 and now 404s on `v1` and `v1beta` alike**. The catalog is the current truth; the spec records what was designed.
 
 ## Google AI image API specifics
 
@@ -72,6 +73,8 @@ Both providers hit `generativelanguage.googleapis.com` with the same `x-goog-api
 - Multi-image: `--count > 1` is N parallel calls (the API takes one image per call).
 
 ### Imagen family (`ImagenProvider`)
+
+**Unreachable as of 2026-08-17.** Google retired Imagen 4.0 from the Gemini API; every `imagen-*` id 404s on `GET`, on `:predict`, and is absent from `ListModels`. The provider, the `imagen` family case and the `imagen-` prefix routing are kept on purpose: Imagen lives on in Vertex AI (a different endpoint and auth story), the wire shape below is still covered by `ImagenRequestTests`, and an `imagen-*` id passed by hand reaches the provider and surfaces Google's own 404 as exit code 3 rather than a confusing error of ours. Nothing advertises these ids any more. If Imagen never returns to this API, deleting the provider is a clean, separate change.
 
 - Endpoint: `POST /v1beta/models/{model}:predict`
 - Request: `instances: [{prompt}], parameters: { sampleCount, aspectRatio }`. `aspectRatio` is `"1:1"` / `"9:16"` / `"16:9"` derived from `ImageSize`.

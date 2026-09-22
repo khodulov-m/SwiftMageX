@@ -17,7 +17,7 @@ final class ResponseCacheTests: XCTestCase {
         let counts = Self.makeRequest(count: 2)
         let seeds = Self.makeRequest(seed: 1)
         let sizes = Self.makeRequest(size: .portrait)
-        let models = Self.makeRequest(model: "gemini-3-pro-image-preview")
+        let models = Self.makeRequest(model: "gemini-3-pro-image")
 
         let baseKey = CacheKey.compute(from: base)
         XCTAssertNotEqual(baseKey, CacheKey.compute(from: prompts))
@@ -133,7 +133,7 @@ final class ResponseCacheTests: XCTestCase {
         size: ImageSize = .square,
         count: Int = 1,
         seed: UInt64? = nil,
-        model: String = "gemini-2.5-flash-image",
+        model: String = "gemini-3.1-flash-image",
         referenceImages: [ReferenceImage] = [],
         mask: Data? = nil
     ) -> GenerationRequest {

@@ -122,7 +122,7 @@ swiftmagex generate <prompt> [옵션]
 | `-s`, `--size <square\|portrait\|landscape>` | `square` | 비율 힌트. 실제 해상도는 모델에 따라 달라집니다. |
 | `-n`, `--count <1–4>` | `1` | 변형 개수. 각 변형은 개별 요청. |
 | `--seed <uint64>` | — | 공급자가 무시해도 메타데이터에 기록됩니다. |
-| `--model <id>` | `gemini-2.5-flash-image` | 내장: Gemini 계열(`gemini-2.5-flash-image`, `gemini-3-pro-image-preview`, `gemini-3.1-flash-image-preview`)과 Imagen 계열(`imagen-4.0-generate-001`, `imagen-4.0-fast-generate-001`, `imagen-4.0-ultra-generate-001`). 알 수 없는 ID는 `imagen-` / `gemini-` 접두사로 라우팅됩니다. |
+| `--model <id>` | `gemini-3.1-flash-image` | 내장(모두 GA): `gemini-3.1-flash-image`, `gemini-3.1-flash-lite-image`, `gemini-3-pro-image`. 알 수 없는 ID는 `imagen-` / `gemini-` 접두사로 라우팅됩니다. |
 
 ```sh
 # 현재 디렉터리에 1장
@@ -135,8 +135,8 @@ swiftmagex generate "mountain landscape at dawn" -n 4 -s landscape -o ./out --js
 swiftmagex generate "minimalist app icon, fox head" --seed 42 -o icon.png
 ```
 
-예시 — 아래 호출로 다음 이미지를 생성했습니다(`gemini-2.5-flash-image`로
-생성한 1024×1024 PNG):
+예시 — 아래 호출로 다음 이미지를 생성했습니다(`gemini-3.1-flash-image`로
+생성한 1408×768 PNG):
 
 ```sh
 swiftmagex generate "A simple red apple on a white background, test image" \
@@ -150,20 +150,20 @@ swiftmagex generate "A simple red apple on a white background, test image" \
 
 **품질 요구사항에 맞게 모델을 선택하세요.** 모델은 `--model`로 호출마다
 교체할 수 있으며 명령의 다른 부분은 그대로입니다. 기본값인
-`gemini-2.5-flash-image`는 안정적인 만능 모델입니다. 최신
-`gemini-3.1-flash-image-preview`는 눈에 띄게 더 디테일한 결과를 만들고
-스스로 더 넓은 비정사각형 프레이밍을 선택합니다. Imagen 계열은 종횡비를
-명시적으로 제어할 수 있고(`--size`가 `aspectRatio`로 변환됨),
-`imagen-4.0-fast-generate-001`은 속도, `imagen-4.0-ultra-generate-001`은
-최고 품질에 최적화되어 있습니다(호출당 1장). 예를 들어
-`gemini-3.1-flash-image-preview`가 생성한 1408×768 프레임입니다:
+`gemini-3.1-flash-image`는 만능 모델로, 디테일한 결과를 만들고 스스로 더
+넓은 비정사각형 프레이밍을 선택합니다. `gemini-3.1-flash-lite-image`는
+초안용으로 더 저렴하고 빠르며, `gemini-3-pro-image`는 최고 품질을
+목표로 합니다. 예전에는 여기에 Imagen 계열이 있었지만 Google이 2026년
+8월 17일에 중단해 모든 `imagen-*` ID가 404를 반환하므로 위 셋 중에서
+고르세요. 예를 들어 `gemini-3-pro-image`가 생성한 1408×768
+프레임입니다:
 
 ```sh
 swiftmagex generate "A red fox curled up on a mossy rock in a misty autumn forest, golden leaves falling, soft photorealistic style" \
-  --model gemini-3.1-flash-image-preview -o fox.png
+  --model gemini-3-pro-image -o fox.png
 ```
 
-<img src="docs/images/example-generate-fox-gemini31.png" alt="gemini-3.1-flash-image-preview가 생성한 가을 숲의 디테일한 여우" width="480" />
+<img src="docs/images/example-generate-fox-gemini3-pro.png" alt="gemini-3-pro-image가 생성한 가을 숲의 디테일한 여우" width="480" />
 
 ### `swiftmagex edit` — Gemini를 통한 이미지-투-이미지 / 다중 이미지 / 인페인팅
 
@@ -185,7 +185,7 @@ swiftmagex edit <input> <prompt> [옵션]
 | `-o`, `--output <경로>` | `./` | 파일 또는 디렉터리. 디렉터리인 경우 파일명은 `swiftmagex_{timestamp}_{index}.png`. |
 | `-n`, `--count <1–4>` | `1` | 변형 수. 각 변형은 별도 요청. |
 | `--seed <uint64>` | — | 프로바이더가 무시하더라도 메타데이터에 기록됩니다. |
-| `--model <id>` | `gemini-2.5-flash-image` | Gemini 모델이어야 합니다 —— Imagen의 `:predict` 형식은 inline 이미지 입력을 받지 않으며 종료 코드 2로 거부됩니다. |
+| `--model <id>` | `gemini-3.1-flash-image` | Gemini 모델이어야 합니다 —— Imagen의 `:predict` 형식은 inline 이미지 입력을 받지 않으며 종료 코드 2로 거부됩니다. |
 
 ```sh
 # 피사체 색상 바꾸기
@@ -493,7 +493,7 @@ nil 필드는 완전히 생략됩니다(`null` 자리표시 없음).
 ```json
 {
   "command": "generate",
-  "model": "gemini-2.5-flash-image",
+  "model": "gemini-3.1-flash-image",
   "outputs": [
     { "format": "png", "height": 1024, "path": "/abs/out/swiftmagex_…_1.png", "width": 1024 }
   ],

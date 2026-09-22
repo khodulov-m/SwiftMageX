@@ -121,7 +121,7 @@ swiftmagex generate <prompt> [options]
 | `-s`, `--size <square\|portrait\|landscape>` | `square` | Подсказка по соотношению сторон. Итоговое разрешение зависит от модели. |
 | `-n`, `--count <1–4>` | `1` | Число вариантов. Каждый — отдельный запрос. |
 | `--seed <uint64>` | — | Записывается в метаданные, даже если провайдер его игнорирует. |
-| `--model <id>` | `gemini-2.5-flash-image` | Встроенные: семейство Gemini (`gemini-2.5-flash-image`, `gemini-3-pro-image-preview`, `gemini-3.1-flash-image-preview`) и семейство Imagen (`imagen-4.0-generate-001`, `imagen-4.0-fast-generate-001`, `imagen-4.0-ultra-generate-001`). Неизвестные ID маршрутизируются по префиксу `imagen-`/`gemini-`. |
+| `--model <id>` | `gemini-3.1-flash-image` | Встроенные, все GA: `gemini-3.1-flash-image`, `gemini-3.1-flash-lite-image`, `gemini-3-pro-image`. Неизвестные ID маршрутизируются по префиксу `imagen-`/`gemini-`. |
 
 ```sh
 # Одно изображение в текущую директорию
@@ -134,8 +134,8 @@ swiftmagex generate "mountain landscape at dawn" -n 4 -s landscape -o ./out --js
 swiftmagex generate "minimalist app icon, fox head" --seed 42 -o icon.png
 ```
 
-Пример — следующий вызов сгенерировал изображение ниже (PNG 1024×1024
-от `gemini-2.5-flash-image`):
+Пример — следующий вызов сгенерировал изображение ниже (PNG 1408×768
+от `gemini-3.1-flash-image`):
 
 ```sh
 swiftmagex generate "A simple red apple on a white background, test image" \
@@ -149,21 +149,20 @@ swiftmagex generate "A simple red apple on a white background, test image" \
 
 **Выбирайте модель под свои требования к качеству.** Модели взаимозаменяемы
 в каждом вызове через `--model` — всё остальное в команде не меняется.
-Дефолтная `gemini-2.5-flash-image` — стабильная «рабочая лошадка»; новейшая
-`gemini-3.1-flash-image-preview` даёт заметно более детализированный
-результат и сама выбирает широкие, неквадратные кадры; семейство Imagen
-даёт явный контроль соотношения сторон (`--size` транслируется в
-`aspectRatio`): `imagen-4.0-fast-generate-001` оптимизирована по скорости,
-`imagen-4.0-ultra-generate-001` — по максимальному качеству (одно
-изображение за вызов). Например, `gemini-3.1-flash-image-preview`
-сгенерировала этот кадр 1408×768:
+Дефолтная `gemini-3.1-flash-image` — «рабочая лошадка»: детализированный
+результат, и она сама выбирает широкие, неквадратные кадры.
+`gemini-3.1-flash-lite-image` дешевле и быстрее — для черновиков,
+`gemini-3-pro-image` — максимальное качество. Раньше здесь было семейство
+Imagen: Google отключила его 17 августа 2026 года, и любой `imagen-*` теперь
+отдаёт 404, так что выбирайте из трёх выше. Например,
+`gemini-3-pro-image` сгенерировала этот кадр 1408×768:
 
 ```sh
 swiftmagex generate "A red fox curled up on a mossy rock in a misty autumn forest, golden leaves falling, soft photorealistic style" \
-  --model gemini-3.1-flash-image-preview -o fox.png
+  --model gemini-3-pro-image -o fox.png
 ```
 
-<img src="docs/images/example-generate-fox-gemini31.png" alt="Детализированная лиса в осеннем лесу, сгенерирована gemini-3.1-flash-image-preview" width="480" />
+<img src="docs/images/example-generate-fox-gemini3-pro.png" alt="Детализированная лиса в осеннем лесу, сгенерирована gemini-3-pro-image" width="480" />
 
 ### `swiftmagex edit` — image-to-image / мультиизображение / инпейнтинг через Gemini
 
@@ -186,7 +185,7 @@ swiftmagex edit <input> <prompt> [options]
 | `-o`, `--output <путь>` | `./` | Файл или директория. Для директории файлы именуются `swiftmagex_{timestamp}_{index}.png`. |
 | `-n`, `--count <1–4>` | `1` | Количество вариантов. Каждый — отдельный запрос. |
 | `--seed <uint64>` | — | Записывается в метаданные, даже если провайдер его игнорирует. |
-| `--model <id>` | `gemini-2.5-flash-image` | Должна быть модель Gemini — форма `:predict` у Imagen не принимает inline-входы изображения и отклоняется с кодом выхода 2. |
+| `--model <id>` | `gemini-3.1-flash-image` | Должна быть модель Gemini — форма `:predict` у Imagen не принимает inline-входы изображения и отклоняется с кодом выхода 2. |
 
 ```sh
 # Сменить цвет объекта
@@ -502,7 +501,7 @@ Icon Composer) — Xcode отрисует эффект Liquid Glass и сген�
 ```json
 {
   "command": "generate",
-  "model": "gemini-2.5-flash-image",
+  "model": "gemini-3.1-flash-image",
   "outputs": [
     { "format": "png", "height": 1024, "path": "/abs/out/swiftmagex_…_1.png", "width": 1024 }
   ],
