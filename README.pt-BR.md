@@ -123,7 +123,7 @@ swiftmagex generate <prompt> [opções]
 | `-s`, `--size <square\|portrait\|landscape>` | `square` | Dica de proporção. A resolução real depende do modelo. |
 | `-n`, `--count <1–4>` | `1` | Número de variantes. Cada variante é uma requisição separada. |
 | `--seed <uint64>` | — | Registrado nos metadados mesmo quando o provedor o ignora. |
-| `--model <id>` | `gemini-2.5-flash-image` | Embutidos: família Gemini (`gemini-2.5-flash-image`, `gemini-3-pro-image-preview`, `gemini-3.1-flash-image-preview`) e família Imagen (`imagen-4.0-generate-001`, `imagen-4.0-fast-generate-001`, `imagen-4.0-ultra-generate-001`). IDs desconhecidos são roteados pelo prefixo `imagen-`/`gemini-`. |
+| `--model <id>` | `gemini-3.1-flash-image` | Embutidos, todos GA: `gemini-3.1-flash-image`, `gemini-3.1-flash-lite-image`, `gemini-3-pro-image`. IDs desconhecidos são roteados pelo prefixo `imagen-`/`gemini-`. |
 
 ```sh
 # Imagem única no diretório atual
@@ -136,8 +136,8 @@ swiftmagex generate "mountain landscape at dawn" -n 4 -s landscape -o ./out --js
 swiftmagex generate "minimalist app icon, fox head" --seed 42 -o icon.png
 ```
 
-Exemplo — a chamada abaixo gerou a imagem a seguir (PNG 1024×1024 com
-`gemini-2.5-flash-image`):
+Exemplo — a chamada abaixo gerou a imagem a seguir (PNG 1408×768 com
+`gemini-3.1-flash-image`):
 
 ```sh
 swiftmagex generate "A simple red apple on a white background, test image" \
@@ -151,22 +151,20 @@ ferramenta em chunks `tEXt` (em JPEG, no campo EXIF `UserComment`).
 
 **Escolha o modelo conforme suas exigências de qualidade.** Os modelos são
 intercambiáveis a cada chamada via `--model` — nada mais muda no comando. O
-padrão `gemini-2.5-flash-image` é o pau-para-toda-obra estável; o mais
-recente `gemini-3.1-flash-image-preview` produz resultados visivelmente
-mais detalhados e escolhe por conta própria enquadramentos mais largos, não
-quadrados; a família Imagen oferece controle explícito da proporção
-(`--size` é traduzido para `aspectRatio`), com
-`imagen-4.0-fast-generate-001` otimizado para velocidade e
-`imagen-4.0-ultra-generate-001` para fidelidade máxima (uma imagem por
-chamada). Por exemplo, `gemini-3.1-flash-image-preview` produziu este
-quadro de 1408×768:
+padrão `gemini-3.1-flash-image` é o pau-para-toda-obra: resultados
+detalhados, e escolhe por conta própria enquadramentos mais largos, não
+quadrados. `gemini-3.1-flash-lite-image` é a opção mais barata e rápida para
+rascunhos, e `gemini-3-pro-image` busca fidelidade máxima. A família Imagen
+ficava aqui; o Google a desativou em 17 de agosto de 2026 e qualquer ID
+`imagen-*` agora retorna 404, então escolha um dos três acima. Por exemplo,
+`gemini-3-pro-image` produziu este quadro de 1408×768:
 
 ```sh
 swiftmagex generate "A red fox curled up on a mossy rock in a misty autumn forest, golden leaves falling, soft photorealistic style" \
-  --model gemini-3.1-flash-image-preview -o fox.png
+  --model gemini-3-pro-image -o fox.png
 ```
 
-<img src="docs/images/example-generate-fox-gemini31.png" alt="Raposa detalhada em uma floresta de outono, gerada por gemini-3.1-flash-image-preview" width="480" />
+<img src="docs/images/example-generate-fox-gemini3-pro.png" alt="Raposa detalhada em uma floresta de outono, gerada por gemini-3-pro-image" width="480" />
 
 ### `swiftmagex edit` — imagem-para-imagem / multi-imagem / inpainting via Gemini
 
@@ -188,7 +186,7 @@ swiftmagex edit <input> <prompt> [opções]
 | `-o`, `--output <caminho>` | `./` | Arquivo ou diretório. Se diretório, os arquivos são nomeados `swiftmagex_{timestamp}_{index}.png`. |
 | `-n`, `--count <1–4>` | `1` | Quantidade de variantes. Cada variante é uma requisição separada. |
 | `--seed <uint64>` | — | Registrado em metadados mesmo quando o provedor o ignora. |
-| `--model <id>` | `gemini-2.5-flash-image` | Deve ser um modelo Gemini — a forma `:predict` do Imagen não aceita entradas de imagem inline e é rejeitada com código de saída 2. |
+| `--model <id>` | `gemini-3.1-flash-image` | Deve ser um modelo Gemini — a forma `:predict` do Imagen não aceita entradas de imagem inline e é rejeitada com código de saída 2. |
 
 ```sh
 # Mudar a cor de um sujeito
@@ -503,7 +501,7 @@ Sucesso:
 ```json
 {
   "command": "generate",
-  "model": "gemini-2.5-flash-image",
+  "model": "gemini-3.1-flash-image",
   "outputs": [
     { "format": "png", "height": 1024, "path": "/abs/out/swiftmagex_…_1.png", "width": 1024 }
   ],

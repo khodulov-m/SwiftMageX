@@ -114,7 +114,7 @@ swiftmagex generate <prompt> [选项]
 | `-s`、`--size <square\|portrait\|landscape>` | `square` | 比例提示,实际分辨率取决于模型。 |
 | `-n`、`--count <1–4>` | `1` | 变体数量,每个变体一次独立请求。 |
 | `--seed <uint64>` | — | 即便提供商忽略,也会写入元数据。 |
-| `--model <id>` | `gemini-2.5-flash-image` | 内置:Gemini 系列(`gemini-2.5-flash-image`、`gemini-3-pro-image-preview`、`gemini-3.1-flash-image-preview`)与 Imagen 系列(`imagen-4.0-generate-001`、`imagen-4.0-fast-generate-001`、`imagen-4.0-ultra-generate-001`)。未知 ID 按 `imagen-`/`gemini-` 前缀路由。 |
+| `--model <id>` | `gemini-3.1-flash-image` | 内置(均为 GA):`gemini-3.1-flash-image`、`gemini-3.1-flash-lite-image`、`gemini-3-pro-image`。未知 ID 按 `imagen-`/`gemini-` 前缀路由。 |
 
 ```sh
 # 输出单张到当前目录
@@ -127,8 +127,8 @@ swiftmagex generate "mountain landscape at dawn" -n 4 -s landscape -o ./out --js
 swiftmagex generate "minimalist app icon, fox head" --seed 42 -o icon.png
 ```
 
-示例 — 下面的调用生成了下方的图片(由 `gemini-2.5-flash-image` 输出的
-1024×1024 PNG):
+示例 — 下面的调用生成了下方的图片(由 `gemini-3.1-flash-image` 输出的
+1408×768 PNG):
 
 ```sh
 swiftmagex generate "A simple red apple on a white background, test image" \
@@ -141,19 +141,19 @@ swiftmagex generate "A simple red apple on a white background, test image" \
 工具版本;JPEG 写入 EXIF 的 `UserComment` 字段。
 
 **请按质量需求选择模型。** 模型可在每次调用中通过 `--model` 自由切换,
-命令的其他部分完全不变。默认的 `gemini-2.5-flash-image` 是稳定的全能型
-模型;最新的 `gemini-3.1-flash-image-preview` 生成的结果细节明显更丰富,
-并会自行选择更宽的非正方形构图;Imagen 系列支持显式控制宽高比
-(`--size` 会映射为 `aspectRatio`),其中 `imagen-4.0-fast-generate-001`
-侧重速度,`imagen-4.0-ultra-generate-001` 侧重最高保真度(每次调用一张)。
-例如,下面这帧 1408×768 的图像就由 `gemini-3.1-flash-image-preview` 生成:
+命令的其他部分完全不变。默认的 `gemini-3.1-flash-image` 是全能型模型,
+结果细节丰富,并会自行选择更宽的非正方形构图;
+`gemini-3.1-flash-lite-image` 更便宜、更快,适合出草稿;
+`gemini-3-pro-image` 追求最高保真度。这里原本是 Imagen 系列:Google 已于
+2026 年 8 月 17 日将其下线,任何 `imagen-*` ID 现在都返回 404,请从上面
+三个中选择。例如,下面这帧 1408×768 的图像就由 `gemini-3-pro-image` 生成:
 
 ```sh
 swiftmagex generate "A red fox curled up on a mossy rock in a misty autumn forest, golden leaves falling, soft photorealistic style" \
-  --model gemini-3.1-flash-image-preview -o fox.png
+  --model gemini-3-pro-image -o fox.png
 ```
 
-<img src="docs/images/example-generate-fox-gemini31.png" alt="由 gemini-3.1-flash-image-preview 生成的秋日森林中的狐狸,细节丰富" width="480" />
+<img src="docs/images/example-generate-fox-gemini3-pro.png" alt="由 gemini-3-pro-image 生成的秋日森林中的狐狸,细节丰富" width="480" />
 
 ### `swiftmagex edit` — 通过 Gemini 进行图生图 / 多图合成 / 局部修复
 
@@ -174,7 +174,7 @@ swiftmagex edit <input> <prompt> [选项]
 | `-o`、`--output <路径>` | `./` | 文件或目录。若是目录,文件名为 `swiftmagex_{timestamp}_{index}.png`。 |
 | `-n`、`--count <1–4>` | `1` | 生成的变体数。每个变体都是一个独立请求。 |
 | `--seed <uint64>` | — | 即便提供商忽略,也会写入元数据。 |
-| `--model <id>` | `gemini-2.5-flash-image` | 必须是 Gemini 模型 —— Imagen 的 `:predict` 形态不接受 inline 图像输入,会以退出码 2 被拒绝。 |
+| `--model <id>` | `gemini-3.1-flash-image` | 必须是 Gemini 模型 —— Imagen 的 `:predict` 形态不接受 inline 图像输入,会以退出码 2 被拒绝。 |
 
 ```sh
 # 改变物体颜色
@@ -470,7 +470,7 @@ swiftmagex icon art.png badge.png,glass=false,fill=#FFFFFF,dx=222,dy=223,group=2
 ```json
 {
   "command": "generate",
-  "model": "gemini-2.5-flash-image",
+  "model": "gemini-3.1-flash-image",
   "outputs": [
     { "format": "png", "height": 1024, "path": "/abs/out/swiftmagex_…_1.png", "width": 1024 }
   ],

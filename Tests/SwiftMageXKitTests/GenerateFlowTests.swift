@@ -221,7 +221,7 @@ final class GenerateFlowTests: XCTestCase {
             size: .square,
             count: count,
             seed: seed,
-            model: "gemini-2.5-flash-image"
+            model: "gemini-3.1-flash-image"
         )
     }
 

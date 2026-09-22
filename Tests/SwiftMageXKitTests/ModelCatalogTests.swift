@@ -4,12 +4,9 @@ import XCTest
 final class ModelCatalogTests: XCTestCase {
     func testCatalogIncludesAllRequestedModels() {
         let expected: Set<String> = [
-            "gemini-2.5-flash-image",
-            "gemini-3-pro-image-preview",
-            "gemini-3.1-flash-image-preview",
-            "imagen-4.0-generate-001",
-            "imagen-4.0-fast-generate-001",
-            "imagen-4.0-ultra-generate-001",
+            "gemini-3.1-flash-image",
+            "gemini-3.1-flash-lite-image",
+            "gemini-3-pro-image",
         ]
         let actual = Set(ModelCatalog.all.map(\.id))
         XCTAssertEqual(actual, expected)
@@ -20,6 +17,14 @@ final class ModelCatalogTests: XCTestCase {
     }
 
     func testFamilyResolutionForKnownModels() {
+        for descriptor in ModelCatalog.all {
+            XCTAssertEqual(ModelCatalog.family(for: descriptor.id), descriptor.family, descriptor.id)
+        }
+    }
+
+    /// Retired ids are no longer catalog entries, but `--model` still accepts
+    /// them, so the family they route to must stay correct.
+    func testFamilyResolutionForRetiredModels() {
         XCTAssertEqual(ModelCatalog.family(for: "gemini-2.5-flash-image"), .gemini)
         XCTAssertEqual(ModelCatalog.family(for: "gemini-3-pro-image-preview"), .gemini)
         XCTAssertEqual(ModelCatalog.family(for: "gemini-3.1-flash-image-preview"), .gemini)
@@ -34,19 +39,38 @@ final class ModelCatalogTests: XCTestCase {
         XCTAssertEqual(ModelCatalog.family(for: "anything-else"), .gemini, "default fallback is gemini")
     }
 
-    func testPreviewFlagSetForPreviewModels() {
-        XCTAssertEqual(ModelCatalog.descriptor(for: "gemini-2.5-flash-image")?.isPreview, false)
-        XCTAssertEqual(ModelCatalog.descriptor(for: "gemini-3-pro-image-preview")?.isPreview, true)
-        XCTAssertEqual(ModelCatalog.descriptor(for: "gemini-3.1-flash-image-preview")?.isPreview, true)
+    func testCatalogAdvertisesOnlyGAModels() {
+        for descriptor in ModelCatalog.all {
+            XCTAssertFalse(descriptor.isPreview, "\(descriptor.id) is flagged as preview")
+            XCTAssertFalse(
+                descriptor.id.hasSuffix("-preview"),
+                "\(descriptor.id) is a preview alias; list the GA id instead"
+            )
+        }
+    }
+
+    func testRetiredModelsAreNotAdvertised() {
+        for id in [
+            "gemini-2.5-flash-image",
+            "gemini-3-pro-image-preview",
+            "gemini-3.1-flash-image-preview",
+            "imagen-4.0-generate-001",
+            "imagen-4.0-fast-generate-001",
+            "imagen-4.0-ultra-generate-001",
+        ] {
+            XCTAssertNil(ModelCatalog.descriptor(for: id), "\(id) is retired but still listed")
+        }
     }
 
     func testMakeProviderRoutesByFamily() {
         let gemini = SwiftMageXOrchestrator.makeProvider(
-            for: "gemini-2.5-flash-image",
+            for: ModelCatalog.defaultModelID,
             apiKey: "k"
         )
         XCTAssertEqual(gemini.id, "gemini")
 
+        // Imagen has no catalog entry since the 4.0 family was retired; the
+        // prefix heuristic is what keeps `:predict` reachable.
         let imagen = SwiftMageXOrchestrator.makeProvider(
             for: "imagen-4.0-generate-001",
             apiKey: "k"

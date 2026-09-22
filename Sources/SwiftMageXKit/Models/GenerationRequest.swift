@@ -37,7 +37,7 @@ public struct GenerationRequest: Sendable, Equatable {
     public var count: Int
     /// Optional reproducibility seed. Support is provider-dependent; see spec §12.
     public var seed: UInt64?
-    /// Provider-specific model identifier (e.g. `gemini-2.5-flash-image`).
+    /// Provider-specific model identifier (e.g. `gemini-3.1-flash-image`).
     public var model: String
     /// Reference images for image-to-image / multi-image edit. Empty means a
     /// pure text-to-image request. The first entry is treated as the primary

@@ -124,7 +124,7 @@ swiftmagex generate <prompt> [オプション]
 | `-s`、`--size <square\|portrait\|landscape>` | `square` | アスペクト比のヒント。実際の解像度はモデル次第。 |
 | `-n`、`--count <1–4>` | `1` | バリアント数。各バリアントは別リクエスト。 |
 | `--seed <uint64>` | — | プロバイダが無視してもメタデータに記録します。 |
-| `--model <id>` | `gemini-2.5-flash-image` | 組み込み: Gemini ファミリ(`gemini-2.5-flash-image`、`gemini-3-pro-image-preview`、`gemini-3.1-flash-image-preview`)と Imagen ファミリ(`imagen-4.0-generate-001`、`imagen-4.0-fast-generate-001`、`imagen-4.0-ultra-generate-001`)。未知の ID は `imagen-` / `gemini-` プレフィックスでルーティングされます。 |
+| `--model <id>` | `gemini-3.1-flash-image` | 組み込み(すべて GA): `gemini-3.1-flash-image`、`gemini-3.1-flash-lite-image`、`gemini-3-pro-image`。未知の ID は `imagen-` / `gemini-` プレフィックスでルーティングされます。 |
 
 ```sh
 # 1 枚を現在のディレクトリに出力
@@ -137,8 +137,8 @@ swiftmagex generate "mountain landscape at dawn" -n 4 -s landscape -o ./out --js
 swiftmagex generate "minimalist app icon, fox head" --seed 42 -o icon.png
 ```
 
-例 — 以下のコマンドで下の画像を生成しました(`gemini-2.5-flash-image`
-による 1024×1024 PNG):
+例 — 以下のコマンドで下の画像を生成しました(`gemini-3.1-flash-image`
+による 1408×768 PNG):
 
 ```sh
 swiftmagex generate "A simple red apple on a white background, test image" \
@@ -153,21 +153,21 @@ swiftmagex generate "A simple red apple on a white background, test image" \
 
 **品質要件に合わせてモデルを選んでください。** モデルは `--model` で
 呼び出しごとに切り替えられ、コマンドの他の部分は一切変わりません。
-デフォルトの `gemini-2.5-flash-image` は安定したオールラウンダーです。
-最新の `gemini-3.1-flash-image-preview` は明らかにディテールの豊かな
-結果を生成し、横長の非正方形フレーミングを自律的に選びます。Imagen
-ファミリーはアスペクト比を明示的に制御できます(`--size` が
-`aspectRatio` に変換されます)。`imagen-4.0-fast-generate-001` は速度
-重視、`imagen-4.0-ultra-generate-001` は最高品質重視です(1 回の呼び
-出しにつき 1 枚)。例えば、`gemini-3.1-flash-image-preview` は次の
-1408×768 のフレームを生成しました:
+デフォルトの `gemini-3.1-flash-image` はオールラウンダーで、ディテールの
+豊かな結果を生成し、横長の非正方形フレーミングを自律的に選びます。
+`gemini-3.1-flash-lite-image` は下書き向けに安価で高速、
+`gemini-3-pro-image` は最高品質を狙います。以前はここに Imagen
+ファミリーがありましたが、Google が 2026 年 8 月 17 日に廃止し、
+`imagen-*` の ID はすべて 404 を返すようになりました。上記 3 つから
+選んでください。例えば、`gemini-3-pro-image` は次の 1408×768 の
+フレームを生成しました:
 
 ```sh
 swiftmagex generate "A red fox curled up on a mossy rock in a misty autumn forest, golden leaves falling, soft photorealistic style" \
-  --model gemini-3.1-flash-image-preview -o fox.png
+  --model gemini-3-pro-image -o fox.png
 ```
 
-<img src="docs/images/example-generate-fox-gemini31.png" alt="gemini-3.1-flash-image-preview が生成した秋の森のキツネの詳細な画像" width="480" />
+<img src="docs/images/example-generate-fox-gemini3-pro.png" alt="gemini-3-pro-image が生成した秋の森のキツネの詳細な画像" width="480" />
 
 ### `swiftmagex edit` — Gemini による image-to-image / マルチ画像 / インペインティング
 
@@ -189,7 +189,7 @@ swiftmagex edit <input> <prompt> [オプション]
 | `-o`、`--output <パス>` | `./` | ファイルまたはディレクトリ。ディレクトリ指定時のファイル名は `swiftmagex_{timestamp}_{index}.png`。 |
 | `-n`、`--count <1–4>` | `1` | バリアント数。各バリアントは個別のリクエスト。 |
 | `--seed <uint64>` | — | プロバイダーが無視する場合でもメタデータには記録されます。 |
-| `--model <id>` | `gemini-2.5-flash-image` | Gemini モデルである必要があります —— Imagen の `:predict` 形式は inline 画像入力を受け付けず、終了コード 2 で拒否されます。 |
+| `--model <id>` | `gemini-3.1-flash-image` | Gemini モデルである必要があります —— Imagen の `:predict` 形式は inline 画像入力を受け付けず、終了コード 2 で拒否されます。 |
 
 ```sh
 # 被写体の色を変える
@@ -501,7 +501,7 @@ Icon Composer で開く)と、Xcode が Liquid Glass エフェクトを描画し
 ```json
 {
   "command": "generate",
-  "model": "gemini-2.5-flash-image",
+  "model": "gemini-3.1-flash-image",
   "outputs": [
     { "format": "png", "height": 1024, "path": "/abs/out/swiftmagex_…_1.png", "width": 1024 }
   ],

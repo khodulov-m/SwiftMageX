@@ -381,7 +381,7 @@ final class EditFlowTests: XCTestCase {
         prompt: String = "edit me",
         count: Int = 1,
         seed: UInt64? = nil,
-        model: String = "gemini-2.5-flash-image"
+        model: String = "gemini-3.1-flash-image"
     ) -> GenerationRequest {
         GenerationRequest(
             prompt: prompt,

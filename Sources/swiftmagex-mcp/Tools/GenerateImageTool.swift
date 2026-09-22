@@ -73,7 +73,10 @@ enum GenerateImageTool {
                 "model": .object([
                     "type": .string("string"),
                     "enum": .array(ModelCatalog.all.map { .string($0.id) }),
-                    "description": .string("Image model identifier. Defaults to \(defaultModel). Gemini (`gemini-*`) and Imagen (`imagen-*`) families are routed automatically."),
+                    // `enum` above closes the set, so unlike the CLI an MCP caller
+                    // cannot reach a model the catalog does not list — which is why
+                    // the retired Imagen family is simply not mentioned here.
+                    "description": .string("Image model identifier. Defaults to \(defaultModel); all listed models are GA."),
                 ]),
                 "output": .object([
                     "type": .string("string"),

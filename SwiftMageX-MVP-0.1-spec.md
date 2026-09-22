@@ -6,6 +6,14 @@
 | **Document version** | 0.1 (MVP) |
 | **Date** | May 18, 2026 |
 | **Status** | Draft specification, ready for implementation |
+
+> **Model ids in this document are historical (checked 2026-09-22).** The defaults and alternates
+> named in §8, §17 and the flag tables below were correct in May 2026 and are kept as written.
+> Since then `gemini-2.5-flash-image` has been scheduled for retirement (2026-10-02), the
+> `-preview` aliases have been superseded by GA ids, and the entire Imagen 4.0 family was retired
+> (2026-08-17) and no longer resolves on the Gemini API. `ModelCatalog` in
+> `Sources/SwiftMageXKit/Models/ModelCatalog.swift` is the current source of truth; `CLAUDE.md`
+> records the divergence and the reasoning.
 | **Binaries** | `swiftmagex` (CLI; short alias `smx`), `swiftmagex-mcp` (MCP server) |
 
 ---

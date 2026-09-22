@@ -1,5 +1,30 @@
 # SwiftMageX
 
+# Unreleased
+
+## Model catalog refreshed (2026-09-22)
+
+Checked against `ListModels` on a live key, and against Google's deprecation
+schedule. The `--model` default and the built-in list changed; nothing else did.
+
+- **Default is now `gemini-3.1-flash-image`** (was `gemini-2.5-flash-image`,
+  which Google retires on 2026-10-02). A plain `swiftmagex generate` therefore
+  returns 1408×768 rather than 1024×1024 — this model picks its own wider
+  framing, and `--size` stays a hint.
+- **Built-ins are GA-only**: `gemini-3.1-flash-image`,
+  `gemini-3.1-flash-lite-image`, `gemini-3-pro-image`. The two `-preview`
+  aliases are no longer advertised; `gemini-3.1-flash-image-preview`'s own
+  shutdown date (2026-06-25) had already passed.
+- **Imagen 4.0 is gone.** Google retired the family on 2026-08-17; every
+  `imagen-*` id now 404s on `v1` and `v1beta`. `ImagenProvider`, the `imagen`
+  family and the `imagen-` prefix routing are kept — the wire shape is still
+  tested and an `imagen-*` id surfaces Google's own 404 as exit code 3 — but
+  nothing advertises those ids. The aspect-ratio control the Imagen family
+  offered has no replacement on this API.
+
+`--model` still accepts any id: retired ones keep routing by prefix and fail
+with the provider's error.
+
 # v0.2.0
 
 Everything that landed after the 0.1 MVP, rolled into one release. The

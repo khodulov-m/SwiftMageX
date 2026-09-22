@@ -19,7 +19,7 @@ final class JSONEnvelopeTests: XCTestCase {
             size: .square,
             count: 1,
             seed: nil,
-            model: "gemini-2.5-flash-image"
+            model: "gemini-3.1-flash-image"
         )
 
         do {
@@ -59,7 +59,7 @@ final class JSONEnvelopeTests: XCTestCase {
                 .init(path: "/tmp/out_2.png", format: .png, width: 1024, height: 1024)
             ],
             provider: "gemini",
-            model: "gemini-2.5-flash-image"
+            model: "gemini-3.1-flash-image"
         )
         let data = try envelope.jsonData()
         let parsed = try XCTUnwrap(
@@ -69,7 +69,7 @@ final class JSONEnvelopeTests: XCTestCase {
         XCTAssertEqual(parsed["status"] as? String, "ok")
         XCTAssertEqual(parsed["command"] as? String, "generate")
         XCTAssertEqual(parsed["provider"] as? String, "gemini")
-        XCTAssertEqual(parsed["model"] as? String, "gemini-2.5-flash-image")
+        XCTAssertEqual(parsed["model"] as? String, "gemini-3.1-flash-image")
         XCTAssertNil(parsed["error"], "error key must be omitted on success")
 
         let outputs = try XCTUnwrap(parsed["outputs"] as? [[String: Any]])
@@ -105,7 +105,7 @@ final class JSONEnvelopeTests: XCTestCase {
             command: "generate",
             outputs: [.init(path: "/tmp/a.png", format: .png, width: 1, height: 1)],
             provider: "gemini",
-            model: "gemini-2.5-flash-image"
+            model: "gemini-3.1-flash-image"
         )
         let data = try envelope.jsonData()
         let text = try XCTUnwrap(String(data: data, encoding: .utf8))

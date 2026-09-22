@@ -127,7 +127,7 @@ swiftmagex generate <prompt> [opzioni]
 | `-s`, `--size <square\|portrait\|landscape>` | `square` | Suggerimento di proporzioni. La risoluzione reale dipende dal modello. |
 | `-n`, `--count <1–4>` | `1` | Numero di varianti. Ogni variante è una richiesta separata. |
 | `--seed <uint64>` | — | Registrato nei metadati anche se il provider lo ignora. |
-| `--model <id>` | `gemini-2.5-flash-image` | Integrati: famiglia Gemini (`gemini-2.5-flash-image`, `gemini-3-pro-image-preview`, `gemini-3.1-flash-image-preview`) e famiglia Imagen (`imagen-4.0-generate-001`, `imagen-4.0-fast-generate-001`, `imagen-4.0-ultra-generate-001`). Gli ID sconosciuti vengono instradati in base al prefisso `imagen-`/`gemini-`. |
+| `--model <id>` | `gemini-3.1-flash-image` | Integrati, tutti GA: `gemini-3.1-flash-image`, `gemini-3.1-flash-lite-image`, `gemini-3-pro-image`. Gli ID sconosciuti vengono instradati in base al prefisso `imagen-`/`gemini-`. |
 
 ```sh
 # Una singola immagine nella directory corrente
@@ -141,7 +141,7 @@ swiftmagex generate "minimalist app icon, fox head" --seed 42 -o icon.png
 ```
 
 Esempio — la chiamata seguente ha prodotto l'immagine qui sotto (PNG
-1024×1024 con `gemini-2.5-flash-image`):
+1408×768 con `gemini-3.1-flash-image`):
 
 ```sh
 swiftmagex generate "A simple red apple on a white background, test image" \
@@ -156,21 +156,20 @@ dello strumento nei chunk `tEXt` (i JPEG usano il campo EXIF
 
 **Scegli il modello in base ai tuoi requisiti di qualità.** I modelli sono
 intercambiabili a ogni chiamata via `--model` — nient'altro cambia nel
-comando. Il predefinito `gemini-2.5-flash-image` è il tuttofare stabile; il
-più recente `gemini-3.1-flash-image-preview` produce risultati notevolmente
-più dettagliati e sceglie da sé inquadrature più ampie, non quadrate; la
-famiglia Imagen offre controllo esplicito del rapporto d'aspetto (`--size`
-viene tradotto in `aspectRatio`), con `imagen-4.0-fast-generate-001`
-ottimizzato per la velocità e `imagen-4.0-ultra-generate-001` per la massima
-fedeltà (un'immagine per chiamata). Ad esempio,
-`gemini-3.1-flash-image-preview` ha prodotto questo fotogramma 1408×768:
+comando. Il predefinito `gemini-3.1-flash-image` è il tuttofare: risultati
+dettagliati, e sceglie da sé inquadrature più ampie, non quadrate.
+`gemini-3.1-flash-lite-image` è l'opzione più economica e rapida per le
+bozze, mentre `gemini-3-pro-image` punta alla massima fedeltà. Qui c'era la
+famiglia Imagen: Google l'ha ritirata il 17 agosto 2026 e qualsiasi ID
+`imagen-*` ora restituisce 404, quindi scegli uno dei tre sopra. Ad esempio,
+`gemini-3-pro-image` ha prodotto questo fotogramma 1408×768:
 
 ```sh
 swiftmagex generate "A red fox curled up on a mossy rock in a misty autumn forest, golden leaves falling, soft photorealistic style" \
-  --model gemini-3.1-flash-image-preview -o fox.png
+  --model gemini-3-pro-image -o fox.png
 ```
 
-<img src="docs/images/example-generate-fox-gemini31.png" alt="Volpe dettagliata in un bosco autunnale, generata da gemini-3.1-flash-image-preview" width="480" />
+<img src="docs/images/example-generate-fox-gemini3-pro.png" alt="Volpe dettagliata in un bosco autunnale, generata da gemini-3-pro-image" width="480" />
 
 ### `swiftmagex edit` — image-to-image / multi-immagine / inpainting via Gemini
 
@@ -193,7 +192,7 @@ swiftmagex edit <input> <prompt> [opzioni]
 | `-o`, `--output <percorso>` | `./` | File o directory. Se directory, i file sono nominati `swiftmagex_{timestamp}_{index}.png`. |
 | `-n`, `--count <1–4>` | `1` | Numero di varianti. Ciascuna è una richiesta separata. |
 | `--seed <uint64>` | — | Registrato nei metadati anche quando il provider lo ignora. |
-| `--model <id>` | `gemini-2.5-flash-image` | Deve essere un modello Gemini — la forma `:predict` di Imagen non accetta input immagine inline e viene rifiutata con codice di uscita 2. |
+| `--model <id>` | `gemini-3.1-flash-image` | Deve essere un modello Gemini — la forma `:predict` di Imagen non accetta input immagine inline e viene rifiutata con codice di uscita 2. |
 
 ```sh
 # Cambia il colore di un soggetto
@@ -512,7 +511,7 @@ Successo:
 ```json
 {
   "command": "generate",
-  "model": "gemini-2.5-flash-image",
+  "model": "gemini-3.1-flash-image",
   "outputs": [
     { "format": "png", "height": 1024, "path": "/abs/out/swiftmagex_…_1.png", "width": 1024 }
   ],
