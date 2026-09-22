@@ -28,7 +28,7 @@ Ce que vous y gagnez :
   dépendances externes, deux binaires autonomes.
 
 La spécification de référence est `SwiftMageX-MVP-0.1-spec.md` ; ce qui
-a été livré dans la v0.2.0 figure dans `RELEASE_NOTES.md`.
+a été livré dans la v0.3.0 figure dans `RELEASE_NOTES.md`.
 
 ## Prérequis
 
@@ -45,14 +45,14 @@ a été livré dans la v0.2.0 figure dans `RELEASE_NOTES.md`.
 ### Binaire précompilé (recommandé)
 
 Récupérez `swiftmagex`, `swiftmagex-mcp` et `SHA256SUMS` depuis la
-[release v0.2.0](https://github.com/khodulov-m/SwiftMageX/releases/tag/v0.2.0),
+[release v0.3.0](https://github.com/khodulov-m/SwiftMageX/releases/tag/v0.3.0),
 vérifiez les sommes, puis placez les binaires dans votre `PATH` :
 
 ```sh
 shasum -a 256 -c SHA256SUMS
 chmod +x swiftmagex swiftmagex-mcp
 sudo mv swiftmagex swiftmagex-mcp /usr/local/bin/
-swiftmagex --version    # 0.2.0
+swiftmagex --version    # 0.3.0
 ```
 
 Si Gatekeeper met les téléchargements en quarantaine, supprimez
@@ -106,7 +106,7 @@ Huit sous-commandes, toutes partageant les mêmes flags globaux :
 | `--json` | Émet une enveloppe JSON structurée sur stdout au lieu du texte humain. |
 | `-v`, `--verbose` | Imprime les diagnostics sur stderr. **N'inclut pas** la clé d'API. |
 | `--cache-dir <chemin>` | Met en cache les réponses de `generate`/`edit` sous `<chemin>` pour que des entrées identiques rejouent les octets du fournisseur déjà enregistrés au lieu d'appeler l'API. Opt-in — voir la section cache plus bas. |
-| `--version` | Imprime `0.2.0` et quitte. |
+| `--version` | Imprime `0.3.0` et quitte. |
 | `-h`, `--help` | Affiche l'aide de la commande. |
 
 Les chemins de sortie sont toujours **absolus** dans la sortie `--json`

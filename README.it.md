@@ -30,7 +30,7 @@ Cosa ottieni:
   dipendenze esterne, due binari autosufficienti.
 
 La specifica autorevole è in `SwiftMageX-MVP-0.1-spec.md`; ciò che è
-stato rilasciato nella v0.2.0 è in `RELEASE_NOTES.md`.
+stato rilasciato nella v0.3.0 è in `RELEASE_NOTES.md`.
 
 ## Requisiti
 
@@ -47,14 +47,14 @@ stato rilasciato nella v0.2.0 è in `RELEASE_NOTES.md`.
 ### Binario precompilato (consigliato)
 
 Scarica `swiftmagex`, `swiftmagex-mcp` e `SHA256SUMS` dalla
-[release v0.2.0](https://github.com/khodulov-m/SwiftMageX/releases/tag/v0.2.0),
+[release v0.3.0](https://github.com/khodulov-m/SwiftMageX/releases/tag/v0.3.0),
 verifica i checksum e poi metti i binari nel `PATH`:
 
 ```sh
 shasum -a 256 -c SHA256SUMS
 chmod +x swiftmagex swiftmagex-mcp
 sudo mv swiftmagex swiftmagex-mcp /usr/local/bin/
-swiftmagex --version    # 0.2.0
+swiftmagex --version    # 0.3.0
 ```
 
 Se Gatekeeper mette in quarantena i download, rimuovi l'attributo:
@@ -107,7 +107,7 @@ Otto sottocomandi, tutti con gli stessi flag globali:
 | `--json` | Emette un envelope JSON strutturato su stdout al posto del testo umano. |
 | `-v`, `--verbose` | Stampa diagnostica su stderr. **Non** include la chiave API. |
 | `--cache-dir <percorso>` | Memorizza le risposte di `generate`/`edit` in `<percorso>`, così richieste identiche riproducono i byte del provider già registrati invece di chiamare l'API. Opt-in — vedi la sezione cache più sotto. |
-| `--version` | Stampa `0.2.0` ed esce. |
+| `--version` | Stampa `0.3.0` ed esce. |
 | `-h`, `--help` | Mostra l'aiuto del comando. |
 
 I percorsi di output sono sempre **assoluti** nell'output `--json` e

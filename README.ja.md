@@ -26,7 +26,7 @@ CLI です。生成と編集は Google の画像モデル(Gemini と Imagen)が�
 - 🪶 **フットプリントは最小限** — 小さな Swift パッケージ 1 つ、外部
   依存はちょうど 2 つ、自己完結したバイナリ 2 本。
 
-公式仕様は `SwiftMageX-MVP-0.1-spec.md`、v0.2.0 でリリースされた
+公式仕様は `SwiftMageX-MVP-0.1-spec.md`、v0.3.0 でリリースされた
 内容は `RELEASE_NOTES.md` を参照してください。
 
 ## 必要要件
@@ -43,7 +43,7 @@ CLI です。生成と編集は Google の画像モデル(Gemini と Imagen)が�
 
 ### プリビルドバイナリ(推奨)
 
-[v0.2.0 リリース](https://github.com/khodulov-m/SwiftMageX/releases/tag/v0.2.0)
+[v0.3.0 リリース](https://github.com/khodulov-m/SwiftMageX/releases/tag/v0.3.0)
 から `swiftmagex`、`swiftmagex-mcp`、`SHA256SUMS` を入手し、チェック
 サムを検証してから `PATH` に置きます:
 
@@ -51,7 +51,7 @@ CLI です。生成と編集は Google の画像モデル(Gemini と Imagen)が�
 shasum -a 256 -c SHA256SUMS
 chmod +x swiftmagex swiftmagex-mcp
 sudo mv swiftmagex swiftmagex-mcp /usr/local/bin/
-swiftmagex --version    # 0.2.0
+swiftmagex --version    # 0.3.0
 ```
 
 Gatekeeper がダウンロードを検疫した場合は属性を削除します:
@@ -104,7 +104,7 @@ export GEMINI_API_KEY="…"
 | `--json` | 構造化 JSON エンベロープを stdout に出力します(人間向けテキストの代わり)。 |
 | `-v`、`--verbose` | 診断メッセージを stderr に出します。API キーは**含まれません**。 |
 | `--cache-dir <パス>` | `generate`/`edit` のレスポンスを `<パス>` にキャッシュし、同一入力では API を呼ばずに記録済みのプロバイダバイトを再生します。オプトイン — 下のキャッシュ節を参照。 |
-| `--version` | `0.2.0` を出力して終了します。 |
+| `--version` | `0.3.0` を出力して終了します。 |
 | `-h`、`--help` | コマンドのヘルプを表示します。 |
 
 `--json` 出力と MCP ツールの結果に含まれる出力パスは常に
