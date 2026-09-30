@@ -4,7 +4,7 @@
 
 **ターミナルから直接、画像の生成・編集・仕上げを — そして同じことを
 AI エージェントにも教えましょう。** SwiftMageX はネイティブな macOS
-CLI です。生成と編集は Google の画像モデル(Gemini と Imagen)が担い、
+CLI です。生成と編集は Google の Gemini 画像モデルが担い、
 日常的なラスター処理はあなたの Mac 上で直接実行されます。
 
 得られるもの:
@@ -34,9 +34,9 @@ CLI です。生成と編集は Google の画像モデル(Gemini と Imagen)が�
 - Apple silicon(arm64)上の macOS 14+
 - Swift 6.0+ ツールチェーン(Xcode 16+) — ソースからビルドする
   ときのみ必要
-- `generate` コマンド用の Google AI API キーを
+- `generate` と `edit` コマンド用の Google AI API キーを
   `SWIFTMAGEX_GEMINI_API_KEY`(または `GEMINI_API_KEY`)に設定。
-  Gemini と Imagen の両方の生成に使えます。`resize`、`text`、
+  `resize`、`text`、
   `composite`、`appstore`、`remove-bg`、`crop`、`icon` にキーは不要です。
 
 ## インストール
@@ -111,7 +111,7 @@ export GEMINI_API_KEY="…"
 **絶対パス**です。エージェントは作業ディレクトリを知らなくて構い
 ません。
 
-### `swiftmagex generate` — Gemini または Imagen によるテキストから画像
+### `swiftmagex generate` — Gemini によるテキストから画像
 
 ```
 swiftmagex generate <prompt> [オプション]
@@ -124,7 +124,7 @@ swiftmagex generate <prompt> [オプション]
 | `-s`、`--size <square\|portrait\|landscape>` | `square` | アスペクト比のヒント。実際の解像度はモデル次第。 |
 | `-n`、`--count <1–4>` | `1` | バリアント数。各バリアントは別リクエスト。 |
 | `--seed <uint64>` | — | プロバイダが無視してもメタデータに記録します。 |
-| `--model <id>` | `gemini-3.1-flash-image` | 組み込み(すべて GA): `gemini-3.1-flash-image`、`gemini-3.1-flash-lite-image`、`gemini-3-pro-image`。未知の ID は `imagen-` / `gemini-` プレフィックスでルーティングされます。 |
+| `--model <id>` | `gemini-3.1-flash-image` | 組み込み(すべて GA): `gemini-3.1-flash-image`、`gemini-3.1-flash-lite-image`、`gemini-3-pro-image`。それ以外の ID はそのまま Gemini に渡されます。 |
 
 ```sh
 # 1 枚を現在のディレクトリに出力
@@ -189,7 +189,7 @@ swiftmagex edit <input> <prompt> [オプション]
 | `-o`、`--output <パス>` | `./` | ファイルまたはディレクトリ。ディレクトリ指定時のファイル名は `swiftmagex_{timestamp}_{index}.png`。 |
 | `-n`、`--count <1–4>` | `1` | バリアント数。各バリアントは個別のリクエスト。 |
 | `--seed <uint64>` | — | プロバイダーが無視する場合でもメタデータには記録されます。 |
-| `--model <id>` | `gemini-3.1-flash-image` | Gemini モデルである必要があります —— Imagen の `:predict` 形式は inline 画像入力を受け付けず、終了コード 2 で拒否されます。 |
+| `--model <id>` | `gemini-3.1-flash-image` | `generate` と同じモデル。 |
 
 ```sh
 # 被写体の色を変える
@@ -606,8 +606,8 @@ claude mcp add -s user swiftmagex /usr/local/bin/swiftmagex-mcp \
 
 ## スコープと状態
 
-これは 0.1 MVP — 3 つのコマンド、2 つの Google AI 画像プロバイダ
-(Gemini と Imagen)、1 つの MCP サーバ、さらに 0.1 以降に追加された
+これは 0.1 MVP — 3 つのコマンド、Gemini 画像プロバイダ 1 つ
+(MVP の Imagen プロバイダは Google がそのファミリーを終了したため削除されました)、1 つの MCP サーバ、さらに 0.1 以降に追加された
 5 つのローカルコマンド `composite`、`appstore`、`remove-bg`、`crop`、`icon`
 (画像合成、App Store Connect スクリーンショット、Vision ベースの背景除去、
 サリエンシー対応クロップ、Icon Composer の `.icon` パッケージ)です。それ以外はすべて延期されています。スコープ

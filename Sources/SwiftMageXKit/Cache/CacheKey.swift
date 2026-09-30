@@ -5,7 +5,7 @@ import Foundation
 ///
 /// Computed as `sha256(canonical_json(request_fields))` and rendered as a
 /// lowercase hex string. The payload includes every input that materially
-/// affects the response — model, prompt, size, aspect ratio, resolution tier,
+/// affects the response — model, prompt, aspect ratio, resolution tier,
 /// count, seed, and the SHA-256
 /// of every reference image and mask byte payload (so identical bytes hit
 /// the cache regardless of source path or filename).
@@ -17,7 +17,6 @@ public enum CacheKey {
         let payload = Payload(
             model: request.model,
             prompt: request.prompt,
-            size: request.size.rawValue,
             count: request.count,
             seed: request.seed,
             refs: request.referenceImages.map { hexSHA256($0.data) },
@@ -44,14 +43,12 @@ public enum CacheKey {
     /// encoded JSON when empty / nil so a text-to-image request hashes the
     /// same regardless of whether the edit fields are even present.
     ///
-    /// `aspectRatio` / `resolution` are likewise omitted when nil, so a request
-    /// without them keeps its old key. An explicit `--size portrait` now also
-    /// sets `aspectRatio`, which re-keys it on purpose: before, Gemini was
-    /// never sent a ratio, so such a cached entry holds the model's own framing.
+    /// `aspectRatio` / `resolution` are likewise omitted when nil. `size` used
+    /// to be here; it left with the Imagen provider, which was its only reader,
+    /// and every key minted before that stopped matching.
     private struct Payload: Encodable {
         let model: String
         let prompt: String
-        let size: String
         let count: Int
         let seed: UInt64?
         let refs: [String]
@@ -64,7 +61,6 @@ public enum CacheKey {
             var c = encoder.container(keyedBy: CodingKeys.self)
             try c.encode(model, forKey: .model)
             try c.encode(prompt, forKey: .prompt)
-            try c.encode(size, forKey: .size)
             try c.encode(count, forKey: .count)
             try c.encodeIfPresent(seed, forKey: .seed)
             if !refs.isEmpty {
@@ -77,7 +73,7 @@ public enum CacheKey {
         }
 
         enum CodingKeys: String, CodingKey {
-            case model, prompt, size, count, seed, refs, mask, maskMimeType
+            case model, prompt, count, seed, refs, mask, maskMimeType
             case aspectRatio, resolution
         }
     }

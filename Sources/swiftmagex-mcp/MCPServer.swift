@@ -33,13 +33,13 @@ struct MCPServerMain {
             do {
                 switch params.name {
                 case GenerateImageTool.name:
-                    let provider = try makeImageProvider(for: params.arguments)
+                    let provider = try makeImageProvider()
                     return try await ToolHandlers.generate(
                         arguments: params.arguments,
                         provider: provider
                     )
                 case EditImageTool.name:
-                    let provider = try makeImageProvider(for: params.arguments)
+                    let provider = try makeImageProvider()
                     return try await ToolHandlers.edit(
                         arguments: params.arguments,
                         provider: provider
@@ -94,25 +94,16 @@ struct MCPServerMain {
         await server.waitUntilCompleted()
     }
 
-    /// Constructs the right production provider for the model named in
-    /// `arguments`, surfacing a missing API key as
+    /// Constructs the production provider, surfacing a missing API key as
     /// ``SwiftMageXError/configuration(_:)`` — the same mapping the CLI uses,
     /// so the calling agent sees a consistent error category (spec §13).
-    /// Falls back to the default model when `arguments` omits `model` so the
-    /// catalog-default Gemini provider is always available.
-    private static func makeImageProvider(
-        for arguments: [String: Value]?
-    ) throws -> any ImageProvider {
+    private static func makeImageProvider() throws -> any ImageProvider {
         guard let apiKey = Configuration.resolvedAPIKey() else {
             throw SwiftMageXError.configuration(
                 "missing \(Configuration.EnvironmentKey.primaryAPIKey)"
             )
         }
-        let requestedModel = (arguments?["model"]).flatMap { value -> String? in
-            if case let .string(string) = value { return string }
-            return nil
-        } ?? ModelCatalog.defaultModelID
-        return SwiftMageXOrchestrator.makeProvider(for: requestedModel, apiKey: apiKey)
+        return SwiftMageXOrchestrator.makeProvider(apiKey: apiKey)
     }
 }
 

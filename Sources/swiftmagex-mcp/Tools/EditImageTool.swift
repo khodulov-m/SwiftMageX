@@ -23,7 +23,6 @@ enum EditImageTool {
     }
 
     /// Default model identifier when the caller does not pass `model`.
-    /// Edit is Gemini-only, so the catalog default already fits.
     static let defaultModel = ModelCatalog.defaultModelID
 
     /// Parses arguments, throwing ``MCPError/invalidParams(_:)`` on schema
@@ -42,11 +41,6 @@ enum EditImageTool {
         }
         let seed = try args.optionalUInt64("seed")
         let model = try args.optionalString("model") ?? defaultModel
-        guard ModelCatalog.family(for: model) == .gemini else {
-            throw MCPError.invalidParams(
-                "\(name): 'model' must be a Gemini model for edit (got \(model))"
-            )
-        }
         let output = try args.optionalString("output")
         return Input(
             image: image,
@@ -60,11 +54,6 @@ enum EditImageTool {
             model: model,
             output: output
         )
-    }
-
-    /// Gemini-only model ids, used to populate the JSON-schema `enum` for `model`.
-    private static var geminiModelIDs: [String] {
-        ModelCatalog.all.filter { $0.family == .gemini }.map(\.id)
     }
 
     /// MCP tool descriptor with full input schema.
@@ -116,8 +105,8 @@ enum EditImageTool {
                 ]),
                 "model": .object([
                     "type": .string("string"),
-                    "enum": .array(geminiModelIDs.map { .string($0) }),
-                    "description": .string("Gemini model identifier. Defaults to \(defaultModel). Imagen models are rejected — they do not accept inline image inputs."),
+                    "enum": .array(ModelCatalog.all.map { .string($0.id) }),
+                    "description": .string("Gemini model identifier. Defaults to \(defaultModel); all listed models are GA."),
                 ]),
                 "output": .object([
                     "type": .string("string"),

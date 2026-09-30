@@ -22,7 +22,6 @@ enum ToolHandlers {
         do {
             let request = GenerationRequest(
                 prompt: input.prompt,
-                size: input.size,
                 count: input.count,
                 seed: input.seed,
                 model: input.model,
@@ -57,7 +56,6 @@ enum ToolHandlers {
         do {
             let request = GenerationRequest(
                 prompt: input.prompt,
-                size: .square,
                 count: input.count,
                 seed: input.seed,
                 model: input.model,

@@ -61,7 +61,7 @@ struct EditCommand: AsyncParsableCommand {
     @Option(
         name: .long,
         help: ArgumentHelp(
-            "Image model identifier. Edit requires a Gemini model (Imagen does not accept inline image inputs).",
+            "Image model identifier. Built-in: \(ModelCatalog.all.map(\.id).joined(separator: ", ")). Other IDs are passed to Gemini as-is.",
             valueName: "model"
         )
     )
@@ -76,18 +76,12 @@ struct EditCommand: AsyncParsableCommand {
         guard !prompt.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
             throw ValidationError("Prompt must not be empty.")
         }
-        guard ModelCatalog.family(for: model) == .gemini else {
-            throw ValidationError(
-                "--model must be a Gemini model for edit (got \(model))."
-            )
-        }
     }
 
     func run() async throws {
         let printer = ResultPrinter(json: globals.json, verbose: globals.verbose)
         let request = GenerationRequest(
             prompt: prompt,
-            size: .square,
             count: count,
             seed: seed,
             model: model,
@@ -114,7 +108,7 @@ struct EditCommand: AsyncParsableCommand {
             printer.printSuccess(
                 command: "edit",
                 outputs: outputs,
-                provider: ModelCatalog.family(for: model).rawValue,
+                provider: "gemini",
                 model: model
             )
         } catch let error as SwiftMageXError {

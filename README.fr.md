@@ -5,7 +5,7 @@
 **Générez, éditez et peaufinez des images directement depuis votre
 terminal — et apprenez à votre agent IA à en faire autant.** SwiftMageX
 est un CLI natif macOS : la génération et l'édition passent par les
-modèles d'images de Google (Gemini et Imagen), tandis que le travail
+modèles d'images Gemini de Google, tandis que le travail
 raster du quotidien s'effectue directement sur votre Mac.
 
 Ce que vous y gagnez :
@@ -36,8 +36,8 @@ a été livré dans la v0.3.0 figure dans `RELEASE_NOTES.md`.
 - Toolchain Swift 6.0+ (Xcode 16+) — uniquement nécessaire pour
   compiler depuis les sources
 - Une clé API Google AI dans `SWIFTMAGEX_GEMINI_API_KEY` (ou
-  `GEMINI_API_KEY`) pour la commande `generate` — utilisée à la fois
-  pour les modèles Gemini et Imagen. `resize`, `text`, `composite`,
+  `GEMINI_API_KEY`) pour les commandes `generate` et `edit`.
+  `resize`, `text`, `composite`,
   `appstore`, `remove-bg`, `crop` et `icon` ne nécessitent aucune clé.
 
 ## Installation
@@ -113,7 +113,7 @@ Les chemins de sortie sont toujours **absolus** dans la sortie `--json`
 et dans les résultats des outils MCP — les agents n'ont pas besoin de
 connaître le répertoire de travail.
 
-### `swiftmagex generate` — texte vers image via Gemini ou Imagen
+### `swiftmagex generate` — texte vers image via Gemini
 
 ```
 swiftmagex generate <prompt> [options]
@@ -126,7 +126,7 @@ swiftmagex generate <prompt> [options]
 | `-s`, `--size <square\|portrait\|landscape>` | `square` | Indication de proportion. La résolution réelle dépend du modèle. |
 | `-n`, `--count <1–4>` | `1` | Nombre de variantes. Chacune est une requête distincte. |
 | `--seed <uint64>` | — | Enregistré dans les métadonnées même si le fournisseur l'ignore. |
-| `--model <id>` | `gemini-3.1-flash-image` | Intégrés, tous GA : `gemini-3.1-flash-image`, `gemini-3.1-flash-lite-image`, `gemini-3-pro-image`. Les ID inconnus sont routés via le préfixe `imagen-`/`gemini-`. |
+| `--model <id>` | `gemini-3.1-flash-image` | Intégrés, tous GA : `gemini-3.1-flash-image`, `gemini-3.1-flash-lite-image`, `gemini-3-pro-image`. Les autres ID sont transmis tels quels à Gemini. |
 
 ```sh
 # Une seule image dans le répertoire courant
@@ -192,7 +192,7 @@ swiftmagex edit <input> <prompt> [options]
 | `-o`, `--output <chemin>` | `./` | Fichier ou répertoire. Si répertoire, les fichiers sont nommés `swiftmagex_{timestamp}_{index}.png`. |
 | `-n`, `--count <1–4>` | `1` | Nombre de variantes. Chacune est une requête séparée. |
 | `--seed <uint64>` | — | Enregistré dans les métadonnées même si le fournisseur l'ignore. |
-| `--model <id>` | `gemini-3.1-flash-image` | Doit être un modèle Gemini — la forme `:predict` d'Imagen n'accepte pas d'entrées image inline et est rejetée avec le code de sortie 2. |
+| `--model <id>` | `gemini-3.1-flash-image` | Mêmes modèles que `generate`. |
 
 ```sh
 # Changer la couleur d'un sujet
@@ -620,8 +620,9 @@ retrouve pas dans l'environnement général du client.
 
 ## Portée et statut
 
-Il s'agit du MVP 0.1 — trois commandes, deux fournisseurs d'images
-Google AI (Gemini et Imagen), un serveur MCP — plus cinq ajouts locaux
+Il s'agit du MVP 0.1 — trois commandes, un fournisseur d'images Gemini
+(le fournisseur Imagen du MVP a été retiré après l'arrêt de cette famille
+par Google), un serveur MCP — plus cinq ajouts locaux
 postérieurs à 0.1 : `composite`, `appstore`, `remove-bg`, `crop` et
 `icon` (composition, captures pour App Store Connect, suppression
 d'arrière-plan basée sur Vision, recadrage sensible à la saillance et

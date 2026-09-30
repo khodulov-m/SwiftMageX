@@ -4,7 +4,7 @@
 
 **터미널에서 바로 이미지를 생성·편집·다듬고, 같은 일을 AI 에이전트에게도
 가르치세요.** SwiftMageX는 네이티브 macOS CLI입니다. 생성과 편집은
-Google의 이미지 모델(Gemini와 Imagen)이 맡고, 일상적인 래스터 작업은
+Google의 Gemini 이미지 모델이 맡고, 일상적인 래스터 작업은
 여러분의 Mac에서 직접 처리합니다.
 
 얻을 수 있는 것:
@@ -33,9 +33,9 @@ Google의 이미지 모델(Gemini와 Imagen)이 맡고, 일상적인 래스터 �
 
 - Apple silicon(arm64)에서 동작하는 macOS 14+
 - Swift 6.0+ 툴체인(Xcode 16+) — 소스 빌드 시에만 필요
-- `generate` 명령에 사용할 Google AI API 키를
+- `generate`와 `edit` 명령에 사용할 Google AI API 키를
   `SWIFTMAGEX_GEMINI_API_KEY`(또는 `GEMINI_API_KEY`)에 설정.
-  Gemini와 Imagen 모델 모두에 사용됩니다. `resize`, `text`,
+  `resize`, `text`,
   `composite`, `appstore`, `remove-bg`, `crop`, `icon`은 키가 필요 없습니다.
 
 ## 설치
@@ -109,7 +109,7 @@ export GEMINI_API_KEY="…"
 `--json` 출력과 MCP 도구 결과의 출력 경로는 항상 **절대 경로**
 입니다. 에이전트가 작업 디렉터리를 알 필요가 없습니다.
 
-### `swiftmagex generate` — Gemini 또는 Imagen으로 텍스트→이미지
+### `swiftmagex generate` — Gemini로 텍스트→이미지
 
 ```
 swiftmagex generate <prompt> [옵션]
@@ -122,7 +122,7 @@ swiftmagex generate <prompt> [옵션]
 | `-s`, `--size <square\|portrait\|landscape>` | `square` | 비율 힌트. 실제 해상도는 모델에 따라 달라집니다. |
 | `-n`, `--count <1–4>` | `1` | 변형 개수. 각 변형은 개별 요청. |
 | `--seed <uint64>` | — | 공급자가 무시해도 메타데이터에 기록됩니다. |
-| `--model <id>` | `gemini-3.1-flash-image` | 내장(모두 GA): `gemini-3.1-flash-image`, `gemini-3.1-flash-lite-image`, `gemini-3-pro-image`. 알 수 없는 ID는 `imagen-` / `gemini-` 접두사로 라우팅됩니다. |
+| `--model <id>` | `gemini-3.1-flash-image` | 내장(모두 GA): `gemini-3.1-flash-image`, `gemini-3.1-flash-lite-image`, `gemini-3-pro-image`. 그 밖의 ID는 그대로 Gemini에 전달됩니다. |
 
 ```sh
 # 현재 디렉터리에 1장
@@ -185,7 +185,7 @@ swiftmagex edit <input> <prompt> [옵션]
 | `-o`, `--output <경로>` | `./` | 파일 또는 디렉터리. 디렉터리인 경우 파일명은 `swiftmagex_{timestamp}_{index}.png`. |
 | `-n`, `--count <1–4>` | `1` | 변형 수. 각 변형은 별도 요청. |
 | `--seed <uint64>` | — | 프로바이더가 무시하더라도 메타데이터에 기록됩니다. |
-| `--model <id>` | `gemini-3.1-flash-image` | Gemini 모델이어야 합니다 —— Imagen의 `:predict` 형식은 inline 이미지 입력을 받지 않으며 종료 코드 2로 거부됩니다. |
+| `--model <id>` | `gemini-3.1-flash-image` | `generate`와 같은 모델. |
 
 ```sh
 # 피사체 색상 바꾸기
@@ -596,8 +596,8 @@ claude mcp add -s user swiftmagex /usr/local/bin/swiftmagex-mcp \
 
 ## 범위와 상태
 
-이번은 0.1 MVP — 세 가지 명령, 두 개의 Google AI 이미지 공급자
-(Gemini와 Imagen), 한 MCP 서버이며, 여기에 0.1 이후 추가된 다섯 가지
+이번은 0.1 MVP — 세 가지 명령, Gemini 이미지 공급자 하나
+(MVP의 Imagen 공급자는 Google이 해당 계열을 중단한 뒤 제거됨), 한 MCP 서버이며, 여기에 0.1 이후 추가된 다섯 가지
 로컬 명령 `composite`, `appstore`, `remove-bg`, `crop`, `icon`(합성,
 App Store Connect 스크린샷, Vision 기반 배경 제거, 살리언시 기반 크롭,
 Icon Composer `.icon` 패키지)이 더해졌습니다. 그 경계 밖은 모두 미루어졌으며 전체 제외 항목은 스펙

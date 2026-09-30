@@ -53,7 +53,7 @@ struct GenerateCommand: AsyncParsableCommand {
     @Option(
         name: .long,
         help: ArgumentHelp(
-            "Image model identifier. Built-in: \(ModelCatalog.all.map(\.id).joined(separator: ", ")). Unknown IDs route by `imagen-`/`gemini-` prefix.",
+            "Image model identifier. Built-in: \(ModelCatalog.all.map(\.id).joined(separator: ", ")). Other IDs are passed to Gemini as-is.",
             valueName: "model"
         )
     )
@@ -81,7 +81,6 @@ struct GenerateCommand: AsyncParsableCommand {
         let printer = ResultPrinter(json: globals.json, verbose: globals.verbose)
         let request = GenerationRequest(
             prompt: prompt,
-            size: size ?? .square,
             count: count,
             seed: seed,
             model: model,
@@ -105,7 +104,7 @@ struct GenerateCommand: AsyncParsableCommand {
             printer.printSuccess(
                 command: "generate",
                 outputs: outputs,
-                provider: ModelCatalog.family(for: model).rawValue,
+                provider: "gemini",
                 model: model
             )
         } catch let error as SwiftMageXError {
