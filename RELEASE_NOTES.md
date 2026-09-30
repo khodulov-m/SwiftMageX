@@ -2,6 +2,26 @@
 
 # Unreleased
 
+## Post-0.3.0 — Imagen provider removed
+
+Google retired Imagen 4.0 on 2026-08-17; every `imagen-*` id has 404'd on
+`v1` and `v1beta` since, and it was already out of the catalog in v0.3.0. The
+provider was kept in case the family came back to this API. It has not, so it
+is gone: `ImagenProvider` and its `:predict` wire shape, the
+`ImageModelFamily` enum and the `imagen-` prefix routing, and
+`GenerationRequest.size` (Imagen was its only reader; `--size` keeps working
+by mapping to `aspectRatio` in the frontends).
+
+- `--model imagen-…` still parses; it now goes to Gemini's `:generateContent`
+  and surfaces Google's 404 as exit code 3, where it used to reach
+  `:predict` and fail the same way. `edit` no longer rejects a non-Gemini id
+  up front — there is no other kind.
+- **Cache keys changed once.** `size` was part of every key; removing it
+  means entries written before this change no longer match. The cache is
+  opt-in and local, so the cost is one re-generation per prompt.
+- `SwiftMageXOrchestrator.makeProvider(for:apiKey:)` is now
+  `makeProvider(apiKey:)`.
+
 ## Post-0.3.0 — Aspect ratio and resolution for Gemini
 
 `--size` was only ever a hint for Gemini: `GeminiProvider` never sent it, so

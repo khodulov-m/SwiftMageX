@@ -1,21 +1,8 @@
 import Foundation
 
-/// The Google AI wire shape a model speaks.
-///
-/// Gemini-image models use `{model}:generateContent` with
-/// `responseModalities: ["IMAGE"]`; Imagen models use `{model}:predict`
-/// with `instances` and `parameters`. The two shapes share a host, an
-/// auth header, and a retry policy but nothing else, so each family has
-/// its own provider implementation.
-public enum ImageModelFamily: String, Sendable, Equatable {
-    case gemini
-    case imagen
-}
-
 /// Static description of a known image-generation model.
 public struct ImageModelDescriptor: Sendable, Equatable {
     public let id: String
-    public let family: ImageModelFamily
     public let isPreview: Bool
     /// Output ratios the model renders. Google's server validates
     /// `imageConfig.aspectRatio` only against the cross-model union, so a
@@ -27,30 +14,27 @@ public struct ImageModelDescriptor: Sendable, Equatable {
 
     public init(
         id: String,
-        family: ImageModelFamily,
         isPreview: Bool = false,
         aspectRatios: [AspectRatio] = AspectRatio.allCases,
         resolutions: [ImageResolution] = ImageResolution.allCases
     ) {
         self.id = id
-        self.family = family
         self.isPreview = isPreview
         self.aspectRatios = aspectRatios
         self.resolutions = resolutions
     }
 }
 
-/// Registry of built-in models the kit knows how to dispatch.
+/// Registry of the built-in Gemini image models.
 ///
-/// The orchestrator looks each `--model` value up here to decide which
-/// provider to construct. Unknown IDs fall back to a prefix heuristic
-/// so a freshly released Gemini or Imagen variant works without a code
-/// change — but the entries listed below are what the CLI and MCP
-/// surface to users.
+/// Every model speaks the same `:generateContent` shape, so the catalog does
+/// not route — it advertises ids and holds each one's ratio / resolution set.
+/// `--model` still accepts any id: one not listed here goes to Gemini as-is,
+/// so a freshly released model works without a code change.
 ///
 /// **Only GA ids belong here.** A preview alias is retired some time after the
 /// model reaches GA, and nothing in this file would notice: `--model` would keep
-/// resolving through the prefix heuristic until Google switched the alias off,
+/// passing it through to Gemini until Google switched the alias off,
 /// and the failure would land on the user mid-command. Listing the GA id instead
 /// means the catalog is wrong loudly, at review time, rather than quietly.
 ///
@@ -66,10 +50,9 @@ public struct ImageModelDescriptor: Sendable, Equatable {
 /// - The whole Imagen 4.0 family was retired on 2026-08-17 and now 404s on both
 ///   `v1` and `v1beta` — verified by `GET`, by `:predict`, and by its absence from
 ///   `ListModels`. Google's replacement for it is `gemini-3.1-flash-image`, the
-///   default below. ``ImageModelFamily/imagen`` and ``ImagenProvider`` are kept on
-///   purpose: Imagen still exists on Vertex AI, the `:predict` wire shape is
-///   tested, and an `imagen-*` id passed by hand still routes to it and fails with
-///   Google's own error rather than a confusing one of ours.
+///   default below. Its provider and `:predict` wire shape were deleted
+///   afterwards; an `imagen-*` id passed by hand now goes to `:generateContent`
+///   and surfaces Google's 404 as exit code 3.
 ///
 /// Per-model ratio / resolution sets are the tables in Google's image-generation
 /// guide as of 2026-09-30: 3.1 Flash renders all 14 ratios at 512–4K, 3.1 Flash
@@ -78,15 +61,13 @@ public enum ModelCatalog {
     public static let defaultModelID = "gemini-3.1-flash-image"
 
     public static let all: [ImageModelDescriptor] = [
-        .init(id: "gemini-3.1-flash-image", family: .gemini),
+        .init(id: "gemini-3.1-flash-image"),
         .init(
             id: "gemini-3.1-flash-lite-image",
-            family: .gemini,
             resolutions: [.r512, .r1K]
         ),
         .init(
             id: "gemini-3-pro-image",
-            family: .gemini,
             aspectRatios: AspectRatio.classic,
             resolutions: [.r1K, .r2K, .r4K]
         ),
@@ -95,17 +76,6 @@ public enum ModelCatalog {
     /// Returns the descriptor for an exact match, or `nil` if unknown.
     public static func descriptor(for id: String) -> ImageModelDescriptor? {
         all.first { $0.id == id }
-    }
-
-    /// Resolves a model id to its wire family.
-    ///
-    /// Exact matches in ``all`` win. Otherwise we route by prefix so a
-    /// new `imagen-*` or `gemini-*` build can be passed via `--model`
-    /// without waiting for a catalog update.
-    public static func family(for id: String) -> ImageModelFamily {
-        if let descriptor = descriptor(for: id) { return descriptor.family }
-        if id.hasPrefix("imagen-") { return .imagen }
-        return .gemini
     }
 
     /// Rejects a ratio or resolution the catalog knows `model` can't render.

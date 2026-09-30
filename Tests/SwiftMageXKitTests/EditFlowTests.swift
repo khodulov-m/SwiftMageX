@@ -242,7 +242,7 @@ final class EditFlowTests: XCTestCase {
         }
 
         // Two different PNGs with the same filename slot — bytes differ, so
-        // the cache key must differ even when prompt + model + size match.
+        // the cache key must differ even when prompt + model match.
         let firstInput = dir.appendingPathComponent("src1.png")
         try (try Self.makeSolidPNGData(width: 4, height: 4)).write(to: firstInput)
         let secondInput = dir.appendingPathComponent("src2.png")
@@ -271,32 +271,6 @@ final class EditFlowTests: XCTestCase {
     }
 
     // MARK: - Validation
-
-    func testEditRejectsImagenModel() async throws {
-        let dir = try Self.makeTempDir()
-        defer { try? FileManager.default.removeItem(at: dir) }
-
-        let inputURL = try Self.writePNG(in: dir, name: "src.png")
-        let request = Self.makeRequest(model: "imagen-4.0-generate-001")
-        let provider = MockImageProvider(images: [])
-
-        do {
-            _ = try await SwiftMageXOrchestrator.edit(
-                input: inputURL.path,
-                mask: nil,
-                request: request,
-                output: dir.path,
-                provider: provider
-            )
-            XCTFail("Expected Imagen model to be rejected")
-        } catch let error as SwiftMageXError {
-            guard case .invalidInput = error else {
-                return XCTFail("Expected .invalidInput, got \(error)")
-            }
-            XCTAssertEqual(error.exitCode, 2)
-        }
-        XCTAssertEqual(provider.receivedRequests.count, 0, "Provider must not be invoked for invalid models")
-    }
 
     func testEditRequiresInputFile() async throws {
         let dir = try Self.makeTempDir()
@@ -385,7 +359,6 @@ final class EditFlowTests: XCTestCase {
     ) -> GenerationRequest {
         GenerationRequest(
             prompt: prompt,
-            size: .square,
             count: count,
             seed: seed,
             model: model

@@ -16,7 +16,6 @@ final class JSONEnvelopeTests: XCTestCase {
         )
         let request = GenerationRequest(
             prompt: "anything",
-            size: .square,
             count: 1,
             seed: nil,
             model: "gemini-3.1-flash-image"

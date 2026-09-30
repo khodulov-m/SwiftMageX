@@ -218,7 +218,6 @@ final class GenerateFlowTests: XCTestCase {
     ) -> GenerationRequest {
         GenerationRequest(
             prompt: prompt,
-            size: .square,
             count: count,
             seed: seed,
             model: "gemini-3.1-flash-image"

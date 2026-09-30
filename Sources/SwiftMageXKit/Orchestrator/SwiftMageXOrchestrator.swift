@@ -61,7 +61,7 @@ public enum SwiftMageXOrchestrator {
                 "missing \(Configuration.EnvironmentKey.primaryAPIKey)"
             )
         }
-        let provider = makeProvider(for: request.model, apiKey: apiKey)
+        let provider = makeProvider(apiKey: apiKey)
         return try await generate(
             request: request,
             output: output,
@@ -138,7 +138,7 @@ public enum SwiftMageXOrchestrator {
                 "missing \(Configuration.EnvironmentKey.primaryAPIKey)"
             )
         }
-        let provider = makeProvider(for: request.model, apiKey: apiKey)
+        let provider = makeProvider(apiKey: apiKey)
         return try await edit(
             input: input,
             references: references,
@@ -167,12 +167,6 @@ public enum SwiftMageXOrchestrator {
         timestamp: Date = Date(),
         currentDirectoryPath: String = FileManager.default.currentDirectoryPath
     ) async throws -> [WrittenImage] {
-        guard ModelCatalog.family(for: request.model) == .gemini else {
-            throw SwiftMageXError.invalidInput(
-                "edit requires a Gemini model (got \(request.model))"
-            )
-        }
-
         var referenceImages: [ReferenceImage] = []
         referenceImages.reserveCapacity(1 + references.count)
         referenceImages.append(try loadReference(
@@ -585,16 +579,10 @@ public enum SwiftMageXOrchestrator {
         )
     }
 
-    /// Constructs the right provider for `model` using ``ModelCatalog`` to
-    /// pick between Gemini's `:generateContent` shape and Imagen's `:predict`.
-    /// Exposed so the MCP frontend can share the same routing.
-    public static func makeProvider(for model: String, apiKey: String) -> any ImageProvider {
-        switch ModelCatalog.family(for: model) {
-        case .gemini:
-            return GeminiProvider(apiKey: apiKey)
-        case .imagen:
-            return ImagenProvider(apiKey: apiKey)
-        }
+    /// Constructs the production provider. Exposed so the MCP frontend builds
+    /// the same one the CLI does.
+    public static func makeProvider(apiKey: String) -> any ImageProvider {
+        GeminiProvider(apiKey: apiKey)
     }
 
     // MARK: - Internals

@@ -16,14 +16,12 @@ final class ResponseCacheTests: XCTestCase {
         let prompts = Self.makeRequest(prompt: "different")
         let counts = Self.makeRequest(count: 2)
         let seeds = Self.makeRequest(seed: 1)
-        let sizes = Self.makeRequest(size: .portrait)
         let models = Self.makeRequest(model: "gemini-3-pro-image")
 
         let baseKey = CacheKey.compute(from: base)
         XCTAssertNotEqual(baseKey, CacheKey.compute(from: prompts))
         XCTAssertNotEqual(baseKey, CacheKey.compute(from: counts))
         XCTAssertNotEqual(baseKey, CacheKey.compute(from: seeds))
-        XCTAssertNotEqual(baseKey, CacheKey.compute(from: sizes))
         XCTAssertNotEqual(baseKey, CacheKey.compute(from: models))
     }
 
@@ -141,7 +139,6 @@ final class ResponseCacheTests: XCTestCase {
 
     private static func makeRequest(
         prompt: String = "anything",
-        size: ImageSize = .square,
         count: Int = 1,
         seed: UInt64? = nil,
         model: String = "gemini-3.1-flash-image",
@@ -150,7 +147,6 @@ final class ResponseCacheTests: XCTestCase {
     ) -> GenerationRequest {
         GenerationRequest(
             prompt: prompt,
-            size: size,
             count: count,
             seed: seed,
             model: model,

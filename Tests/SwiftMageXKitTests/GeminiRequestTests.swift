@@ -53,7 +53,6 @@ final class GeminiRequestTests: XCTestCase {
     ) -> GenerationRequest {
         GenerationRequest(
             prompt: prompt,
-            size: .square,
             count: count,
             seed: nil,
             model: model
@@ -123,7 +122,6 @@ final class GeminiRequestTests: XCTestCase {
         let inputBytes = Data([0x89, 0x50, 0x4E, 0x47, 0x01, 0x02, 0x03])
         let request = GenerationRequest(
             prompt: Self.testPrompt,
-            size: .square,
             count: 1,
             seed: nil,
             model: Self.testModel,
@@ -156,7 +154,6 @@ final class GeminiRequestTests: XCTestCase {
         let maskBytes = Data([0x11, 0x22, 0x33, 0x44])
         let request = GenerationRequest(
             prompt: Self.testPrompt,
-            size: .square,
             count: 1,
             seed: nil,
             model: Self.testModel,
@@ -191,7 +188,6 @@ final class GeminiRequestTests: XCTestCase {
         let thirdRef = Data([0xAA, 0xBB])
         let request = GenerationRequest(
             prompt: Self.testPrompt,
-            size: .square,
             count: 1,
             seed: nil,
             model: Self.testModel,
@@ -375,14 +371,11 @@ final class GeminiRequestTests: XCTestCase {
         let body = try Self.makeResponseJSON(imageBytes: Self.sampleImageBytes)
         let mock = MockHTTPClient(stubs: [.init(data: body, statusCode: 200)])
         let provider = Self.makeProvider(httpClient: mock)
-        var request = Self.makeRequest()
-        request.size = .portrait
-
-        _ = try await provider.generate(request)
+        _ = try await provider.generate(Self.makeRequest())
 
         XCTAssertNil(
             try Self.imageConfigOf(mock.receivedRequests.first),
-            "Gemini ignores `size`; frontends map an explicit preset into aspectRatio"
+            "No ratio, no resolution → no imageConfig; the model picks the framing"
         )
     }
 
@@ -476,7 +469,6 @@ final class GeminiRequestTests: XCTestCase {
         let mock = MockImageProvider(images: [])
         let request = GenerationRequest(
             prompt: "hello",
-            size: .portrait,
             count: 2,
             seed: 42,
             model: "gemini-3.1-flash-image"

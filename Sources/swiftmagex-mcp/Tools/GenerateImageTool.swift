@@ -9,7 +9,6 @@ enum GenerateImageTool {
     /// Typed inputs decoded from the MCP arguments dictionary.
     struct Input {
         let prompt: String
-        let size: ImageSize
         let aspectRatio: AspectRatio?
         let resolution: ImageResolution?
         let count: Int
@@ -42,7 +41,6 @@ enum GenerateImageTool {
         let output = try args.optionalString("output")
         return Input(
             prompt: prompt,
-            size: size ?? .square,
             aspectRatio: aspectRatio ?? size?.aspectRatio,
             resolution: resolution,
             count: count,
@@ -55,7 +53,7 @@ enum GenerateImageTool {
     /// MCP tool descriptor with full input schema.
     static let descriptor = Tool(
         name: name,
-        description: "Generate an image from a text prompt using a Google AI image model (Gemini or Imagen). Returns absolute paths and the image content.",
+        description: "Generate an image from a text prompt using a Gemini image model. Returns absolute paths and the image content.",
         inputSchema: .object([
             "type": .string("object"),
             "properties": .object([
@@ -93,8 +91,7 @@ enum GenerateImageTool {
                     "type": .string("string"),
                     "enum": .array(ModelCatalog.all.map { .string($0.id) }),
                     // `enum` above closes the set, so unlike the CLI an MCP caller
-                    // cannot reach a model the catalog does not list — which is why
-                    // the retired Imagen family is simply not mentioned here.
+                    // cannot reach a model the catalog does not list.
                     "description": .string("Image model identifier. Defaults to \(defaultModel); all listed models are GA."),
                 ]),
                 "output": .object([

@@ -3,8 +3,8 @@
 [English](README.md) · [Español](README.es.md) · [Français](README.fr.md) · [Deutsch](README.de.md) · [简体中文](README.zh-CN.md) · [日本語](README.ja.md) · [한국어](README.ko.md) · [Português (BR)](README.pt-BR.md) · [Italiano](README.it.md) · [Русский](README.ru.md)
 
 **在终端里直接生成、编辑、打磨图像——并教会你的 AI 代理做同样的事。**
-SwiftMageX 是一个原生 macOS CLI:生成与编辑交给 Google 的图像模型
-(Gemini 和 Imagen),日常的光栅处理则直接在你的 Mac 上完成。
+SwiftMageX 是一个原生 macOS CLI:生成与编辑交给 Google 的 Gemini 图像模型,
+日常的光栅处理则直接在你的 Mac 上完成。
 
 你将获得:
 
@@ -29,8 +29,8 @@ SwiftMageX 是一个原生 macOS CLI:生成与编辑交给 Google 的图像模�
 - 运行在 Apple silicon(arm64)上的 macOS 14+
 - Swift 6.0+ 工具链(Xcode 16+)——仅在从源码构建时需要
 - 用于 `generate` 命令的 Google AI API 密钥,写入
-  `SWIFTMAGEX_GEMINI_API_KEY`(或 `GEMINI_API_KEY`)——同一个密钥
-  适用于 Gemini 和 Imagen 模型。`resize`、`text`、`composite`、`appstore`、`remove-bg`、`crop` 与 `icon` 不需要密钥。
+  `SWIFTMAGEX_GEMINI_API_KEY`(或 `GEMINI_API_KEY`)。
+  `resize`、`text`、`composite`、`appstore`、`remove-bg`、`crop` 与 `icon` 不需要密钥。
 
 ## 安装
 
@@ -101,7 +101,7 @@ export GEMINI_API_KEY="…"
 `--json` 输出和 MCP 工具返回的路径**始终是绝对路径**——调用方代理
 无需知道当前工作目录。
 
-### `swiftmagex generate` — 通过 Gemini 或 Imagen 文生图
+### `swiftmagex generate` — 通过 Gemini 文生图
 
 ```
 swiftmagex generate <prompt> [选项]
@@ -114,7 +114,7 @@ swiftmagex generate <prompt> [选项]
 | `-s`、`--size <square\|portrait\|landscape>` | `square` | 比例提示,实际分辨率取决于模型。 |
 | `-n`、`--count <1–4>` | `1` | 变体数量,每个变体一次独立请求。 |
 | `--seed <uint64>` | — | 即便提供商忽略,也会写入元数据。 |
-| `--model <id>` | `gemini-3.1-flash-image` | 内置(均为 GA):`gemini-3.1-flash-image`、`gemini-3.1-flash-lite-image`、`gemini-3-pro-image`。未知 ID 按 `imagen-`/`gemini-` 前缀路由。 |
+| `--model <id>` | `gemini-3.1-flash-image` | 内置(均为 GA):`gemini-3.1-flash-image`、`gemini-3.1-flash-lite-image`、`gemini-3-pro-image`。其他 ID 原样传给 Gemini。 |
 
 ```sh
 # 输出单张到当前目录
@@ -174,7 +174,7 @@ swiftmagex edit <input> <prompt> [选项]
 | `-o`、`--output <路径>` | `./` | 文件或目录。若是目录,文件名为 `swiftmagex_{timestamp}_{index}.png`。 |
 | `-n`、`--count <1–4>` | `1` | 生成的变体数。每个变体都是一个独立请求。 |
 | `--seed <uint64>` | — | 即便提供商忽略,也会写入元数据。 |
-| `--model <id>` | `gemini-3.1-flash-image` | 必须是 Gemini 模型 —— Imagen 的 `:predict` 形态不接受 inline 图像输入,会以退出码 2 被拒绝。 |
+| `--model <id>` | `gemini-3.1-flash-image` | 与 `generate` 相同的模型。 |
 
 ```sh
 # 改变物体颜色
@@ -570,8 +570,8 @@ claude mcp add -s user swiftmagex /usr/local/bin/swiftmagex-mcp \
 
 ## 范围与状态
 
-这是 0.1 MVP——三个命令、两个 Google AI 图像提供商(Gemini 与
-Imagen)、一个 MCP 服务器,外加 0.1 之后新增的五个本地命令
+这是 0.1 MVP——三个命令、一个 Gemini 图像提供商(MVP 的 Imagen 提供商
+在 Google 下线该系列后已移除)、一个 MCP 服务器,外加 0.1 之后新增的五个本地命令
 `composite`、`appstore`、`remove-bg`、`crop`、`icon`(图像合成、
 App Store Connect 截图、基于 Vision 的抠图去背、显著性感知裁剪、
 Icon Composer `.icon` 包)。

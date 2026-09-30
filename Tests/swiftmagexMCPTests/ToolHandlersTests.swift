@@ -62,7 +62,6 @@ final class ToolHandlersTests: XCTestCase {
         ])
         XCTAssertEqual(input.aspectRatio, .r3x2)
         XCTAssertEqual(input.resolution, .r2K)
-        XCTAssertEqual(input.size, .square, "Imagen fallback only; Gemini reads aspectRatio")
 
         let preset = try GenerateImageTool.parse(["prompt": .string("p"), "size": .string("landscape")])
         XCTAssertEqual(preset.aspectRatio, .r16x9, "An explicit size preset is sent as its exact ratio")

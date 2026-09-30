@@ -4,7 +4,7 @@
 
 **Generate, edit, and polish images straight from your terminal — and teach
 your AI agent to do the same.** SwiftMageX is a native macOS CLI that talks
-to Google's image models (Gemini and Imagen) for generation and editing, and
+to Google's Gemini image models for generation and editing, and
 does the everyday raster work right on your Mac.
 
 What you get:
@@ -33,7 +33,7 @@ See `SwiftMageX-MVP-0.1-spec.md` for the authoritative specification and
 - macOS 14+ on Apple silicon (arm64)
 - Swift 6.0+ toolchain (Xcode 16+) — only required to build from source
 - A Google AI API key in `SWIFTMAGEX_GEMINI_API_KEY` (or `GEMINI_API_KEY`)
-  for the `generate` command — used for both Gemini and Imagen models.
+  for the `generate` and `edit` commands.
   `resize`, `text`, `composite`, `appstore`, `remove-bg`, `crop`, and `icon`
   need no key.
 
@@ -107,7 +107,7 @@ Eight subcommands, all sharing the same global flags:
 Output file paths are always **absolute** in `--json` output and in MCP tool
 results — agents don't need to know the working directory.
 
-### `swiftmagex generate` — text-to-image via Gemini or Imagen
+### `swiftmagex generate` — text-to-image via Gemini
 
 ```
 swiftmagex generate <prompt> [options]
@@ -122,7 +122,7 @@ swiftmagex generate <prompt> [options]
 | `-r`, `--resolution <512\|1K\|2K\|4K>` | model's (1K) | Output tier; case-insensitive. `1K` at 1:1 is 1024×1024, `2K` doubles it, `4K` quadruples it. |
 | `-n`, `--count <1–4>` | `1` | Number of variants. Each variant is a separate request. |
 | `--seed <uint64>` | — | Recorded in metadata even when the provider ignores it. |
-| `--model <id>` | `gemini-3.1-flash-image` | Built-ins, all GA: `gemini-3.1-flash-image`, `gemini-3.1-flash-lite-image`, `gemini-3-pro-image`. Unknown IDs route by `imagen-`/`gemini-` prefix. |
+| `--model <id>` | `gemini-3.1-flash-image` | Built-ins, all GA: `gemini-3.1-flash-image`, `gemini-3.1-flash-lite-image`, `gemini-3-pro-image`. Other IDs are passed to Gemini as-is. |
 
 ```sh
 # Single image to the current directory
@@ -201,7 +201,7 @@ swiftmagex edit <input> <prompt> [options]
 | `-o`, `--output <path>` | `./` | File or directory. If a directory, files are named `swiftmagex_{timestamp}_{index}.png`. |
 | `-n`, `--count <1–4>` | `1` | Number of variants. Each variant is a separate request. |
 | `--seed <uint64>` | — | Recorded in metadata even when the provider ignores it. |
-| `--model <id>` | `gemini-3.1-flash-image` | Must be a Gemini model — Imagen's `:predict` shape does not accept inline image inputs and is rejected with exit code 2. |
+| `--model <id>` | `gemini-3.1-flash-image` | Same models as `generate`. |
 
 ```sh
 # Change the colour of a subject
@@ -610,8 +610,8 @@ disk in the client's general environment.
 
 ## Scope and status
 
-This is the 0.1 MVP — three commands, two Google AI image providers
-(Gemini and Imagen), one MCP server — plus five post-0.1 local additions:
+This is the 0.1 MVP — three commands, a Gemini image provider (the MVP's
+Imagen provider was removed after Google retired that family), one MCP server — plus five post-0.1 local additions:
 `composite`, `appstore`, `remove-bg`, `crop`, and `icon` (image compositing,
 App Store Connect screenshots, Vision-based background removal,
 saliency-aware smart crop, and Icon Composer `.icon` packages). Anything
