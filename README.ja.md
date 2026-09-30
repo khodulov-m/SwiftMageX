@@ -67,8 +67,11 @@ git clone https://github.com/khodulov-m/SwiftMageX.git
 cd SwiftMageX
 swift build -c release
 # 生成物は .build/arm64-apple-macosx/release/ に出力されます
-cp .build/arm64-apple-macosx/release/swiftmagex     /usr/local/bin/
-cp .build/arm64-apple-macosx/release/swiftmagex-mcp /usr/local/bin/
+# cp ではなく install:実行中のバイナリをその場で上書きすると、macOS が新しいバイナリを強制終了します(終了コード 137)
+sudo install -m 755 .build/arm64-apple-macosx/release/swiftmagex     /usr/local/bin/
+sudo install -m 755 .build/arm64-apple-macosx/release/swiftmagex-mcp /usr/local/bin/
+# `appstore` 用のデバイスフレームリソース
+sudo cp -R .build/arm64-apple-macosx/release/SwiftMageX_SwiftMageXKit.bundle /usr/local/bin/
 ```
 
 ### インストールせずに実行

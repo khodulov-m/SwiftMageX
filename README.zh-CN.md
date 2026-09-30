@@ -60,8 +60,11 @@ git clone https://github.com/khodulov-m/SwiftMageX.git
 cd SwiftMageX
 swift build -c release
 # 产物位于 .build/arm64-apple-macosx/release/
-cp .build/arm64-apple-macosx/release/swiftmagex     /usr/local/bin/
-cp .build/arm64-apple-macosx/release/swiftmagex-mcp /usr/local/bin/
+# 用 install 而不是 cp:原地覆盖正在运行的二进制文件会导致 macOS 终止新文件(退出码 137)
+sudo install -m 755 .build/arm64-apple-macosx/release/swiftmagex     /usr/local/bin/
+sudo install -m 755 .build/arm64-apple-macosx/release/swiftmagex-mcp /usr/local/bin/
+# `appstore` 使用的设备边框资源
+sudo cp -R .build/arm64-apple-macosx/release/SwiftMageX_SwiftMageXKit.bundle /usr/local/bin/
 ```
 
 ### 不安装直接运行源码

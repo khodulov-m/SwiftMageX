@@ -69,8 +69,11 @@ git clone https://github.com/khodulov-m/SwiftMageX.git
 cd SwiftMageX
 swift build -c release
 # les binaires arrivent dans .build/arm64-apple-macosx/release/
-cp .build/arm64-apple-macosx/release/swiftmagex     /usr/local/bin/
-cp .build/arm64-apple-macosx/release/swiftmagex-mcp /usr/local/bin/
+# install plutôt que cp : écraser sur place un binaire en cours d'exécution fait tuer le nouveau par macOS (sortie 137)
+sudo install -m 755 .build/arm64-apple-macosx/release/swiftmagex     /usr/local/bin/
+sudo install -m 755 .build/arm64-apple-macosx/release/swiftmagex-mcp /usr/local/bin/
+# ressources de cadres d'appareil pour `appstore`
+sudo cp -R .build/arm64-apple-macosx/release/SwiftMageX_SwiftMageXKit.bundle /usr/local/bin/
 ```
 
 ### Exécuter sans installer
