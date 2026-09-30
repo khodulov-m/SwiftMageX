@@ -1,5 +1,36 @@
 # SwiftMageX
 
+# Unreleased
+
+## Post-0.3.0 — Aspect ratio and resolution for Gemini
+
+`--size` was only ever a hint for Gemini: `GeminiProvider` never sent it, so
+`portrait` and `landscape` came back in whatever framing the model chose. The
+wire shape, verified on `v1beta` on 2026-09-30, is
+`generationConfig.imageConfig: { aspectRatio, imageSize }`.
+
+- **`generate` / `edit`: `-a, --aspect-ratio <W:H>`** — any of the 14 ratios
+  Google accepts (`1:1` … `21:9`, plus the `1:4` / `4:1` / `1:8` / `8:1`
+  strips). `16x9` and `16/9` parse too. On `generate` it is mutually exclusive
+  with `--size`.
+- **`-r, --resolution <512|1K|2K|4K>`**, case-insensitive. Checked on the
+  live API: `-a 16:9 -r 512` returns 688×384, as in Google's table.
+- **`--size` now works on Gemini**: an explicit preset is sent as `1:1` /
+  `9:16` / `16:9`. With neither flag nothing is sent, so a plain `generate`
+  still gets the model's own framing (1408×768 on `gemini-3.1-flash-image`)
+  and a plain `edit` still keeps the input's proportions.
+- **Per-model check before the network.** The server validates both fields
+  only against the cross-model union, so the catalog now carries each model's
+  set and an unsupported pair exits 2 without a billed call: 3.1 Flash takes
+  all 14 ratios at 512–4K, 3.1 Flash Lite all 14 at 512 / 1K, 3 Pro the ten
+  classic ratios at 1K–4K. Ids outside the catalog pass through.
+- MCP: `generate_image` and `edit_image` take `aspect_ratio` and `resolution`.
+- Imagen (still retired) uses an explicit ratio when it is one of its five and
+  rejects a resolution tier with exit 2.
+- Cache keys gain `aspectRatio` / `resolution` only when set, so existing
+  entries without them still hit; an explicit `--size` request is re-keyed,
+  since its old entry holds the model's framing, not the preset.
+
 # v0.3.0
 
 Icon Composer packages, and a model catalog that no longer points at retired

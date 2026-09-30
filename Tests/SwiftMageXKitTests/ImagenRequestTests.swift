@@ -241,4 +241,44 @@ final class ImagenRequestTests: XCTestCase {
         XCTAssertEqual(images.count, 1)
         XCTAssertEqual(mock.receivedRequests.count, 1, "count == 1 should reach the provider")
     }
+
+    // MARK: - Aspect ratio / resolution
+
+    func testImagenHonoursExplicitAspectRatioInItsSet() async throws {
+        let body = try Self.makeResponseJSON(imageBytes: Self.sampleImageBytes)
+        let mock = MockHTTPClient(stubs: [.init(data: body, statusCode: 200)])
+        let provider = Self.makeProvider(httpClient: mock)
+        var request = Self.makeRequest(size: .landscape)
+        request.aspectRatio = .r3x4
+
+        _ = try await provider.generate(request)
+
+        let recorded = try XCTUnwrap(mock.receivedRequests.first)
+        let json = try XCTUnwrap(
+            try JSONSerialization.jsonObject(with: XCTUnwrap(recorded.httpBody)) as? [String: Any]
+        )
+        let parameters = try XCTUnwrap(json["parameters"] as? [String: Any])
+        XCTAssertEqual(parameters["aspectRatio"] as? String, "3:4")
+    }
+
+    func testImagenRejectsUnsupportedRatioAndResolutionBeforeTheNetwork() async throws {
+        var wideRatio = Self.makeRequest()
+        wideRatio.aspectRatio = .r21x9
+        var withResolution = Self.makeRequest()
+        withResolution.resolution = .r2K
+
+        for request in [wideRatio, withResolution] {
+            let mock = MockHTTPClient()
+            let provider = Self.makeProvider(httpClient: mock)
+            do {
+                _ = try await provider.generate(request)
+                XCTFail("Expected .invalidInput")
+            } catch let error as SwiftMageXError {
+                guard case .invalidInput = error else {
+                    return XCTFail("Expected .invalidInput, got \(error)")
+                }
+            }
+            XCTAssertEqual(mock.receivedRequests.count, 0)
+        }
+    }
 }

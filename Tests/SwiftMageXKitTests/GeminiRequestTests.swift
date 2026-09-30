@@ -358,6 +358,118 @@ final class GeminiRequestTests: XCTestCase {
         XCTAssertEqual(mock.receivedRequests.count, 0)
     }
 
+    // MARK: - Aspect ratio / resolution
+
+    /// Decodes `generationConfig.imageConfig` from the first recorded request,
+    /// or `nil` when the key is absent.
+    private static func imageConfigOf(_ request: URLRequest?) throws -> [String: Any]? {
+        let httpBody = try XCTUnwrap(request?.httpBody)
+        let json = try XCTUnwrap(
+            try JSONSerialization.jsonObject(with: httpBody) as? [String: Any]
+        )
+        let generationConfig = try XCTUnwrap(json["generationConfig"] as? [String: Any])
+        return generationConfig["imageConfig"] as? [String: Any]
+    }
+
+    func testGeminiOmitsImageConfigWhenNothingIsAsked() async throws {
+        let body = try Self.makeResponseJSON(imageBytes: Self.sampleImageBytes)
+        let mock = MockHTTPClient(stubs: [.init(data: body, statusCode: 200)])
+        let provider = Self.makeProvider(httpClient: mock)
+        var request = Self.makeRequest()
+        request.size = .portrait
+
+        _ = try await provider.generate(request)
+
+        XCTAssertNil(
+            try Self.imageConfigOf(mock.receivedRequests.first),
+            "Gemini ignores `size`; frontends map an explicit preset into aspectRatio"
+        )
+    }
+
+    func testGeminiSendsAspectRatioAndResolution() async throws {
+        let body = try Self.makeResponseJSON(imageBytes: Self.sampleImageBytes)
+        let mock = MockHTTPClient(stubs: [.init(data: body, statusCode: 200)])
+        let provider = Self.makeProvider(httpClient: mock)
+        var request = Self.makeRequest()
+        request.aspectRatio = .r21x9
+        request.resolution = .r4K
+
+        _ = try await provider.generate(request)
+
+        let imageConfig = try XCTUnwrap(try Self.imageConfigOf(mock.receivedRequests.first))
+        XCTAssertEqual(imageConfig["aspectRatio"] as? String, "21:9")
+        XCTAssertEqual(imageConfig["imageSize"] as? String, "4K")
+    }
+
+    func testGeminiEditWithoutExplicitRatioOmitsImageConfig() async throws {
+        let body = try Self.makeResponseJSON(imageBytes: Self.sampleImageBytes)
+        let mock = MockHTTPClient(stubs: [.init(data: body, statusCode: 200)])
+        let provider = Self.makeProvider(httpClient: mock)
+        var request = Self.makeRequest()
+        request.referenceImages = [ReferenceImage(data: Self.sampleImageBytes, mimeType: "image/png")]
+
+        _ = try await provider.generate(request)
+
+        XCTAssertNil(
+            try Self.imageConfigOf(mock.receivedRequests.first),
+            "An edit keeps the source's proportions — no imageConfig at all"
+        )
+    }
+
+    func testGeminiEditSendsOnlyTheFieldsAskedFor() async throws {
+        let body = try Self.makeResponseJSON(imageBytes: Self.sampleImageBytes)
+        let mock = MockHTTPClient(stubs: [.init(data: body, statusCode: 200)])
+        let provider = Self.makeProvider(httpClient: mock)
+        var request = Self.makeRequest()
+        request.referenceImages = [ReferenceImage(data: Self.sampleImageBytes, mimeType: "image/png")]
+        request.resolution = .r2K
+
+        _ = try await provider.generate(request)
+
+        let imageConfig = try XCTUnwrap(try Self.imageConfigOf(mock.receivedRequests.first))
+        XCTAssertNil(imageConfig["aspectRatio"])
+        XCTAssertEqual(imageConfig["imageSize"] as? String, "2K")
+    }
+
+    func testGeminiRejectsOptionsTheCatalogModelCannotRender() async throws {
+        let cases: [(model: String, ratio: AspectRatio?, resolution: ImageResolution?)] = [
+            ("gemini-3.1-flash-lite-image", nil, .r4K),
+            ("gemini-3.1-flash-lite-image", nil, .r2K),
+            ("gemini-3-pro-image", .r1x8, nil),
+            ("gemini-3-pro-image", nil, .r512),
+        ]
+        for (model, ratio, resolution) in cases {
+            let mock = MockHTTPClient()
+            let provider = Self.makeProvider(httpClient: mock)
+            var request = Self.makeRequest(model: model)
+            request.aspectRatio = ratio
+            request.resolution = resolution
+
+            do {
+                _ = try await provider.generate(request)
+                XCTFail("\(model) \(String(describing: ratio)) \(String(describing: resolution)) should throw")
+            } catch let error as SwiftMageXError {
+                guard case .invalidInput = error else {
+                    return XCTFail("Expected .invalidInput, got \(error)")
+                }
+            }
+            XCTAssertEqual(mock.receivedRequests.count, 0, "Rejected before the network")
+        }
+    }
+
+    func testGeminiPassesUnknownModelOptionsThroughToTheServer() async throws {
+        let body = try Self.makeResponseJSON(imageBytes: Self.sampleImageBytes)
+        let mock = MockHTTPClient(stubs: [.init(data: body, statusCode: 200)])
+        let provider = Self.makeProvider(httpClient: mock)
+        var request = Self.makeRequest(model: "gemini-9-image-next")
+        request.aspectRatio = .r1x8
+        request.resolution = .r4K
+
+        _ = try await provider.generate(request)
+
+        XCTAssertEqual(mock.receivedRequests.count, 1)
+    }
+
     // MARK: - Mock-provider sanity (preserved from milestone 1)
 
     func testMockProviderRecordsRequests() async throws {

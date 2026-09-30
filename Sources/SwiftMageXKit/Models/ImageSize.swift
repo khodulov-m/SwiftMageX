@@ -1,9 +1,10 @@
 import Foundation
 
-/// A coarse aspect-ratio descriptor for generation requests.
+/// A coarse aspect-ratio preset for generation requests.
 ///
-/// The exact pixel resolution the provider emits for each case is
-/// provider- and model-dependent; see spec §6.1.
+/// Each case stands for an exact ``AspectRatio`` (see ``aspectRatio``); the
+/// pixel resolution is the model's, or ``ImageResolution`` when set. See
+/// spec §6.1.
 public enum ImageSize: String, Sendable, CaseIterable, Codable {
     /// 1:1 aspect ratio (default).
     case square

@@ -17,11 +17,26 @@ public struct ImageModelDescriptor: Sendable, Equatable {
     public let id: String
     public let family: ImageModelFamily
     public let isPreview: Bool
+    /// Output ratios the model renders. Google's server validates
+    /// `imageConfig.aspectRatio` only against the cross-model union, so a
+    /// ratio outside this set is caught by us, not by a 400.
+    public let aspectRatios: [AspectRatio]
+    /// Output resolution tiers the model renders. Same caveat: the server
+    /// accepts every tier for every model at validation time.
+    public let resolutions: [ImageResolution]
 
-    public init(id: String, family: ImageModelFamily, isPreview: Bool = false) {
+    public init(
+        id: String,
+        family: ImageModelFamily,
+        isPreview: Bool = false,
+        aspectRatios: [AspectRatio] = AspectRatio.allCases,
+        resolutions: [ImageResolution] = ImageResolution.allCases
+    ) {
         self.id = id
         self.family = family
         self.isPreview = isPreview
+        self.aspectRatios = aspectRatios
+        self.resolutions = resolutions
     }
 }
 
@@ -55,13 +70,26 @@ public struct ImageModelDescriptor: Sendable, Equatable {
 ///   purpose: Imagen still exists on Vertex AI, the `:predict` wire shape is
 ///   tested, and an `imagen-*` id passed by hand still routes to it and fails with
 ///   Google's own error rather than a confusing one of ours.
+///
+/// Per-model ratio / resolution sets are the tables in Google's image-generation
+/// guide as of 2026-09-30: 3.1 Flash renders all 14 ratios at 512–4K, 3.1 Flash
+/// Lite all 14 at 512 and 1K only, 3 Pro the ten classic ratios at 1K–4K.
 public enum ModelCatalog {
     public static let defaultModelID = "gemini-3.1-flash-image"
 
     public static let all: [ImageModelDescriptor] = [
         .init(id: "gemini-3.1-flash-image", family: .gemini),
-        .init(id: "gemini-3.1-flash-lite-image", family: .gemini),
-        .init(id: "gemini-3-pro-image", family: .gemini),
+        .init(
+            id: "gemini-3.1-flash-lite-image",
+            family: .gemini,
+            resolutions: [.r512, .r1K]
+        ),
+        .init(
+            id: "gemini-3-pro-image",
+            family: .gemini,
+            aspectRatios: AspectRatio.classic,
+            resolutions: [.r1K, .r2K, .r4K]
+        ),
     ]
 
     /// Returns the descriptor for an exact match, or `nil` if unknown.
@@ -78,5 +106,31 @@ public enum ModelCatalog {
         if let descriptor = descriptor(for: id) { return descriptor.family }
         if id.hasPrefix("imagen-") { return .imagen }
         return .gemini
+    }
+
+    /// Rejects a ratio or resolution the catalog knows `model` can't render.
+    ///
+    /// Google validates both fields only against the cross-model union, so an
+    /// unsupported pair would otherwise reach the model as a billed call with
+    /// no guarantee about what comes back. Ids not in the catalog pass through —
+    /// the server stays the judge for models we have no table for.
+    public static func validateOutputOptions(
+        aspectRatio: AspectRatio?,
+        resolution: ImageResolution?,
+        model: String
+    ) throws {
+        guard let descriptor = descriptor(for: model) else { return }
+        if let aspectRatio, !descriptor.aspectRatios.contains(aspectRatio) {
+            throw SwiftMageXError.invalidInput(
+                "\(model) does not support aspect ratio \(aspectRatio.rawValue); "
+                    + "supported: \(descriptor.aspectRatios.map(\.rawValue).joined(separator: ", "))"
+            )
+        }
+        if let resolution, !descriptor.resolutions.contains(resolution) {
+            throw SwiftMageXError.invalidInput(
+                "\(model) does not support resolution \(resolution.rawValue); "
+                    + "supported: \(descriptor.resolutions.map(\.rawValue).joined(separator: ", "))"
+            )
+        }
     }
 }

@@ -60,6 +60,11 @@ public struct GeminiProvider: ImageProvider {
                 "count must be <= \(capabilities.maxBatchSize) (got \(request.count))"
             )
         }
+        try ModelCatalog.validateOutputOptions(
+            aspectRatio: request.aspectRatio,
+            resolution: request.resolution,
+            model: request.model
+        )
 
         if request.count == 1 {
             return [try await performOne(request)]
@@ -113,7 +118,13 @@ public struct GeminiProvider: ImageProvider {
             contents: [
                 GeminiRequestContent(role: "user", parts: parts)
             ],
-            generationConfig: GeminiGenerationConfig(responseModalities: ["IMAGE"])
+            generationConfig: GeminiGenerationConfig(
+                responseModalities: ["IMAGE"],
+                imageConfig: GeminiImageConfig(
+                    aspectRatio: request.aspectRatio?.rawValue,
+                    imageSize: request.resolution?.rawValue
+                )
+            )
         )
         let payload: Data
         do {
@@ -251,6 +262,33 @@ private enum GeminiRequestPart: Encodable {
 
 private struct GeminiGenerationConfig: Encodable {
     let responseModalities: [String]
+    let imageConfig: GeminiImageConfig
+
+    private enum CodingKeys: String, CodingKey {
+        case responseModalities, imageConfig
+    }
+
+    /// `imageConfig` is omitted entirely when empty, so a request with no
+    /// explicit ratio or resolution sends the same body as before the field
+    /// existed — Gemini then picks the framing (or keeps an edit source's).
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(responseModalities, forKey: .responseModalities)
+        if !imageConfig.isEmpty {
+            try container.encode(imageConfig, forKey: .imageConfig)
+        }
+    }
+}
+
+/// `generationConfig.imageConfig`. The docs are mid-migration to
+/// `responseFormat.image`; both are accepted on `v1beta` as of 2026-09-30, but
+/// only this one takes the ratio as a plain `"16:9"` string (the new field is
+/// an enum type), so it is the one we send.
+private struct GeminiImageConfig: Encodable {
+    let aspectRatio: String?
+    let imageSize: String?
+
+    var isEmpty: Bool { aspectRatio == nil && imageSize == nil }
 }
 
 private struct GeminiResponse: Decodable {

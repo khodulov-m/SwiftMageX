@@ -68,7 +68,8 @@ Both providers hit `generativelanguage.googleapis.com` with the same `x-goog-api
 ### Gemini family (`GeminiProvider`)
 
 - Endpoint: `POST /v1beta/models/{model}:generateContent`
-- Request: `contents: [{role:"user", parts:[{text}]}], generationConfig: { responseModalities: ["IMAGE"] }`
+- Request: `contents: [{role:"user", parts:[{text}]}], generationConfig: { responseModalities: ["IMAGE"], imageConfig?: { aspectRatio?, imageSize? } }`. `imageConfig` is omitted when neither is set — then the model picks its framing (or keeps an edit source's). `GenerationRequest.aspectRatio` is the only ratio Gemini sees; frontends map an explicit `--size` preset into it, and `size` itself is just Imagen's fallback. The docs are mid-migration to `generationConfig.responseFormat.image`; both are accepted on `v1beta` (verified 2026-09-30), we send `imageConfig`.
+- **Ratio / resolution are validated per model by us, not by Google.** The server checks only the cross-model union (14 ratios; `512`/`1K`/`2K`/`4K`) and will happily bill an unsupported pair. `ImageModelDescriptor.aspectRatios` / `.resolutions` hold the per-model sets from Google's tables and `ModelCatalog.validateOutputOptions` rejects before the network (exit 2); ids outside the catalog pass through. Refresh those sets together with the catalog.
 - Response: base64 image in `candidates[].content.parts[].inlineData` — decode to `Data` inside `GeminiProvider`.
 - Multi-image: `--count > 1` is N parallel calls (the API takes one image per call).
 
