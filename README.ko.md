@@ -66,8 +66,11 @@ git clone https://github.com/khodulov-m/SwiftMageX.git
 cd SwiftMageX
 swift build -c release
 # 바이너리는 .build/arm64-apple-macosx/release/ 에 생성됩니다
-cp .build/arm64-apple-macosx/release/swiftmagex     /usr/local/bin/
-cp .build/arm64-apple-macosx/release/swiftmagex-mcp /usr/local/bin/
+# cp 대신 install: 실행 중인 바이너리를 제자리에서 덮어쓰면 macOS가 새 바이너리를 종료합니다(종료 코드 137)
+sudo install -m 755 .build/arm64-apple-macosx/release/swiftmagex     /usr/local/bin/
+sudo install -m 755 .build/arm64-apple-macosx/release/swiftmagex-mcp /usr/local/bin/
+# `appstore`용 디바이스 프레임 리소스
+sudo cp -R .build/arm64-apple-macosx/release/SwiftMageX_SwiftMageXKit.bundle /usr/local/bin/
 ```
 
 ### 설치 없이 소스에서 실행
