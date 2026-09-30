@@ -1,5 +1,6 @@
 import Foundation
 import MCP
+import SwiftMageXKit
 
 /// Typed extraction of MCP tool arguments (`[String: Value]`).
 ///
@@ -122,6 +123,29 @@ struct ToolArguments {
         guard let raw = try optionalString(key) else { return nil }
         guard let value = T(rawValue: raw.lowercased()) else {
             throw MCPError.invalidParams("\(toolName): '\(key)' has unrecognized value '\(raw)'")
+        }
+        return value
+    }
+
+    /// Decodes an `aspect_ratio` string (`"16:9"`) via ``AspectRatio/init(parsing:)``.
+    func optionalAspectRatio(_ key: String) throws -> AspectRatio? {
+        guard let raw = try optionalString(key) else { return nil }
+        guard let value = AspectRatio(parsing: raw) else {
+            throw MCPError.invalidParams(
+                "\(toolName): '\(key)' must be one of \(AspectRatio.allCases.map(\.rawValue).joined(separator: ", ")) (got '\(raw)')"
+            )
+        }
+        return value
+    }
+
+    /// Decodes a `resolution` string (`"2K"`) via ``ImageResolution/init(parsing:)``.
+    /// Not ``optionalEnum(_:as:)``: that lowercases, and the wire spelling is `2K`.
+    func optionalResolution(_ key: String) throws -> ImageResolution? {
+        guard let raw = try optionalString(key) else { return nil }
+        guard let value = ImageResolution(parsing: raw) else {
+            throw MCPError.invalidParams(
+                "\(toolName): '\(key)' must be one of \(ImageResolution.allCases.map(\.rawValue).joined(separator: ", ")) (got '\(raw)')"
+            )
         }
         return value
     }

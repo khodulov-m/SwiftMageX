@@ -54,6 +54,44 @@ final class ToolHandlersTests: XCTestCase {
         }
     }
 
+    func testGenerateImageToolParsesAspectRatioAndResolution() throws {
+        let input = try GenerateImageTool.parse([
+            "prompt": .string("p"),
+            "aspect_ratio": .string("3:2"),
+            "resolution": .string("2k"),
+        ])
+        XCTAssertEqual(input.aspectRatio, .r3x2)
+        XCTAssertEqual(input.resolution, .r2K)
+        XCTAssertEqual(input.size, .square, "Imagen fallback only; Gemini reads aspectRatio")
+
+        let preset = try GenerateImageTool.parse(["prompt": .string("p"), "size": .string("landscape")])
+        XCTAssertEqual(preset.aspectRatio, .r16x9, "An explicit size preset is sent as its exact ratio")
+        XCTAssertNil(try GenerateImageTool.parse(["prompt": .string("p")]).aspectRatio)
+
+        let edit = try EditImageTool.parse([
+            "image": .string("/tmp/in.png"),
+            "prompt": .string("p"),
+            "aspect_ratio": .string("1:4"),
+        ])
+        XCTAssertEqual(edit.aspectRatio, .r1x4)
+        XCTAssertNil(edit.resolution)
+    }
+
+    func testGenerateImageToolRejectsBadOrConflictingRatioArguments() {
+        let invalid: [[String: Value]] = [
+            ["prompt": .string("p"), "aspect_ratio": .string("7:3")],
+            ["prompt": .string("p"), "resolution": .string("3K")],
+            ["prompt": .string("p"), "size": .string("portrait"), "aspect_ratio": .string("3:4")],
+        ]
+        for arguments in invalid {
+            XCTAssertThrowsError(try GenerateImageTool.parse(arguments)) { error in
+                guard case MCPError.invalidParams = error else {
+                    return XCTFail("expected .invalidParams, got \(error)")
+                }
+            }
+        }
+    }
+
     func testGenerateImageToolMissingPromptReturnsInvalidParams() async {
         let provider = StubImageProvider(images: [])
         do {

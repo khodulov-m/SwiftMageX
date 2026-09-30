@@ -11,7 +11,8 @@ import Foundation
 /// 2. Multi-image batches are a single call (`parameters.sampleCount`),
 ///    not N parallel calls. `imagen-*-ultra-*` caps `sampleCount` at 1
 ///    server-side — overrun surfaces as HTTP 400 from the API.
-/// 3. Aspect ratio is explicit in `parameters.aspectRatio`.
+/// 3. Aspect ratio is explicit in `parameters.aspectRatio`, limited to
+///    1:1, 3:4, 4:3, 9:16 and 16:9; there is no resolution tier.
 public struct ImagenProvider: ImageProvider {
     public let id: String = "imagen"
 
@@ -72,6 +73,21 @@ public struct ImagenProvider: ImageProvider {
                 "\(request.model) supports only a single image per request (got count \(request.count)); use --count 1"
             )
         }
+        // `:predict` always carries a ratio, so `size` is the fallback. Imagen
+        // took five ratios and no Gemini-style resolution tier; reject the
+        // rest before the network, like ultra.
+        let ratio = request.aspectRatio ?? request.size.aspectRatio
+        guard Self.supportedAspectRatios.contains(ratio) else {
+            throw SwiftMageXError.invalidInput(
+                "Imagen models do not support aspect ratio \(ratio.rawValue); supported: "
+                    + Self.supportedAspectRatios.map(\.rawValue).joined(separator: ", ")
+            )
+        }
+        guard request.resolution == nil else {
+            throw SwiftMageXError.invalidInput(
+                "Imagen models do not take a resolution tier; use a gemini-* model"
+            )
+        }
 
         let urlRequest = try buildURLRequest(for: request)
         let (data, response) = try await sendWithRetry(urlRequest)
@@ -93,7 +109,7 @@ public struct ImagenProvider: ImageProvider {
             instances: [ImagenInstance(prompt: request.prompt)],
             parameters: ImagenParameters(
                 sampleCount: request.count,
-                aspectRatio: Self.aspectRatio(for: request.size)
+                aspectRatio: (request.aspectRatio ?? request.size.aspectRatio).rawValue
             )
         )
         let payload: Data
@@ -191,13 +207,9 @@ public struct ImagenProvider: ImageProvider {
         model.lowercased().contains("ultra")
     }
 
-    private static func aspectRatio(for size: ImageSize) -> String {
-        switch size {
-        case .square: return "1:1"
-        case .portrait: return "9:16"
-        case .landscape: return "16:9"
-        }
-    }
+    private static let supportedAspectRatios: [AspectRatio] = [
+        .r1x1, .r3x4, .r4x3, .r9x16, .r16x9,
+    ]
 }
 
 // MARK: - Wire types (kept private to localize Imagen API changes)

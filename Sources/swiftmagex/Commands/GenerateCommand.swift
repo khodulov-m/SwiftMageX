@@ -19,9 +19,30 @@ struct GenerateCommand: AsyncParsableCommand {
 
     @Option(
         name: [.customShort("s"), .long],
-        help: ArgumentHelp("Aspect ratio of the generated image.", valueName: "square|portrait|landscape")
+        help: ArgumentHelp(
+            "Aspect-ratio preset: square (1:1), portrait (9:16), landscape (16:9). Without it (or --aspect-ratio) Gemini picks its own framing.",
+            valueName: "square|portrait|landscape"
+        )
     )
-    var size: ImageSize = .square
+    var size: ImageSize?
+
+    @Option(
+        name: [.customShort("a"), .long],
+        help: ArgumentHelp(
+            "Exact aspect ratio: \(AspectRatio.allCases.map(\.rawValue).joined(separator: ", ")). Mutually exclusive with --size.",
+            valueName: "W:H"
+        )
+    )
+    var aspectRatio: AspectRatio?
+
+    @Option(
+        name: [.customShort("r"), .long],
+        help: ArgumentHelp(
+            "Output resolution tier: \(ImageResolution.allCases.map(\.rawValue).joined(separator: ", ")). Defaults to the model's own (1K). Gemini only.",
+            valueName: "tier"
+        )
+    )
+    var resolution: ImageResolution?
 
     @Option(name: [.customShort("n"), .long], help: "Number of variants to generate (1–4).")
     var count: Int = 1
@@ -47,16 +68,25 @@ struct GenerateCommand: AsyncParsableCommand {
         guard !prompt.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
             throw ValidationError("Prompt must not be empty.")
         }
+        guard size == nil || aspectRatio == nil else {
+            throw ValidationError("--size and --aspect-ratio are mutually exclusive; pass one.")
+        }
     }
+
+    /// The exact ratio to send: `--aspect-ratio`, else the `--size` preset's,
+    /// else `nil` so the model picks its own framing.
+    var requestedAspectRatio: AspectRatio? { aspectRatio ?? size?.aspectRatio }
 
     func run() async throws {
         let printer = ResultPrinter(json: globals.json, verbose: globals.verbose)
         let request = GenerationRequest(
             prompt: prompt,
-            size: size,
+            size: size ?? .square,
             count: count,
             seed: seed,
-            model: model
+            model: model,
+            aspectRatio: requestedAspectRatio,
+            resolution: resolution
         )
         let outputTarget = Configuration.resolvedOutputTarget(explicit: output)
 
@@ -88,6 +118,22 @@ struct GenerateCommand: AsyncParsableCommand {
 extension ImageSize: ExpressibleByArgument {
     public init?(argument: String) {
         self.init(rawValue: argument.lowercased())
+    }
+
+    public static var allValueStrings: [String] { Self.allCases.map(\.rawValue) }
+}
+
+extension AspectRatio: ExpressibleByArgument {
+    public init?(argument: String) {
+        self.init(parsing: argument)
+    }
+
+    public static var allValueStrings: [String] { Self.allCases.map(\.rawValue) }
+}
+
+extension ImageResolution: ExpressibleByArgument {
+    public init?(argument: String) {
+        self.init(parsing: argument)
     }
 
     public static var allValueStrings: [String] { Self.allCases.map(\.rawValue) }

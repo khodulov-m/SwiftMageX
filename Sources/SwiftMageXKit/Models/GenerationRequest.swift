@@ -30,9 +30,17 @@ public struct ReferenceImage: Sendable, Equatable {
 public struct GenerationRequest: Sendable, Equatable {
     /// The text prompt describing what to generate (or what edit to apply).
     public var prompt: String
-    /// Desired aspect ratio. Ignored for edit requests — the output dimensions
-    /// follow the primary reference image.
+    /// Coarse aspect-ratio preset, kept for Imagen, whose `:predict` always
+    /// needs a ratio and falls back to this one when ``aspectRatio`` is `nil`.
+    /// Gemini ignores it — frontends map an explicit `--size` into
+    /// ``aspectRatio`` instead.
     public var size: ImageSize
+    /// Exact output ratio sent to Gemini. `nil` sends none: the model picks
+    /// its own framing for text-to-image and keeps the primary reference's
+    /// proportions for an edit.
+    public var aspectRatio: AspectRatio?
+    /// Output resolution tier. `nil` leaves it to the model (1K today).
+    public var resolution: ImageResolution?
     /// Number of variants to request — capped at 4 per spec §6.1.
     public var count: Int
     /// Optional reproducibility seed. Support is provider-dependent; see spec §12.
@@ -63,7 +71,9 @@ public struct GenerationRequest: Sendable, Equatable {
         model: String,
         referenceImages: [ReferenceImage] = [],
         mask: Data? = nil,
-        maskMimeType: String? = nil
+        maskMimeType: String? = nil,
+        aspectRatio: AspectRatio? = nil,
+        resolution: ImageResolution? = nil
     ) {
         self.prompt = prompt
         self.size = size
@@ -73,5 +83,7 @@ public struct GenerationRequest: Sendable, Equatable {
         self.referenceImages = referenceImages
         self.mask = mask
         self.maskMimeType = maskMimeType
+        self.aspectRatio = aspectRatio
+        self.resolution = resolution
     }
 }

@@ -27,6 +27,17 @@ final class ResponseCacheTests: XCTestCase {
         XCTAssertNotEqual(baseKey, CacheKey.compute(from: models))
     }
 
+    func testKeyTracksAspectRatioAndResolution() {
+        var ratio = Self.makeRequest()
+        ratio.aspectRatio = .r4x5
+        var resolution = Self.makeRequest()
+        resolution.resolution = .r2K
+
+        let baseKey = CacheKey.compute(from: Self.makeRequest())
+        XCTAssertNotEqual(baseKey, CacheKey.compute(from: ratio))
+        XCTAssertNotEqual(baseKey, CacheKey.compute(from: resolution))
+    }
+
     func testKeyHashesReferenceImageBytes() {
         let bytesA = Data([0x01, 0x02, 0x03])
         let bytesB = Data([0x04, 0x05, 0x06])

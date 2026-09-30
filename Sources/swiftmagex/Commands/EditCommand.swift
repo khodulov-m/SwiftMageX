@@ -34,6 +34,24 @@ struct EditCommand: AsyncParsableCommand {
     @Option(name: [.customShort("o"), .long], help: "Destination file or directory. Defaults to $SWIFTMAGEX_OUTPUT_DIR or the current directory.")
     var output: String?
 
+    @Option(
+        name: [.customShort("a"), .long],
+        help: ArgumentHelp(
+            "Output aspect ratio: \(AspectRatio.allCases.map(\.rawValue).joined(separator: ", ")). Defaults to the primary input's proportions.",
+            valueName: "W:H"
+        )
+    )
+    var aspectRatio: AspectRatio?
+
+    @Option(
+        name: [.customShort("r"), .long],
+        help: ArgumentHelp(
+            "Output resolution tier: \(ImageResolution.allCases.map(\.rawValue).joined(separator: ", ")). Defaults to the model's own (1K).",
+            valueName: "tier"
+        )
+    )
+    var resolution: ImageResolution?
+
     @Option(name: [.customShort("n"), .long], help: "Number of variants to generate (1–4).")
     var count: Int = 1
 
@@ -72,7 +90,9 @@ struct EditCommand: AsyncParsableCommand {
             size: .square,
             count: count,
             seed: seed,
-            model: model
+            model: model,
+            aspectRatio: aspectRatio,
+            resolution: resolution
         )
         let outputTarget = Configuration.resolvedOutputTarget(explicit: output)
 

@@ -84,4 +84,47 @@ final class ModelCatalogTests: XCTestCase {
         )
         XCTAssertEqual(imagenPrefix.id, "imagen")
     }
+
+    // MARK: - Output options
+
+    /// Pins the per-model matrix from Google's image-generation guide
+    /// (2026-09-30) so a catalog edit that drifts from it is loud.
+    func testPerModelOutputOptionMatrix() throws {
+        let flash = try XCTUnwrap(ModelCatalog.descriptor(for: "gemini-3.1-flash-image"))
+        XCTAssertEqual(flash.aspectRatios, AspectRatio.allCases)
+        XCTAssertEqual(flash.resolutions, [.r512, .r1K, .r2K, .r4K])
+
+        let lite = try XCTUnwrap(ModelCatalog.descriptor(for: "gemini-3.1-flash-lite-image"))
+        XCTAssertEqual(lite.aspectRatios, AspectRatio.allCases)
+        XCTAssertEqual(lite.resolutions, [.r512, .r1K])
+
+        let pro = try XCTUnwrap(ModelCatalog.descriptor(for: "gemini-3-pro-image"))
+        XCTAssertEqual(pro.aspectRatios.count, 10)
+        XCTAssertFalse(pro.aspectRatios.contains(.r1x8))
+        XCTAssertEqual(pro.resolutions, [.r1K, .r2K, .r4K])
+    }
+
+    func testAspectRatioParsingToleratesSeparators() {
+        XCTAssertEqual(AspectRatio(parsing: "16:9"), .r16x9)
+        XCTAssertEqual(AspectRatio(parsing: " 16x9 "), .r16x9)
+        XCTAssertEqual(AspectRatio(parsing: "16X9"), .r16x9)
+        XCTAssertEqual(AspectRatio(parsing: "4/5"), .r4x5)
+        XCTAssertNil(AspectRatio(parsing: "7:3"))
+        XCTAssertNil(AspectRatio(parsing: "9:16:1"))
+    }
+
+    func testResolutionParsingIsCaseInsensitive() {
+        XCTAssertEqual(ImageResolution(parsing: "2k"), .r2K)
+        XCTAssertEqual(ImageResolution(parsing: "4K"), .r4K)
+        XCTAssertEqual(ImageResolution(parsing: "512"), .r512)
+        XCTAssertEqual(ImageResolution(parsing: "512px"), .r512)
+        XCTAssertNil(ImageResolution(parsing: "3K"))
+        XCTAssertNil(ImageResolution(parsing: "8K"))
+    }
+
+    func testSizePresetsMapToExactRatios() {
+        XCTAssertEqual(ImageSize.square.aspectRatio, .r1x1)
+        XCTAssertEqual(ImageSize.portrait.aspectRatio, .r9x16)
+        XCTAssertEqual(ImageSize.landscape.aspectRatio, .r16x9)
+    }
 }

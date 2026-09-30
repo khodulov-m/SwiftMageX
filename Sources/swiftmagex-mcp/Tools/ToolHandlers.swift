@@ -25,7 +25,9 @@ enum ToolHandlers {
                 size: input.size,
                 count: input.count,
                 seed: input.seed,
-                model: input.model
+                model: input.model,
+                aspectRatio: input.aspectRatio,
+                resolution: input.resolution
             )
             let written = try await SwiftMageXOrchestrator.generate(
                 request: request,
@@ -58,7 +60,9 @@ enum ToolHandlers {
                 size: .square,
                 count: input.count,
                 seed: input.seed,
-                model: input.model
+                model: input.model,
+                aspectRatio: input.aspectRatio,
+                resolution: input.resolution
             )
             let written = try await SwiftMageXOrchestrator.edit(
                 input: input.image,

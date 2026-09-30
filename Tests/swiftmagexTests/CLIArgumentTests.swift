@@ -43,6 +43,46 @@ final class CLIArgumentTests: XCTestCase {
         XCTAssertThrowsError(try GenerateCommand.parse(["p", "--size", "panorama"]))
     }
 
+    func testGenerateParsesAspectRatioAndResolution() throws {
+        let cmd = try GenerateCommand.parse(["p", "--aspect-ratio", "4:5", "--resolution", "2k"])
+        XCTAssertEqual(cmd.aspectRatio, .r4x5)
+        XCTAssertEqual(cmd.resolution, .r2K)
+        XCTAssertNil(cmd.size)
+
+        let short = try GenerateCommand.parse(["p", "-a", "21x9", "-r", "512"])
+        XCTAssertEqual(short.aspectRatio, .r21x9)
+        XCTAssertEqual(short.resolution, .r512)
+
+        XCTAssertThrowsError(try GenerateCommand.parse(["p", "--aspect-ratio", "7:3"]))
+        XCTAssertThrowsError(try GenerateCommand.parse(["p", "--resolution", "8K"]))
+    }
+
+    func testGenerateMapsSizePresetOnlyWhenGiven() throws {
+        XCTAssertEqual(try GenerateCommand.parse(["p", "-s", "portrait"]).requestedAspectRatio, .r9x16)
+        XCTAssertEqual(try GenerateCommand.parse(["p", "-s", "square"]).requestedAspectRatio, .r1x1)
+        XCTAssertEqual(try GenerateCommand.parse(["p", "-a", "3:4"]).requestedAspectRatio, .r3x4)
+        XCTAssertNil(
+            try GenerateCommand.parse(["p"]).requestedAspectRatio,
+            "No flag → no ratio sent → the model keeps choosing its framing"
+        )
+    }
+
+    func testGenerateRejectsSizeTogetherWithAspectRatio() {
+        XCTAssertThrowsError(
+            try GenerateCommand.parse(["p", "--size", "portrait", "--aspect-ratio", "3:4"])
+        )
+    }
+
+    func testEditParsesAspectRatioAndResolution() throws {
+        let cmd = try EditCommand.parse(["in.png", "p", "--aspect-ratio", "16:9", "--resolution", "4K"])
+        XCTAssertEqual(cmd.aspectRatio, .r16x9)
+        XCTAssertEqual(cmd.resolution, .r4K)
+
+        let bare = try EditCommand.parse(["in.png", "p"])
+        XCTAssertNil(bare.aspectRatio, "Edit keeps the input's proportions unless asked")
+        XCTAssertNil(bare.resolution)
+    }
+
     // MARK: - resize
 
     func testResizeRequiresAtLeastOneDimension() {

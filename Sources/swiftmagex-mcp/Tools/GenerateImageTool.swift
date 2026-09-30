@@ -10,6 +10,8 @@ enum GenerateImageTool {
     struct Input {
         let prompt: String
         let size: ImageSize
+        let aspectRatio: AspectRatio?
+        let resolution: ImageResolution?
         let count: Int
         let seed: UInt64?
         let model: String
@@ -25,7 +27,12 @@ enum GenerateImageTool {
     static func parse(_ raw: [String: Value]?) throws -> Input {
         let args = ToolArguments(raw, toolName: name)
         let prompt = try args.requiredString("prompt")
-        let size = try args.optionalEnum("size", as: ImageSize.self) ?? .square
+        let size = try args.optionalEnum("size", as: ImageSize.self)
+        let aspectRatio = try args.optionalAspectRatio("aspect_ratio")
+        guard size == nil || aspectRatio == nil else {
+            throw MCPError.invalidParams("\(name): 'size' and 'aspect_ratio' are mutually exclusive; pass one")
+        }
+        let resolution = try args.optionalResolution("resolution")
         let count = try args.optionalInt("count") ?? 1
         guard (1...4).contains(count) else {
             throw MCPError.invalidParams("\(name): 'count' must be between 1 and 4 (got \(count))")
@@ -35,7 +42,9 @@ enum GenerateImageTool {
         let output = try args.optionalString("output")
         return Input(
             prompt: prompt,
-            size: size,
+            size: size ?? .square,
+            aspectRatio: aspectRatio ?? size?.aspectRatio,
+            resolution: resolution,
             count: count,
             seed: seed,
             model: model,
@@ -57,7 +66,17 @@ enum GenerateImageTool {
                 "size": .object([
                     "type": .string("string"),
                     "enum": .array([.string("square"), .string("portrait"), .string("landscape")]),
-                    "description": .string("Aspect ratio of the generated image. Defaults to square."),
+                    "description": .string("Aspect-ratio preset: square (1:1), portrait (9:16), landscape (16:9). Mutually exclusive with aspect_ratio. With neither, the model picks its own framing."),
+                ]),
+                "aspect_ratio": .object([
+                    "type": .string("string"),
+                    "enum": .array(AspectRatio.allCases.map { .string($0.rawValue) }),
+                    "description": .string("Exact output aspect ratio (width:height). Mutually exclusive with size. Per model — 3.1 Flash: all ratios, 512–4K; 3.1 Flash Lite: all ratios, 512 and 1K only; 3 Pro: no 1:4/4:1/1:8/8:1, 1K–4K."),
+                ]),
+                "resolution": .object([
+                    "type": .string("string"),
+                    "enum": .array(ImageResolution.allCases.map { .string($0.rawValue) }),
+                    "description": .string("Output resolution tier; 1K at 1:1 is 1024×1024, 2K doubles it, 4K quadruples it. Defaults to the model's own (1K)."),
                 ]),
                 "count": .object([
                     "type": .string("integer"),
