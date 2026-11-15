@@ -2,75 +2,102 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## Project status
+## What this is
 
-SwiftMageX is an image generation/processing CLI (macOS-only). The 0.1 MVP is **feature-complete** — the test suite is green, and `RELEASE_NOTES.md` maps each delivered capability to its spec section. The spec (`SwiftMageX-MVP-0.1-spec.md`) is still the authoritative blueprint; consult it before designing anything, and any divergence needs an explicit reason.
+SwiftMageX is a macOS-only (macOS 14+) CLI and MCP server for image generation (Gemini) and
+on-device raster work (CoreImage, CoreText, ImageIO, Vision). `SwiftMageX-MVP-0.1-spec.md` is the
+design blueprint (section numbers are cited below); `RELEASE_NOTES.md` and `git log` say what
+changed since. The spec predates the current model catalog (see "Models"), so where it disagrees
+with the code on models, the code wins.
 
-## Build / test / run
+## Build, test, run
 
 ```sh
-swift build                              # debug build of both binaries
-swift build -c release                   # release build (produces swiftmagex + swiftmagex-mcp)
-swift run swiftmagex <subcommand> …      # run the CLI from sources
-swift run swiftmagex-mcp                 # run the MCP server (stdio transport)
-swift test                               # run SwiftMageXKitTests
-swift test --filter SwiftMageXKitTests.RasterEngineTests/testResizeContain   # single test
+swift build                               # debug build of both executables
+swift build -c release                    # swiftmagex + swiftmagex-mcp
+swift test                                # all three test targets
+swift test --filter SwiftMageXKitTests.RasterEngineTests/testResizeContainPreservesAspectRatio
+scripts/check.sh                          # build + test, the local gate before a PR
+swift run swiftmagex <subcommand> ...     # CLI from sources
+swift run swiftmagex-mcp                  # MCP server over stdio
 ```
 
-Generation requires `SWIFTMAGEX_GEMINI_API_KEY` (or fallback `GEMINI_API_KEY`) in the environment. `resize` and `text` need no key. Never log or print the key, even under `--verbose`.
+- Generation needs `SWIFTMAGEX_GEMINI_API_KEY` (fallback `GEMINI_API_KEY`). `resize`, `text`,
+  `composite`, `appstore`, `remove-bg`, `crop` and `icon` need no key. Never log or print the key,
+  even under `--verbose`. Tests never call the network: use `MockImageProvider` / `MockHTTPClient`.
+- Install a built binary with `install -m 755`, never `cp`: overwriting a running binary in place
+  makes macOS kill the new one (exit 137). README has the steps.
+- No CI; run `scripts/check.sh` before every PR. Releases: `v0.3.0` is the latest tag; the root
+  `CLAUDE.md` has the tag and release-notes rules.
+- User-facing changes touch `README.md` and the nine localized `README.*.md`; keep them in step.
 
-## Architecture — the load-bearing shape
+## Architecture
 
-Three SwiftPM targets in one package; two thin frontends over one core library. The shape matters because it's the project's main constraint:
+One SwiftPM package, two thin frontends over one core:
 
-- **`SwiftMageXKit`** (library) — pure orchestration. **No external dependencies.** Networking is `URLSession`; raster work is CoreImage / CoreText / ImageIO. Defines the `ImageProvider` and `RasterEngine` protocols, request/response models, errors, and config.
-- **`swiftmagex`** (executable) — CLI frontend. Depends on `SwiftMageXKit` + `swift-argument-parser`. Subcommands: `generate`, `edit`, `resize`, `text`, `composite`, `appstore`, `remove-bg`, `crop`, `icon` (`edit` plus the last five are post-0.1). Global flags: `--json`, `--verbose`.
-- **`swiftmagex-mcp`** (executable) — MCP server frontend over stdio. Depends on `SwiftMageXKit` + the MCP Swift SDK. Exposes ten tools (`generate_image`, `edit_image`, `resize_image`, `overlay_text`, `composite_images`, `appstore_screenshots`, `list_frames`, `remove_background`, `smart_crop`, `compose_icon`) that mirror the CLI commands; `list_frames` is the discovery counterpart to `appstore_screenshots`'s bundled-bezel ids.
+- `SwiftMageXKit` (library): orchestration, `ImageProvider` and `RasterEngine` protocols, models,
+  errors, config. **No external dependencies**; networking is `URLSession`.
+- `swiftmagex` (CLI, `swift-argument-parser`): `generate`, `edit`, `resize`, `text`, `composite`,
+  `appstore`, `remove-bg`, `crop`, `icon`; global `--json`, `--verbose`.
+- `swiftmagex-mcp` (MCP over stdio, `modelcontextprotocol/swift-sdk`): ten tools mirroring the CLI
+  (`generate_image`, `edit_image`, `resize_image`, `overlay_text`, `composite_images`,
+  `appstore_screenshots`, `list_frames`, `remove_background`, `smart_crop`, `compose_icon`).
 
-Frontends own *only* their interface concern (argparsing/output, or MCP protocol). All business logic lives in the Kit. The two frontends share no dependency with each other — keep it that way; don't introduce code in one that pulls the other's dependency into the Kit.
+Rules that follow:
 
-`generate` and `edit` use both `ImageProvider` (network) and `RasterEngine` (write file + embed metadata). `resize`, `text`, `composite`, `appstore`, `remove-bg`, `crop`, and `icon` use only `RasterEngine` — no API key. `edit` is post-0.1 and Gemini-only: the source image, any additional `--reference` images, and an optional mask ride along as `inlineData` parts inside the same `:generateContent` call `generate` uses, so no new endpoint, no new dependency. Multi-image lives entirely in the request model — `GenerationRequest.referenceImages: [ReferenceImage]` — so the provider just iterates and appends parts; adding more references is a list grow, not a code change. `appstore` (post-0.1) is the App Store Connect screenshot pipeline: frame a screenshot in a device bezel (a user-supplied path **or** a bundled frame id from `DeviceFrameCatalog`; auto-picked when the requested device has bundled art) → composite onto a background → optional caption → batch-resize to ASC iPhone sizes from `ASCDeviceCatalog`. `icon` (post-0.2) assembles an Apple Icon Composer `.icon` package (Liquid Glass icons, iOS 26+/macOS 26+) from prepared layers: the format lives in `Sources/SwiftMageXKit/IconComposer/` — `IconComposerDocument` is the Codable mirror of `icon.json` (reverse-engineered from real Icon Composer output: groups are listed **front-first**, `position.translation-in-points` is an **offset from centered placement** (y-down), `scale` multiplies the layer's natural size at 1 px = 1 pt on the 1024-pt canvas; emit only verified keys). `IconPackageBuilder` does the pure spec→document assembly, the orchestrator stages the package in a temp dir and moves it into place, and `ActoolIconValidator` (`--validate`) compile-checks via `xcrun actool` — success is detected by the produced `Assets.car`, because actool exits 0 even for broken packages. The flat preview (`--flat-preview`) is an approximation: stacking only, no glass, no squircle mask.
+- Frontends own only their interface (argument parsing and output, or MCP protocol); business logic
+  lives in the Kit. The frontends share no dependency; never pull one's dependency into the Kit.
+- **Exactly two external packages** (argument-parser for the CLI, MCP SDK for the server). Do not add
+  logging, JSON or HTTP crates. The MCP SDK is pinned `.upToNextMinor` because 0.x minors can
+  break; bump it deliberately. SwiftPM resources (`Resources/Frames`) are not dependencies.
+- One implementation per protocol (`GeminiProvider`, `CoreImageRasterEngine`); the protocols exist
+  for testability. A new model is a new id in `ModelCatalog`, not a new provider, unless the wire
+  shape differs. Keep Gemini wire types inside `Providers/`; the rest sees `GenerationRequest` /
+  `GeneratedImage`.
+- Swift 6 strict concurrency: types crossing async boundaries are `Sendable`.
+- `generate` and `edit` use provider plus raster engine; `edit` sends the source, `--reference`
+  images and the mask as `inlineData` parts of the same `:generateContent` call.
 
-### Protocols are abstractions for testability — keep additions concrete
+## Behaviour contracts
 
-`RasterEngine` still has exactly one implementation (`CoreImageRasterEngine`) — it just grew more methods (`resize`, `overlayText`, `composite`, `frameScreenshot`, `removeBackground`, `smartCrop`, `load`, `write`). `removeBackground` is backed by Vision's on-device foreground segmentation (`VNGenerateForegroundInstanceMaskRequest`, macOS 14+); `smartCrop` is backed by Vision's on-device attention saliency (`VNGenerateAttentionBasedSaliencyImageRequest`). Both are system frameworks, so the dependency budget is untouched. `ImageProvider` has one implementation, `GeminiProvider` (`:generateContent`); `SwiftMageXOrchestrator.makeProvider(apiKey:)` builds it for both frontends. `ImagenProvider` (`:predict`) existed until Google retired Imagen 4.0 and was deleted afterwards — see git history if Imagen ever comes back to this API. A new model is a new id in `ModelCatalog`, not a new provider, unless the wire shape genuinely differs. The protocols still exist primarily for testability against `MockImageProvider` / `MockHTTPClient`; the spec defers Ollama/ComfyUI to 0.2.
+Check the spec section before changing any of these.
 
-### Dependency budget is a hard rule
+- Output paths are absolute in `--json` and in MCP results (the caller does not know the cwd). (§7, §12)
+- Output into a directory is named `swiftmagex_{timestamp}_{index}.{ext}`; `--count > 1` with a file
+  name appends an index. `--count` is 1-4, run as N parallel calls. (§6.1, §12)
+- Every generated file embeds prompt, model, seed (if any), timestamp and tool version (PNG `tEXt` /
+  EXIF). `--seed` is provider-dependent (`ProviderCapabilities.supportsSeed`); still record it. (§9)
+- HTTP 429: up to 5 retries, backoff 1 s doubling, then exit code 3. (§13)
+- Exit codes: 0 ok, 1 unexpected (raster, io), 2 invalid input, 3 provider/API, 4 config (missing
+  key). MCP errors use the same categories (`category` strings are frozen, agents key off them).
 
-**Exactly two external packages**: `swift-argument-parser` (CLI only) and `modelcontextprotocol/swift-sdk` (MCP server only). The Kit itself must stay dependency-free. The MCP SDK is pinned with `.upToNextMinor(from: "0.12.1")` because pre-1.0 minor bumps may break — patch updates only; bump deliberately. Don't add a logging crate, a JSON crate, an HTTP crate, etc.
+## Models and Gemini API
 
-### Kit ships SwiftPM resources
+- Default `gemini-3.1-flash-image`; alternates `gemini-3.1-flash-lite-image` and
+  `gemini-3-pro-image`. **Only GA ids go in `ModelCatalog`**: a preview alias is retired later and
+  the pass-through of unknown ids would hide it until Google switches it off. Unknown ids are passed
+  to Gemini as is. Imagen is gone (retired 2026-08-17); an `imagen-*` id surfaces Google's 404 as
+  exit 3.
+- Endpoint `POST /v1beta/models/{model}:generateContent` with an `x-goog-api-key` header,
+  `generationConfig.responseModalities: ["IMAGE"]` and an optional `imageConfig { aspectRatio,
+  imageSize }`, omitted when neither is set. `GenerationRequest.aspectRatio` is the only ratio
+  field; `--size` presets map into it. The image comes back base64 in
+  `candidates[].content.parts[].inlineData`.
+- **We validate ratio and resolution per model, Google does not**: the server checks only the union
+  and bills unsupported pairs. `ImageModelDescriptor.aspectRatios` / `.resolutions` hold the
+  per-model sets; `ModelCatalog.validateOutputOptions` rejects before the network (exit 2). Refresh
+  the sets together with the catalog.
 
-`Sources/SwiftMageXKit/Resources/Frames/` carries device bezel PNGs + a `frames.json` manifest, surfaced through `DeviceFrameCatalog`. `Package.swift` declares them with `.copy("Resources/Frames")`. **This is not a dependency** — SwiftPM resources are a build feature, not a third-party package; the dep-budget rule still holds. The catalog is intentionally decoupled from `ASCDeviceCatalog` so one device id can have zero, one, or many bundled frames (colour variants, alternate eras). Adding a new bezel is a JSON + PNG drop with no code change. Two helper scripts live under `scripts/` for vendoring: `detect-screen-rect.swift` (find the largest enclosed transparent region in a candidate bezel) and `punch-rounded-rect.swift` (derive a clean cutout from third-party art that renders the screen as a flat fill rather than a transparent hole — PommePlate's iPhone art is the bundled example). `Bundle.module` is per-target, so tests reach the Kit's bundle via `DeviceFrameCatalog.resourceBundle` (the test target's own `.module` is empty). Provenance / licence metadata for bundled art lives in `Resources/Frames/ATTRIBUTION.md`; preserve it when adding new entries.
+## Resources and Icon Composer
 
-### Swift 6 strict concurrency is on
-
-`swift-tools-version: 6.0` enables strict concurrency by default. The Kit's data models (`GenerationRequest`, `GeneratedImage`, `ImageSize`, `ImageFormat`, `ProviderCapabilities`) are declared `Sendable` in the spec; both protocols (`ImageProvider`, `RasterEngine`) require `Sendable` conformance. New types crossing async boundaries must be `Sendable` too.
-
-## Behavior contracts to preserve
-
-These are easy to get subtly wrong if you're modifying the code. Cross-check against the cited spec section before touching anything in the relevant area.
-
-- **Output paths are always absolute** in `--json` output and in MCP tool results — the calling agent doesn't know the cwd. (§7, §12)
-- **File naming** when output is a directory: `swiftmagex_{timestamp}_{index}.{ext}`. With `--count > 1` and a specific filename, an index is appended. (§12)
-- **Metadata embedded into each generated file**: prompt, model, seed (if any), timestamp, tool version. PNG `tEXt` / EXIF via ImageIO. (§9, §12)
-- **`--seed` is provider-dependent.** Reflected in `ProviderCapabilities.supportsSeed`. If the provider doesn't accept it, still write it to metadata as recorded intent. (§12)
-- **429 retry policy**: up to 5 retries, exponential backoff starting at 1 s, doubling. After exhaustion → exit code 3. (§13)
-- **Exit codes**: 0 success, 1 unexpected, 2 invalid input, 3 provider/API, 4 config (missing key). MCP tool errors must map to the same semantic categories. (§13)
-- **`--count` cap**: 1–4. (§6.1, §17)
-- **Default model**: `gemini-3.1-flash-image` (GA). Built-in alternates in `ModelCatalog.all`: `gemini-3.1-flash-lite-image` and `gemini-3-pro-image`, both GA. Unknown ids are passed to Gemini as-is. **Only GA ids go in the catalog** — a preview alias is retired some time after its model reaches GA, and that pass-through would hide it until Google switched the alias off. (§8, post-0.1 — this diverges from the spec, which names `gemini-2.5-flash-image`; see below.)
-- **The spec's model choices are out of date, deliberately not rewritten.** `SwiftMageX-MVP-0.1-spec.md` is dated May 2026 and names `gemini-2.5-flash-image` as the default with the Imagen 4.0 family as alternates. Verified against `ListModels` on a live key on 2026-09-22: `gemini-2.5-flash-image` retires 2026-10-02, the two `-preview` aliases were superseded by GA ids (and `gemini-3.1-flash-image-preview`'s own shutdown, 2026-06-25, has already passed), and **the whole Imagen 4.0 family was retired on 2026-08-17 and now 404s on `v1` and `v1beta` alike** — so its provider was removed; an `imagen-*` id passed by hand now surfaces Google's 404 as exit code 3. The catalog is the current truth; the spec records what was designed.
-
-## Google AI image API specifics
-
-`GeminiProvider` hits `generativelanguage.googleapis.com` with an `x-goog-api-key` header and the 429 backoff (1 s → 16 s, ×5). Keep the wire shape isolated inside the provider so API changes stay local.
-
-### `GeminiProvider`
-
-- Endpoint: `POST /v1beta/models/{model}:generateContent`
-- Request: `contents: [{role:"user", parts:[{text}]}], generationConfig: { responseModalities: ["IMAGE"], imageConfig?: { aspectRatio?, imageSize? } }`. `imageConfig` is omitted when neither is set — then the model picks its framing (or keeps an edit source's). `GenerationRequest.aspectRatio` is the only ratio field; frontends map an explicit `--size` preset (`ImageSize`) into it. The docs are mid-migration to `generationConfig.responseFormat.image`; both are accepted on `v1beta` (verified 2026-09-30), we send `imageConfig`.
-- **Ratio / resolution are validated per model by us, not by Google.** The server checks only the cross-model union (14 ratios; `512`/`1K`/`2K`/`4K`) and will happily bill an unsupported pair. `ImageModelDescriptor.aspectRatios` / `.resolutions` hold the per-model sets from Google's tables and `ModelCatalog.validateOutputOptions` rejects before the network (exit 2); ids outside the catalog pass through. Refresh those sets together with the catalog.
-- Response: base64 image in `candidates[].content.parts[].inlineData` — decode to `Data` inside `GeminiProvider`.
-- Multi-image: `--count > 1` is N parallel calls (the API takes one image per call).
-
-Don't leak Gemini-shaped types out of `Providers/`; the orchestrator and frontends only see `GenerationRequest` / `GeneratedImage`.
+- `Sources/SwiftMageXKit/Resources/Frames/` holds bezel PNGs plus `frames.json` (`DeviceFrameCatalog`,
+  declared `.copy` in `Package.swift`). A new bezel is a JSON and PNG drop; keep provenance and
+  licence in `Frames/ATTRIBUTION.md`. `scripts/detect-screen-rect.swift` and
+  `scripts/punch-rounded-rect.swift` help vendor new art. In tests use
+  `DeviceFrameCatalog.resourceBundle`, not the test target's empty `.module`.
+- `icon` builds an Icon Composer `.icon` package (`Sources/SwiftMageXKit/IconComposer/`).
+  `IconComposerDocument` mirrors `icon.json`, reverse-engineered from real output: groups are listed
+  front-first, `translation-in-points` is an offset from centred placement (y down), `scale`
+  multiplies the layer's natural size at 1 px = 1 pt on a 1024-pt canvas; emit only verified keys.
+  `--validate` runs `xcrun actool` and judges success by the produced `Assets.car`, because actool
+  exits 0 even for broken packages. `--flat-preview` is an approximation (no glass, no squircle mask).
